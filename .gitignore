@@ -1,0 +1,69 @@
+# Node/Vue
+node_modules/
+web/detection/dist/
+web/detection/.cache/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Java/Spring Boot
+defectDetection/target/
+defectDetection/out/
+defectDetection/detectPicture/
+.mvn/
+*.iml
+
+# IDE
+.idea/
+.vscode/
+
+# Python/Flask
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+build/
+dist/
+predict/runs/
+
+# Uni-app
+wxdetect/unpackage/
+wxdetect/dist/
+
+# Logs & OS generated files
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# compression file
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.via
+*.tmp
+*.err
+*.log
+*.iml
+
+ ##filter databfile、sln file##
+*.mdb
+*.ldb
+*.sln
+##class file##
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so

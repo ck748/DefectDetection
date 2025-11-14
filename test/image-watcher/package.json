@@ -1,0 +1,22 @@
+{
+  "name": "image-watcher",
+  "version": "1.0.0",
+  "description": "自动监听watchDir目录并上传新增图片到后端检测接口",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "keywords": [
+    "file-watcher",
+    "image-upload",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chokidar": "^3.5.3",
+    "form-data": "^4.0.0"
+  }
+}
