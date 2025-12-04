@@ -189,6 +189,10 @@ public class ExceptionConfigDialog extends JDialog {
     @LogPoint(value = OpEnum.Update,mainRole = Operator.class,target = ConfigProperties.class)
     public void clickSaveConfig(){
         log.info("点击保存");
+        // Ensure button focus is cleared before processing
+        saveButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> saveButton.setFocusable(true));
+        
         SwingWorker<Void,Void> worker=new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
@@ -222,7 +226,7 @@ public class ExceptionConfigDialog extends JDialog {
             }
         };
         worker.execute();
-        this.dispose();
+        SwingUtilities.invokeLater(() -> this.dispose());
     }
 
 }

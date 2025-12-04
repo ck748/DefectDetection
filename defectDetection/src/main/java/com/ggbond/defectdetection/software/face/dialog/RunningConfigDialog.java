@@ -142,6 +142,10 @@ public class RunningConfigDialog extends JDialog {
 
     public void clickSaveButton(){
 
+        // Ensure button focus is cleared before processing
+        saveButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> saveButton.setFocusable(true));
+        
         SwingWorker<Void,Void> worker= new SwingWorker<>() {
             @Override
             protected Void doInBackground() {

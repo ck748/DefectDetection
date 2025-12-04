@@ -1,162 +1,188 @@
 <template>
   <div class="home-container">
-    <el-container>
+    <el-container class="app-wrapper">
       <!-- 侧边栏 -->
-      <el-aside :width="asideWidth" class="sidebar" :class="{ 'sidebar-collapsed': isCollapse }">
-        <div class="logo-section">
-          <img src="../assets/软件学院院徽.png" alt="院徽" class="logo-img"/>
-          <transition name="fade">
-            <span class="logo-title" v-show="!isCollapse">{{ title }}</span>
+      <el-aside
+        :width="isCollapse ? '64px' : '220px'"
+        class="sidebar-container"
+      >
+        <!-- Logo 区域 -->
+        <div class="logo-container" :class="{ 'collapse': isCollapse }">
+          <transition name="sidebarLogoFade">
+            <router-link v-if="isCollapse" key="collapse" class="sidebar-logo-link" to="/">
+              <img src="../assets/软件学院院徽.png" class="sidebar-logo">
+            </router-link>
+            <router-link v-else key="expand" class="sidebar-logo-link" to="/">
+              <img src="../assets/软件学院院徽.png" class="sidebar-logo">
+              <h1 class="sidebar-title">{{ title }}</h1>
+            </router-link>
           </transition>
         </div>
 
-        <el-menu 
-          :default-openeds="['info', 'sysmanager', 'chainmanager']" 
-          :collapse="isCollapse"  
-          :collapse-transition="false" 
-          router 
-          class="sidebar-menu"
-          :default-active="$route.path"
-          background-color="#1a2a3a"
-          text-color="#b0bec5"
-          active-text-color="#ffffff"
-        >
-          <!-- 数据大屏菜单项 - 跳转到 /daping -->
-          <el-menu-item index="/daping" class="menu-item">
-            <i class="el-icon-data-analysis menu-icon"></i>
-            <span slot="title" class="menu-text">数据大屏</span>
-          </el-menu-item>
+        <!-- 菜单区域 -->
+        <el-scrollbar wrap-class="scrollbar-wrapper">
+          <!-- 
+            核心修改：
+            1. 删除了 :default-openeds 属性，解决了“一点就全展开”和“默认不收起”的问题。
+            2. unique-opened="false" 保持不变，保证各个菜单展开独立。
+          -->
+          <el-menu
+            :collapse="isCollapse"
+            :unique-opened="false"
+            :collapse-transition="false"
+            mode="vertical"
+            router
+            :default-active="$route.path"
+            background-color="#001529"
+            text-color="rgba(255, 255, 255, 0.65)"
+            active-text-color="#ffffff"
+            class="el-menu-vertical"
+          >
+            <!-- 数据大屏 -->
+            <el-menu-item index="/daping">
+              <i class="el-icon-data-analysis"></i>
+              <span slot="title">数据大屏</span>
+            </el-menu-item>
 
-          <!-- 概要信息菜单项 - 跳转到 /dashboard -->
-          <el-menu-item index="/dashboard" class="menu-item">
-            <i class="el-icon-monitor menu-icon"></i>
-            <span slot="title" class="menu-text">概要信息</span>
-          </el-menu-item>
-          
-          <el-submenu index="info">
-            <template slot="title">
-              <i class="el-icon-data-line menu-icon"></i>
-              <span class="menu-text">监测信息</span>
-            </template>
-            <el-menu-item index="/info" class="submenu-item">
-              <i class="el-icon-tickets menu-sub-icon"></i>
-              <span>历史检测</span>
+            <!-- 概要信息 -->
+            <el-menu-item index="/dashboard">
+              <i class="el-icon-monitor"></i>
+              <span slot="title">概要信息</span>
             </el-menu-item>
-            <el-menu-item index="/annotation" class="submenu-item">
-              <i class="el-icon-edit-outline menu-sub-icon"></i>
-              <span>数据标注</span>
-            </el-menu-item>
-            <el-menu-item index="/charts" class="submenu-item">
-              <i class="el-icon-data-analysis menu-sub-icon"></i>
-              <span>检测报表</span>
-            </el-menu-item>
-            <el-menu-item index="/history-carousel" class="submenu-item">
-              <i class="el-icon-picture menu-sub-icon"></i>
-              <span>历史轮播</span>
-            </el-menu-item>
-            <el-menu-item index="/warning" class="submenu-item">
-              <i class="el-icon-warning menu-sub-icon"></i>
-              <span>预警信息</span>
-            </el-menu-item>
-          </el-submenu>
-          
-          <el-submenu index="chainmanager">
-            <template slot="title">
-              <i class="el-icon-connection menu-icon"></i>
-              <span class="menu-text">链上管理</span>
-            </template>
-            <el-menu-item index="/production" class="submenu-item">
-              <i class="el-icon-cpu menu-sub-icon"></i>
-              <span>生产</span>
-            </el-menu-item>
-            <el-menu-item index="/assembly" class="submenu-item">
-              <i class="el-icon-set-up menu-sub-icon"></i>
-              <span>组装</span>
-            </el-menu-item>
-          </el-submenu>
-          
-          <el-submenu index="sysmanager">
-            <template slot="title">
-              <i class="el-icon-setting menu-icon"></i>
-              <span class="menu-text">系统管理</span>
-            </template>
-            <el-menu-item index="/log" class="submenu-item">
-              <i class="el-icon-notebook-2 menu-sub-icon"></i>
-              <span>日志管理</span>
-            </el-menu-item>
-            <el-menu-item index="/apimanager" class="submenu-item">
-              <i class="el-icon-key menu-sub-icon"></i>
-              <span>API管理</span>
-            </el-menu-item>
-            <el-menu-item index="/pwdmanager" class="submenu-item">
-              <i class="el-icon-lock menu-sub-icon"></i>
-              <span>密钥管理</span>
-            </el-menu-item>
-          </el-submenu>
-        </el-menu>
-        
-        <!-- 侧边栏底部收缩按钮 -->
-        <div class="sidebar-footer" @click="handleCollapse">
-          <i :class="collapseIcon" class="collapse-btn"></i>
-          <transition name="fade">
-            <span v-show="!isCollapse" class="collapse-text">收起菜单</span>
-          </transition>
-        </div>
+           
+            <!-- 监测信息 -->
+            <el-submenu index="info">
+              <template slot="title">
+                <i class="el-icon-data-line"></i>
+                <span>监测信息</span>
+              </template>
+              <el-menu-item index="/info">
+                <i class="el-icon-tickets"></i>
+                <span>历史检测</span>
+              </el-menu-item>
+              <el-menu-item index="/annotation">
+                <i class="el-icon-edit-outline"></i>
+                <span>数据标注</span>
+              </el-menu-item>
+              <el-menu-item index="/charts">
+                <i class="el-icon-pie-chart"></i>
+                <span>检测报表</span>
+              </el-menu-item>
+              <el-menu-item index="/history-carousel">
+                <i class="el-icon-picture"></i>
+                <span>历史轮播</span>
+              </el-menu-item>
+              <el-menu-item index="/warning">
+                <i class="el-icon-warning-outline"></i>
+                <span>预警信息</span>
+              </el-menu-item>
+            </el-submenu>
+           
+            <!-- 链上管理 -->
+            <!-- <el-submenu index="chainmanager">
+              <template slot="title">
+                <i class="el-icon-connection"></i>
+                <span>链上管理</span>
+              </template>
+              <el-menu-item index="/production">
+                <i class="el-icon-cpu"></i>
+                <span>生产管理</span>
+              </el-menu-item>
+              <el-menu-item index="/assembly">
+                <i class="el-icon-set-up"></i>
+                <span>组装管理</span>
+              </el-menu-item>
+            </el-submenu> -->
+           
+            <!-- 系统管理 -->
+            <el-submenu index="sysmanager">
+              <template slot="title">
+                <i class="el-icon-setting"></i>
+                <span>系统管理</span>
+              </template>
+              <el-menu-item index="/log">
+                <i class="el-icon-notebook-2"></i>
+                <span>日志管理</span>
+              </el-menu-item>
+              <el-menu-item index="/apimanager">
+                <i class="el-icon-key"></i>
+                <span>API管理</span>
+              </el-menu-item>
+              <el-menu-item index="/pwdmanager">
+                <i class="el-icon-lock"></i>
+                <span>密钥管理</span>
+              </el-menu-item>
+            </el-submenu>
+          </el-menu>
+        </el-scrollbar>
       </el-aside>
 
       <!-- 主内容区域 -->
-      <el-container class="main-container">
-        <!-- 头部区域 -->
-        <el-header class="main-header">
-          <div class="header-left">
-            <i :class="collapseIcon" class="header-collapse-icon" @click="handleCollapse"></i>
-            <el-breadcrumb separator-class="el-icon-arrow-right" class="breadcrumb">
-              <el-breadcrumb-item :to="{ path: '/' }">主页</el-breadcrumb-item>
-              <el-breadcrumb-item :to="{ path: $route.path }">{{ $route.meta.name }}</el-breadcrumb-item>
+      <el-container class="main-container" :class="{ 'is-collapse': isCollapse }">
+        <!-- 头部 -->
+        <el-header class="navbar">
+          <div class="navbar-left">
+            <!-- 顶部折叠按钮 -->
+            <div class="hamburger-container" @click="handleCollapse">
+               <i :class="isCollapse ? 'el-icon-s-unfold' : 'el-icon-s-fold'"></i>
+            </div>
+
+            <!-- 面包屑 -->
+            <el-breadcrumb class="app-breadcrumb" separator="/">
+              <transition-group name="breadcrumb">
+                <el-breadcrumb-item key="home" :to="{ path: '/' }">
+                   <span class="breadcrumb-item-text">主页</span>
+                </el-breadcrumb-item>
+                <el-breadcrumb-item key="current">
+                   <span class="breadcrumb-item-text active">{{ $route.meta.name || $route.name }}</span>
+                </el-breadcrumb-item>
+              </transition-group>
             </el-breadcrumb>
           </div>
-          
-          <div class="header-right">
-            <el-tooltip content="全屏" placement="bottom">
-              <i class="el-icon-full-screen header-icon" @click="handleFull"></i>
+
+          <div class="navbar-right">
+            <el-tooltip content="全屏切换" effect="dark" placement="bottom">
+              <div class="right-menu-item hover-effect" @click="handleFull">
+                <i class="el-icon-full-screen"></i>
+              </div>
             </el-tooltip>
-            
-            <el-dropdown class="user-dropdown" trigger="click">
-              <div class="user-info">
-                <el-avatar 
-                  :src="user.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
-                  :size="36"
+
+            <el-dropdown class="avatar-container" trigger="click">
+              <div class="avatar-wrapper">
+                <el-avatar
+                  :size="32"
+                  :src="user.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'"
                   class="user-avatar"
                 ></el-avatar>
-                <div class="user-details">
-                  <span class="user-name">{{ user.name || '用户' }}</span>
-                  <span class="user-role">管理员</span>
-                </div>
-                <i class="el-icon-arrow-down dropdown-arrow"></i>
+                <span class="user-name">{{ user.name || '管理员' }}</span>
+                <i class="el-icon-caret-bottom" />
               </div>
-              <el-dropdown-menu slot="dropdown" class="user-menu">
-                <el-dropdown-item @click.native="$router.push('/person')" class="menu-item">
-                  <i class="el-icon-user"></i>
-                  <span>个人信息</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="$router.push('/password')" class="menu-item">
-                  <i class="el-icon-edit"></i>
-                  <span>修改密码</span>
-                </el-dropdown-item>
-                <el-dropdown-item divided @click.native="logout" class="menu-item logout-item">
-                  <i class="el-icon-switch-button"></i>
-                  <span>退出登录</span>
+              <el-dropdown-menu slot="dropdown" class="user-dropdown">
+                <router-link to="/person">
+                  <el-dropdown-item>
+                    <i class="el-icon-user"></i> 个人中心
+                  </el-dropdown-item>
+                </router-link>
+                <router-link to="/password">
+                  <el-dropdown-item>
+                    <i class="el-icon-lock"></i> 修改密码
+                  </el-dropdown-item>
+                </router-link>
+                <el-dropdown-item divided @click.native="logout">
+                  <span style="display:block;"><i class="el-icon-switch-button"></i> 退出登录</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
           </div>
         </el-header>
 
-        <!-- 主体内容区域 -->
-        <el-main class="main-content">
-          <div class="content-wrapper">
-            <router-view @update:user="updateUser" />
-          </div>
+        <!-- 内容区域 -->
+        <el-main class="app-main">
+          <transition name="fade-transform" mode="out-in">
+            <div class="main-content-view">
+              <router-view @update:user="updateUser" />
+            </div>
+          </transition>
         </el-main>
       </el-container>
     </el-container>
@@ -169,15 +195,12 @@ export default {
   data() {
     return {
       isCollapse: false,
-      asideWidth: '240px',
-      collapseIcon: 'el-icon-s-fold',
       user: JSON.parse(localStorage.getItem('useradmin') || '{}'),
       title: '智检控系统'
     }
   },
   mounted() {
     this.title = '智检控系统';
-    // 设置默认路由为数据大屏
     if (this.$route.path === '/') {
       this.$router.replace('/daping');
     }
@@ -187,7 +210,7 @@ export default {
       this.user = JSON.parse(JSON.stringify(user));
     },
     logout() {
-      this.$confirm('确定要退出登录吗？', '提示', {
+      this.$confirm('确定注销并退出系统吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -208,529 +231,306 @@ export default {
     },
     handleCollapse() {
       this.isCollapse = !this.isCollapse;
-      this.asideWidth = this.isCollapse ? '64px' : '240px';
-      this.collapseIcon = this.isCollapse ? 'el-icon-s-unfold' : 'el-icon-s-fold';
     }
   }
 }
 </script>
 
 <style scoped>
-/* 样式保持不变，与之前相同 */
+/* ================= 全局容器 ================= */
 .home-container {
   height: 100vh;
+  width: 100%;
+  background-color: #f0f2f5;
   overflow: hidden;
-  background: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* 侧边栏样式 - 重新设计配色 */
-.sidebar {
-  background: linear-gradient(180deg, #1a2a3a 0%, #2d3e50 100%);
-  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-collapsed {
-  width: 64px !important;
-}
-
-.logo-section {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-}
-
-.logo-img {
-  width: 36px;
-  height: 36px;
-  transition: all 0.3s ease;
-  filter: brightness(0) invert(1);
-}
-
-.logo-title {
-  margin-left: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-  transition: all 0.3s ease;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* 菜单样式 - 优化配色 */
-.sidebar-menu {
-  flex: 1;
-  border: none;
-  background: transparent !important;
-  padding: 16px 8px;
-}
-
-.sidebar-menu .menu-item {
-  height: 48px !important;
-  line-height: 48px !important;
-  margin: 4px 0;
-  border-radius: 10px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #b0bec5 !important;
-  position: relative;
-  overflow: hidden;
-}
-
-.sidebar-menu .menu-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
+.app-wrapper {
   height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, rgba(74, 144, 226, 0.1), transparent);
-  transition: width 0.3s ease;
-}
-
-.sidebar-menu .menu-item:hover::before {
   width: 100%;
 }
 
-.sidebar-menu .menu-item:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-  transform: translateX(4px);
+/* ================= 侧边栏 (Sidebar) ================= */
+.sidebar-container {
+  background-color: #001529; /* 原始深蓝黑 */
+  height: 100%;
+  position: fixed;
+  font-size: 0px;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1001;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
+  display: flex;
+  flex-direction: column;
 }
 
-.sidebar-menu .menu-item.is-active {
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
-  transform: translateX(0);
+/* Logo 区域 */
+.logo-container {
+  position: relative;
+  width: 100%;
+  height: 64px;
+  line-height: 64px;
+  background: #002140; 
+  text-align: center;
+  overflow: hidden;
 }
 
-.sidebar-menu .menu-item.is-active::before {
-  display: none;
+.sidebar-logo-link {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
-.menu-icon {
-  font-size: 18px;
-  color: inherit;
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
   margin-right: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s;
 }
 
-.menu-text {
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.logo-container.collapse .sidebar-logo {
+  margin-right: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.sidebar-title {
+  display: inline-block;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  line-height: 50px;
+  font-size: 18px;
+  letter-spacing: 1px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 滚动条区域 */
+.el-scrollbar {
+  flex: 1;
+}
+::v-deep .el-scrollbar__wrap {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+::v-deep .el-scrollbar__wrap::-webkit-scrollbar {
+  width: 6px;
+  background-color: #001529;
+}
+::v-deep .el-scrollbar__wrap::-webkit-scrollbar-thumb {
+  background-color: #304156;
+  border-radius: 10px;
+}
+
+/* 菜单整体样式 */
+::v-deep .el-menu {
+  border: none;
+  width: 100% !important;
+}
+
+/* 菜单项基础样式 */
+::v-deep .el-menu-item,
+::v-deep .el-submenu__title {
+  height: 50px;
+  line-height: 50px;
+  margin: 4px 10px !important;
+  border-radius: 4px;
+  width: auto;
+  transition: all 0.3s;
+}
+
+/* 图标与文字间距 */
+::v-deep .el-menu-item i,
+::v-deep .el-submenu__title i {
+  margin-right: 10px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* 鼠标悬停 */
+::v-deep .el-menu-item:hover,
+::v-deep .el-submenu__title:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
+}
+::v-deep .el-menu-item:hover i,
+::v-deep .el-submenu__title:hover i {
+  color: #fff !important;
+}
+
+/* 选中状态 (Active) - 蓝色圆角矩形 */
+::v-deep .el-menu-item.is-active {
+  background-color: #1890ff !important;
+  color: #fff !important;
+}
+::v-deep .el-menu-item.is-active i {
+  color: #fff !important;
 }
 
 /* 子菜单样式 */
-.sidebar-menu .el-submenu__title {
-  height: 48px !important;
-  line-height: 48px !important;
-  margin: 4px 0;
-  border-radius: 10px;
-  color: #b0bec5 !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+::v-deep .el-submenu .el-menu-item {
+  background-color: #000c17 !important;
+}
+::v-deep .el-submenu .el-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+::v-deep .el-submenu .el-menu-item.is-active {
+  background-color: #1890ff !important;
+  color: #fff !important;
 }
 
-.sidebar-menu .el-submenu__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
+/* ================= 主内容布局 (Main Layout) ================= */
+.main-container {
+  min-height: 100vh;
+  transition: margin-left 0.3s;
+  margin-left: 220px;
+  background-color: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-container.is-collapse {
+  margin-left: 64px;
+}
+
+/* ================= 头部导航 (Navbar) ================= */
+.navbar {
+  height: 64px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 9;
+  position: sticky;
   top: 0;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
   height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, rgba(74, 144, 226, 0.1), transparent);
-  transition: width 0.3s ease;
 }
 
-.sidebar-menu .el-submenu__title:hover::before {
-  width: 100%;
-}
-
-.sidebar-menu .el-submenu__title:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-  transform: translateX(4px);
-}
-
-.sidebar-menu .el-submenu.is-opened .el-submenu__title {
-  background: rgba(255, 255, 255, 0.12) !important;
-  color: #ffffff !important;
-}
-
-.sidebar-menu .el-submenu .el-menu {
-  background: rgba(0, 0, 0, 0.25) !important;
-  border-radius: 8px;
-  margin: 8px 0;
-  padding: 4px;
-}
-
-.submenu-item {
-  height: 40px !important;
-  line-height: 40px !important;
-  margin: 2px 0;
-  border-radius: 8px;
-  color: #90a4ae !important;
-  transition: all 0.3s ease;
-  min-width: 0 !important;
-  position: relative;
-}
-
-.submenu-item::before {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  background: currentColor;
-  border-radius: 50%;
-  opacity: 0;
-  transition: all 0.3s ease;
-}
-
-.submenu-item:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-  padding-left: 20px;
-}
-
-.submenu-item:hover::before {
-  opacity: 1;
-  left: 12px;
-}
-
-.submenu-item.is-active {
-  background: rgba(74, 144, 226, 0.2) !important;
-  color: #4a90e2 !important;
-  border-left: 3px solid #4a90e2;
-  padding-left: 20px;
-}
-
-.submenu-item.is-active::before {
-  opacity: 1;
-  left: 12px;
-  background: #4a90e2;
-}
-
-.menu-sub-icon {
-  font-size: 14px;
-  margin-right: 8px;
-  color: inherit;
-  transition: all 0.3s ease;
-}
-
-/* 侧边栏底部 */
-.sidebar-footer {
-  height: 48px;
+/* 汉堡按钮 */
+.hamburger-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  height: 36px;
+  width: 36px;
+  background: #f7f8fa; 
+  border-radius: 6px; 
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  gap: 8px;
-  padding: 0 16px;
-  backdrop-filter: blur(10px);
+  margin-right: 16px; 
+  transition: all 0.3s;
 }
-
-.sidebar-footer:hover {
-  background: rgba(255, 255, 255, 0.08);
+.hamburger-container:hover {
+  background: #eef0f3;
 }
-
-.collapse-btn {
+.hamburger-container i {
   font-size: 18px;
-  color: #90a4ae;
-  transition: all 0.3s ease;
+  color: #5a5e66;
 }
 
-.collapse-text {
-  font-size: 12px;
-  color: #90a4ae;
-  white-space: nowrap;
-  transition: all 0.3s ease;
-}
-
-.sidebar-footer:hover .collapse-btn,
-.sidebar-footer:hover .collapse-text {
-  color: #ffffff;
-}
-
-.sidebar-footer:hover .collapse-btn {
-  transform: scale(1.1) rotate(180deg);
-}
-
-/* 主内容区域 */
-.main-container {
-  background: #f5f7fa;
-  min-height: 100vh;
-}
-
-.main-header {
-  background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 64px;
-  border-bottom: 1px solid #eaeef2;
-  backdrop-filter: blur(10px);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-collapse-icon {
-  font-size: 20px;
-  color: #5a6270;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #f8f9fa;
-}
-
-.header-collapse-icon:hover {
-  background: #4a90e2;
-  color: #ffffff;
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
-}
-
-.breadcrumb {
+/* 面包屑 */
+.navbar-left .app-breadcrumb {
+  display: inline-block;
   font-size: 14px;
+  line-height: 64px;
 }
-
-.breadcrumb ::v-deep .el-breadcrumb__inner {
-  color: #6b7280;
-  font-weight: 500;
-  transition: color 0.3s ease;
+.breadcrumb-item-text {
+  color: #606266;
+  font-weight: 400;
+  transition: color 0.3s;
 }
-
-.breadcrumb ::v-deep .el-breadcrumb__item:last-child .el-breadcrumb__inner {
-  color: #4a90e2;
+.breadcrumb-item-text.active {
+  color: #303133;
   font-weight: 600;
 }
-
-.breadcrumb ::v-deep .el-breadcrumb__separator {
-  color: #9ca3af;
+::v-deep .el-breadcrumb__inner a:hover .breadcrumb-item-text {
+  color: #1890ff;
 }
 
-.header-right {
+/* 右侧菜单 */
+.navbar-right {
   display: flex;
   align-items: center;
-  gap: 20px;
 }
 
-.header-icon {
+.right-menu-item {
+  padding: 0 12px;
+  cursor: pointer;
+  color: #5a5e66;
   font-size: 20px;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #f8f9fa;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+.right-menu-item:hover {
+  color: #1890ff;
+  background-color: rgba(0,0,0,0.025);
 }
 
-.header-icon:hover {
-  background: #4a90e2;
-  color: #ffffff;
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
-}
-
-/* 用户信息下拉菜单 */
-.user-dropdown {
-  cursor: pointer;
-}
-
-.user-info {
+.avatar-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  border-radius: 12px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #f8f9fa;
-  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.3s;
 }
-
-.user-info:hover {
-  background: #ffffff;
-  border-color: #e5e7eb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
+.avatar-wrapper:hover {
+  background: rgba(0,0,0,0.025);
 }
-
 .user-avatar {
-  border: 2px solid #e5e7eb;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e6e6e6;
 }
-
-.user-info:hover .user-avatar {
-  border-color: #4a90e2;
-  transform: scale(1.05);
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
 .user-name {
+  margin: 0 8px;
   font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
-  line-height: 1.2;
+  font-weight: 500;
+  color: #333;
 }
 
-.user-role {
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.2;
-  background: #f3f4f6;
-  padding: 2px 8px;
-  border-radius: 12px;
-  margin-top: 2px;
+/* ================= 内容区 (Content) ================= */
+.app-main {
+  padding: 20px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.dropdown-arrow {
-  font-size: 12px;
-  color: #9ca3af;
-  transition: transform 0.3s ease;
+.main-content-view {
+  background: #fff;
+  padding: 24px; 
+  border-radius: 4px;
+  min-height: calc(100vh - 124px); 
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
-.user-dropdown:hover .dropdown-arrow {
-  transform: rotate(180deg);
-  color: #4a90e2;
+/* ================= 动画效果 ================= */
+.fade-transform-enter-active,
+.fade-transform-leave-active {
+  transition: all 0.5s;
 }
-
-.user-menu {
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid #e5e7eb;
-  padding: 8px;
-}
-
-.user-menu .menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  color: #4b5563;
-}
-
-.user-menu .menu-item:hover {
-  background: #f3f4f6;
-  color: #4a90e2;
-  transform: translateX(4px);
-}
-
-.user-menu .logout-item {
-  color: #ef4444;
-}
-
-.user-menu .logout-item:hover {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
-.user-menu .logout-item i {
-  color: #ef4444;
-}
-
-/* 主内容区域 */
-.main-content {
-  padding: 0;
-  background: #f5f7fa;
-}
-
-.content-wrapper {
-  padding: 24px;
-  min-height: calc(100vh - 64px);
-  background: #ffffff;
-  margin: 16px;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f1f5f9;
-}
-
-/* 动画效果 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter, .fade-leave-to {
+.fade-transform-enter {
   opacity: 0;
+  transform: translateX(-20px);
 }
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    z-index: 1000;
-    height: 100vh;
-  }
-  
-  .main-container {
-    margin-left: 64px;
-  }
-  
-  .main-header {
-    padding: 0 16px;
-  }
-  
-  .content-wrapper {
-    padding: 16px;
-    margin: 8px;
-    border-radius: 12px;
-  }
-  
-  .user-details {
-    display: none;
-  }
-  
-  .collapse-text {
-    display: none;
-  }
-}
-
-/* 滚动条美化 */
-.sidebar-menu ::v-deep .el-menu::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar-menu ::v-deep .el-menu::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-
-.sidebar-menu ::v-deep .el-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-}
-
-.sidebar-menu ::v-deep .el-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
 }
 </style>

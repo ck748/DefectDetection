@@ -4,7 +4,7 @@
       <!-- 上半部分保持图1设计 -->
       <div class="header-section">
         <div style="margin: 15px; text-align: center">
-          <img src="https://design.gemcoder.com/staticResource/echoAiSystemImages/74c90fddc6191ba7e386f4e4adf2347c.png" height="124" width="125"/>
+          <img src="../assets/软件学院院徽.png" height="124" width="125"/>
         </div>
         <div style="border: #000c17; font-size: 20px; text-align: center; margin-bottom: 20px">密码修改</div>
       </div>

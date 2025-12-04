@@ -111,8 +111,17 @@ public class ImageModule {
         }
 
         //存储新的检测信息
-        //1.获取工单号
-        int workOrderId=CommonResource.getCurrentWorkOder().getId();
+        //1.获取工单号 (如果没有工单，使用0作为默认值)
+        Integer workOrderId = 0;
+        try {
+            if (CommonResource.getCurrentWorkOder() != null) {
+                workOrderId = CommonResource.getCurrentWorkOder().getId();
+            } else {
+                log.warn("当前没有工单，使用默认工单ID=0");
+            }
+        } catch (Exception e) {
+            log.warn("获取工单ID失败，使用默认工单ID=0: {}", e.getMessage());
+        }
         //2.缺陷总数
         int defectionsSum=res.getDefections().size();
 
@@ -164,7 +173,9 @@ public class ImageModule {
         }
 
         //3.2 工单进度加1,更新到新工单
-        CommonResource.updateWorkOrder();
+        if (CommonResource.getCurrentWorkOder() != null) {
+            CommonResource.updateWorkOrder();
+        }
 
         //4. 更新表格dataMap
         DetectResDto resPlus=DetectResDto.generateFromFather(detectLog1);
@@ -172,7 +183,9 @@ public class ImageModule {
 
         //更新图像和图表
         realtimeInterface.getDetectImagePanel().updateImageAndTable(res);
-        realtimeInterface.getDetectImagePanel().updateTextLabel(workOrderId,CommonResource.getCurrentNum(),CommonResource.getDetectSum());
+        if (CommonResource.getCurrentWorkOder() != null) {
+            realtimeInterface.getDetectImagePanel().updateTextLabel(workOrderId,CommonResource.getCurrentNum(),CommonResource.getDetectSum());
+        }
         realtimeInterface.updateCharts(dataModule.getDataMaps());
 
         //将最新结果发送至web端(通过SSE)

@@ -116,34 +116,37 @@ public class AddWorkOrderDialog extends JDialog {
 
         //添加按钮点击事件
         confirmButton.addActionListener(e -> {
-            dispose();
-            JOptionPane.showMessageDialog(null,"创建新工单成功","创建",JOptionPane.INFORMATION_MESSAGE);
-            Integer detectSum= (Integer) detectSumText.getValue();
-            String remark=remarkText.getText();
-            WorkOrder workOrder=new WorkOrder();
-            workOrder.setCurrentNum(0);
-            workOrder.setDetectSum(detectSum);
-            workOrder.setRemark(remark);
-            workOrder.setCreateTime(LocalDateTime.now());
-            workOrder.setCreateId(CommonResource.getOperatorId());
-            workOrderService.save(workOrder);
-            CommonResource.addNewWorkOrder(workOrder);
+            SwingUtilities.invokeLater(() -> {
+                Integer detectSum= (Integer) detectSumText.getValue();
+                String remark=remarkText.getText();
+                WorkOrder workOrder=new WorkOrder();
+                workOrder.setCurrentNum(0);
+                workOrder.setDetectSum(detectSum);
+                workOrder.setRemark(remark);
+                workOrder.setCreateTime(LocalDateTime.now());
+                workOrder.setCreateId(CommonResource.getOperatorId());
+                workOrderService.save(workOrder);
+                CommonResource.addNewWorkOrder(workOrder);
 
-            remarkText.setText("");
-            detectSumText.setValue(1);
+                remarkText.setText("");
+                detectSumText.setValue(1);
 
-            SysLog sysLog=new SysLog(null,
-                    LocalDateTime.now(),
-                    OpEnum.Create.getName(),
-                    CommonResource.getOperatorId(),
-                    1,
-                    Log.getClassToName().get(WorkOrder.class),
-                    null,
-                    null);
-            Log.handlerLog(sysLog);
+                SysLog sysLog=new SysLog(null,
+                        LocalDateTime.now(),
+                        OpEnum.Create.getName(),
+                        CommonResource.getOperatorId(),
+                        1,
+                        Log.getClassToName().get(WorkOrder.class),
+                        null,
+                        null);
+                Log.handlerLog(sysLog);
+                
+                dispose();
+                JOptionPane.showMessageDialog(null,"创建新工单成功","创建",JOptionPane.INFORMATION_MESSAGE);
+            });
         });
         cancelButton.addActionListener(e -> {
-            dispose();
+            SwingUtilities.invokeLater(() -> dispose());
         });
     }
 

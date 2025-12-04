@@ -1,1135 +1,1699 @@
 <template>
-  <div class="big-screen">
+  <div class="smart-factory">
+    <!-- 背景网格与科技感效果 -->
     <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
 
-    <div class="header-bar">
-      <div class="header-decoration-left"></div>
-      <h1 class="title">实时监控中心</h1>
-      <div class="header-decoration-right"></div>
-      <el-button
-        type="primary"
-        icon="el-icon-refresh"
-        size="mini"
-        class="refresh-btn glass-btn"
-        @click="Refresh"
-        >刷新数据</el-button
-      >
-    </div>
-
-    <div class="layout">
-      <section class="panel top-left">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">设备状态</h2>
-        <div class="chart-group compact-chart-group">
-          <div ref="gaugeOnline" class="chart-container compact-chart"></div>
-          <div ref="gaugeOffline" class="chart-container compact-chart"></div>
-          <div ref="gaugeWarning" class="chart-container compact-chart"></div>
+    <!-- 顶部导航 -->
+    <header class="factory-header">
+      <div class="header-content">
+        <h1 class="main-title">智能生产监控中心</h1>
+        <div class="header-controls">
+          <el-button 
+            icon="el-icon-refresh" 
+            size="mini" 
+            class="refresh-btn"
+            @click="refreshData"
+          ></el-button>
+          <el-select v-model="timeRange" size="mini" class="time-select">
+            <el-option label="实时监控" value="realtime"></el-option>
+            <el-option label="今日数据" value="today"></el-option>
+            <el-option label="本周趋势" value="week"></el-option>
+          </el-select>
+          <div class="system-status">
+            <i class="el-icon-check-circle"></i> 系统正常运行中
+          </div>
         </div>
-      </section>
+      </div>
+    </header>
 
-      <section class="panel top-center main-monitor">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">
-          实时监控画面
-          <span class="live-dot"></span>
-        </h2>
-        <div class="monitor-feed" @click="Refresh">
-          <div class="scan-line"></div>
-          
-          <div v-if="imageData" class="image-wrapper">
-            <img
-              :src="'data:image/jpeg;base64,' + imageData"
-              alt="监控图像"
-              class="monitoring-image"
-            />
-            <div class="image-overlay">
-              <span class="overlay-tag">AI DETECTING</span>
-              <span class="overlay-time">{{ new Date().toLocaleTimeString() }}</span>
+    <!-- 主内容区 -->
+    <main class="factory-layout">
+      <!-- 左边车间区域 -->
+      <div class="workshops-left">
+        <!-- 一车间 -->
+        <section class="workshop workshop-1" :class="{ active: activeWorkshop === 1 }">
+          <div class="workshop-header">
+            <h2 class="workshop-title">一车间 <span class="workshop-desc">切割下料 · 压花键</span></h2>
+            <div class="workshop-status">
+              <span class="status-indicator online"></span>
+              <span class="status-text">正常生产</span>
             </div>
           </div>
-          <div v-else class="no-image">
-            <div class="loader-ring"></div>
-            <p>等待信号接入...</p>
-            <p class="click-refresh-tip">点击区域手动刷新</p>
-          </div>
-        </div>
-      </section>
 
-      <section class="panel top-right">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">运行数据</h2>
-        <div class="chart-group compact-chart-group">
-          <div ref="gaugeSpeed" class="chart-container compact-chart"></div>
-          <div ref="gaugeLoad" class="chart-container compact-chart"></div>
-          <div ref="gaugeTemp" class="chart-container compact-chart"></div>
-        </div>
-      </section>
-
-      <section class="panel mid-left">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">异常统计</h2>
-        <div ref="barAbnormal" class="chart-container"></div>
-      </section>
-
-      <section class="panel mid-center">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">缺陷信息</h2>
-        <div class="defect-table-box">
-          <div class="table-header">
-            <span class="col-seq">序号</span>
-            <span class="col-name">缺陷名称</span>
-            <span class="col-rate">概率</span>
-          </div>
-          <div class="table-body">
-            <div
-              v-for="(d, i) in showDefectList"
-              :key="i"
-              class="table-row"
-            >
-              <span class="col-seq">{{ d.category ? i + 1 : '-' }}</span>
-              <span class="col-name">{{ d.category || '--' }}</span>
-              <span class="col-rate">
-                <div v-if="d.category" class="progress-bar-container">
-                  <div class="progress-track">
-                     <div class="progress-fill" :class="getProbabilityClass(d.score)" :style="{width: (d.score * 100) + '%'}"></div>
-                  </div>
-                  <span class="rate-text">{{ (d.score * 100).toFixed(1) }}%</span>
-                </div>
-              </span>
-            </div>
-          </div>
-          <div class="table-footer">
-            <span>当前帧缺陷总数</span>
-            <strong class="glow-text">{{ defectList.length }}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel mid-right">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">缺陷分布</h2>
-        <div ref="defectDistribution" class="chart-container"></div>
-      </section>
-
-      <section class="panel bottom-left">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">区域分布</h2>
-        <div ref="pieRegion" class="chart-container"></div>
-      </section>
-
-      <section class="panel bottom-center">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">趋势分析</h2>
-        <div ref="lineTrend" class="chart-container"></div>
-      </section>
-
-      <section class="panel bottom-right">
-        <div class="panel-decoration"><span class="angle"></span><span class="angle"></span><span class="angle"></span><span class="angle"></span></div>
-        <h2 class="panel-title">告警信息</h2>
-        <div class="alarm-list" ref="alarmList">
-          <div
-            class="alarm-item"
-            v-for="(alarm, index) in alarms"
-            :key="index"
-          >
-            <div class="alarm-icon-wrapper" :class="alarm.level">
-               <i class="el-icon-warning-outline"></i>
-            </div>
-            <div class="alarm-content">
-              <div class="alarm-header">
-                <span class="alarm-title">{{ alarm.title }}</span>
-                <span class="alarm-time">{{ alarm.time }}</span>
+          <!-- 设备状态面板 -->
+          <div class="equipment-panel">
+            <div class="equipment-status">
+              <div class="status-item">
+                <span class="status-label">总状态</span>
+                <span class="status-value normal">正常</span>
               </div>
-              <p class="alarm-desc">{{ alarm.desc }}</p>
+              <div class="status-item">
+                <span class="status-label">运行设备</span>
+                <span class="status-value">12/12</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">生产效率</span>
+                <span class="status-value">{{ workshopData[0].efficiency.toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <!-- 核心设备可视化 -->
+            <div class="equipment-visual">
+              <div class="machine machine-1">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">压花键设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">速度: {{ workshopData[0].metrics.speed }}</div>
+                    <div class="metric">温度: {{ workshopData[0].metrics.temperature }}</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+              <div class="machine machine-2">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">切割设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">精度: {{ workshopData[0].metrics.precision }}</div>
+                    <div class="metric">利用率: {{ workshopData[0].metrics.utilization }}%</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 生产数据图表 -->
+          <div class="production-chart">
+            <div ref="workshop1Chart" class="chart-container"></div>
+          </div>
+
+          <!-- 溯源信息 -->
+          <div class="traceability-section">
+            <div class="trace-header">
+              <h3>区块链溯源</h3>
+              <el-button 
+                size="mini" 
+                class="view-details"
+                @click="showTraceDetails(1)"
+              >
+                查看详情
+              </el-button>
+            </div>
+            <div class="trace-metrics">
+              <div class="trace-metric">
+                <div class="metric-label">上链率</div>
+                <div class="metric-value">100%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">溯源成功率</div>
+                <div class="metric-value">99.7%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">最新区块</div>
+                <div class="metric-value hash-value">{{ workshopData[0].latestBlock }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 二车间 -->
+        <section class="workshop workshop-2" :class="{ active: activeWorkshop === 2 }">
+          <div class="workshop-header">
+            <h2 class="workshop-title">二车间 <span class="workshop-desc">钻中心孔 · 粗抛丸</span></h2>
+            <div class="workshop-status">
+              <span class="status-indicator online"></span>
+              <span class="status-text">正常生产</span>
+            </div>
+          </div>
+
+          <div class="equipment-panel">
+            <div class="equipment-status">
+              <div class="status-item">
+                <span class="status-label">总状态</span>
+                <span class="status-value normal">正常</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">运行设备</span>
+                <span class="status-value">8/8</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">生产效率</span>
+                <span class="status-value">{{ workshopData[1].efficiency.toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <div class="equipment-visual">
+              <div class="machine machine-1">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">钻中心孔设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">孔径: {{ workshopData[1].metrics.aperture }}</div>
+                    <div class="metric">速度: {{ workshopData[1].metrics.speed }}</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+              <div class="machine machine-2">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">粗抛丸设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">压力: {{ workshopData[1].metrics.pressure }}</div>
+                    <div class="metric">覆盖率: {{ workshopData[1].metrics.coverage }}%</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="production-chart">
+            <div ref="workshop2Chart" class="chart-container"></div>
+          </div>
+
+          <div class="traceability-section">
+            <div class="trace-header">
+              <h3>区块链溯源</h3>
+              <el-button 
+                size="mini" 
+                class="view-details"
+                @click="showTraceDetails(2)"
+              >
+                查看详情
+              </el-button>
+            </div>
+            <div class="trace-metrics">
+              <div class="trace-metric">
+                <div class="metric-label">上链率</div>
+                <div class="metric-value">100%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">溯源成功率</div>
+                <div class="metric-value">99.5%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">最新区块</div>
+                <div class="metric-value hash-value">{{ workshopData[1].latestBlock }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 中间实时数据区域 -->
+      <div class="center-realtime-panel">
+        <div class="realtime-header">
+          <h2><i class="el-icon-data-analysis"></i> 实时生产数据监控</h2>
+          <div class="update-time">最后更新: {{ updateTime }}</div>
+        </div>
+        
+        <!-- 核心指标卡片 -->
+        <div class="core-metrics">
+          <div class="metric-card">
+            <div class="metric-icon">
+              <i class="el-icon-s-data"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-label">当前产量</div>
+              <div class="metric-value">{{ dynamicData.production.toLocaleString() }}</div>
+              <div class="metric-unit">件</div>
+              <div class="metric-trend">
+                <span class="trend-up">↑ 12.5%</span> 较昨日
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-icon">
+              <i class="el-icon-check"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-label">综合合格率</div>
+              <div class="metric-value">{{ dynamicData.qualityRate }}</div>
+              <div class="metric-unit">%</div>
+              <div class="metric-trend">
+                <span class="trend-up">↑ 0.8%</span> 较上周
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-icon">
+              <i class="el-icon-cpu"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-label">设备综合利用率</div>
+              <div class="metric-value">{{ dynamicData.equipmentUsage }}</div>
+              <div class="metric-unit">%</div>
+              <div class="metric-trend">
+                <span class="trend-down">↓ 1.2%</span> 较昨日
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-icon">
+              <i class="el-icon-timer"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-label">平均生产周期</div>
+              <div class="metric-value">28.4</div>
+              <div class="metric-unit">分钟</div>
+              <div class="metric-trend">
+                <span class="trend-up">↓ 5.2%</span> 较上周
+              </div>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+        
+        <!-- 实时趋势图表 -->
+        <div class="realtime-chart-section">
+          <div class="chart-header">
+            <h3>生产效率实时趋势</h3>
+            <div class="chart-controls">
+              <el-radio-group v-model="chartType" size="mini">
+                <el-radio-button label="line">折线图</el-radio-button>
+                <el-radio-button label="bar">柱状图</el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
+          <div ref="realtimeChart" class="realtime-chart-container"></div>
+        </div>
+        
+        <!-- 生产进度 -->
+        <div class="production-progress">
+          <h3>今日生产进度</h3>
+          <div class="progress-grid">
+            <div class="progress-item">
+              <div class="progress-info">
+                <span class="progress-label">计划产量</span>
+                <span class="progress-value">15,000 件</span>
+              </div>
+              <el-progress 
+                :percentage="85" 
+                :stroke-width="10"
+                color="#00f2ff"
+              />
+            </div>
+            <div class="progress-item">
+              <div class="progress-info">
+                <span class="progress-label">已完成</span>
+                <span class="progress-value">12,847 件</span>
+              </div>
+              <el-progress 
+                :percentage="85.6" 
+                :stroke-width="10"
+                color="#00ff99"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div
-      class="connection-status"
-      :class="{
-        connected: eventSourcePicture && eventSourcePicture.readyState === 1
-      }"
+      <!-- 右边车间区域 -->
+      <div class="workshops-right">
+        <!-- 三车间 -->
+        <section class="workshop workshop-3" :class="{ active: activeWorkshop === 3 }">
+          <div class="workshop-header">
+            <h2 class="workshop-title">三车间 <span class="workshop-desc">精车杆 · 精校</span></h2>
+            <div class="workshop-status">
+              <span class="status-indicator warning"></span>
+              <span class="status-text">需关注</span>
+            </div>
+          </div>
+
+          <div class="equipment-panel">
+            <div class="equipment-status">
+              <div class="status-item">
+                <span class="status-label">总状态</span>
+                <span class="status-value warning">需关注</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">运行设备</span>
+                <span class="status-value">7/8</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">生产效率</span>
+                <span class="status-value">{{ workshopData[2].efficiency.toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <div class="equipment-visual">
+              <div class="machine machine-1">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">精车杆设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">精度: {{ workshopData[2].metrics.precision }}</div>
+                    <div class="metric">温度: {{ workshopData[2].metrics.temperature }}</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+              <div class="machine machine-2">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">精校设备</div>
+                  <div class="machine-metrics">
+                    <div class="metric">状态: {{ workshopData[2].metrics.status }}</div>
+                    <div class="metric">预计: 1小时后恢复</div>
+                  </div>
+                </div>
+                <div class="machine-status offline"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="production-chart">
+            <div ref="workshop3Chart" class="chart-container"></div>
+          </div>
+
+          <div class="traceability-section">
+            <div class="trace-header">
+              <h3>区块链溯源</h3>
+              <el-button 
+                size="mini" 
+                class="view-details"
+                @click="showTraceDetails(3)"
+              >
+                查看详情
+              </el-button>
+            </div>
+            <div class="trace-metrics">
+              <div class="trace-metric">
+                <div class="metric-label">上链率</div>
+                <div class="metric-value">98.2%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">溯源成功率</div>
+                <div class="metric-value">99.1%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">最新区块</div>
+                <div class="metric-value hash-value">{{ workshopData[2].latestBlock }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 四车间 -->
+        <section class="workshop workshop-4" :class="{ active: activeWorkshop === 4 }">
+          <div class="workshop-header">
+            <h2 class="workshop-title">四车间 <span class="workshop-desc">探伤 · 包装</span></h2>
+            <div class="workshop-status">
+              <span class="status-indicator online"></span>
+              <span class="status-text">正常生产</span>
+            </div>
+          </div>
+
+          <div class="equipment-panel">
+            <div class="equipment-status">
+              <div class="status-item">
+                <span class="status-label">总状态</span>
+                <span class="status-value normal">正常</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">运行设备</span>
+                <span class="status-value">5/5</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">合格率</span>
+                <span class="status-value">{{ workshopData[3].efficiency.toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <div class="equipment-visual">
+              <div class="machine machine-1">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">超声波探伤</div>
+                  <div class="machine-metrics">
+                    <div class="metric">灵敏度: {{ workshopData[3].metrics.sensitivity }}</div>
+                    <div class="metric">检测速度: {{ workshopData[3].metrics.speed }}</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+              <div class="machine machine-2">
+                <div class="machine-icon">
+                  <i class="el-icon-cog"></i>
+                </div>
+                <div class="machine-info">
+                  <div class="machine-name">自动包装线</div>
+                  <div class="machine-metrics">
+                    <div class="metric">速度: {{ workshopData[3].metrics.packSpeed }}</div>
+                    <div class="metric">完成率: {{ workshopData[3].metrics.completionRate }}%</div>
+                  </div>
+                </div>
+                <div class="machine-status online"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="production-chart">
+            <div ref="workshop4Chart" class="chart-container"></div>
+          </div>
+
+          <div class="traceability-section">
+            <div class="trace-header">
+              <h3>区块链溯源</h3>
+              <el-button 
+                size="mini" 
+                class="view-details"
+                @click="showTraceDetails(4)"
+              >
+                查看详情
+              </el-button>
+            </div>
+            <div class="trace-metrics">
+              <div class="trace-metric">
+                <div class="metric-label">上链率</div>
+                <div class="metric-value">100%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">溯源成功率</div>
+                <div class="metric-value">99.9%</div>
+              </div>
+              <div class="trace-metric">
+                <div class="metric-label">最新区块</div>
+                <div class="metric-value hash-value">{{ workshopData[3].latestBlock }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- 溯源详情弹窗 -->
+    <el-dialog 
+      title="车间区块链溯源详情" 
+      :visible.sync="traceDialogVisible" 
+      width="70%" 
+      class="trace-dialog"
+      custom-class="custom-dialog"
     >
-      <span class="status-dot"></span>
-      <span class="status-text">
-        {{
-          eventSourcePicture && eventSourcePicture.readyState === 1
-            ? "SYSTEM ONLINE"
-            : "SYSTEM OFFLINE"
-        }}
-      </span>
-    </div>
+      <div class="trace-detail-content" v-if="currentTraceData">
+        <div class="trace-header-info">
+          <div class="trace-workshop">{{ currentTraceData.workshop }} - 区块链数据链</div>
+          <div class="trace-stats">
+            <div class="stat-item">
+              <span class="stat-label">区块总数</span>
+              <span class="stat-value">{{ currentTraceData.totalBlocks }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">数据完整率</span>
+              <span class="stat-value">{{ currentTraceData.integrity }}%</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">最后同步</span>
+              <span class="stat-value">{{ formatTime(currentTraceData.lastSync) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 区块链可视化 -->
+        <div class="blockchain-visual">
+          <div class="chain-container">
+            <div class="block" v-for="(block, index) in currentTraceData.blocks" :key="index">
+              <div class="block-header">
+                <div class="block-number">#{{ block.number }}</div>
+                <div class="block-hash">{{ block.hash.substring(0, 16) }}...</div>
+              </div>
+              <div class="block-body">
+                <div class="block-data">
+                  <div class="data-item">产品ID: {{ block.productId }}</div>
+                  <div class="data-item">工序: {{ block.process }}</div>
+                  <div class="data-item">操作员: {{ block.operator }}</div>
+                </div>
+                <div class="block-timestamp">{{ formatTime(block.timestamp) }}</div>
+              </div>
+              <div class="block-footer" :class="block.valid ? 'valid' : 'invalid'">
+                <i class="el-icon-check" v-if="block.valid"></i>
+                <i class="el-icon-close" v-else></i>
+                {{ block.valid ? '数据有效' : '验证失败' }}
+              </div>
+            </div>
+            <div class="chain-connector" v-for="i in currentTraceData.blocks.length - 1" :key="'conn' + i"></div>
+          </div>
+        </div>
+
+        <!-- 溯源查询 -->
+        <div class="trace-query">
+          <h4>产品溯源查询</h4>
+          <div class="query-form">
+            <el-input 
+              v-model="queryProductId" 
+              placeholder="输入产品编号" 
+              size="small"
+              class="product-input"
+            ></el-input>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="queryTrace()"
+            >
+              立即查询
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import * as echarts from "echarts";
-import sseManager from '@/utils/sseManager';
+import * as echarts from 'echarts';
 
 export default {
-  name: "MonitorDashboard",
+  name: 'SmartWorkshopMonitor',
   data() {
     return {
-      charts: {},
-      devices: [
-        { id: "DEV-001", name: "前门摄像头", status: "在线", time: "10:23:45" },
-        { id: "DEV-002", name: "后门摄像头", status: "在线", time: "10:22:18" },
-        { id: "DEV-003", name: "仓库传感器", status: "在线", time: "10:21:05" },
-        { id: "DEV-004", name: "机房监控", status: "离线", time: "09:45:33" },
-        { id: "DEV-005", name: "温度探测器", status: "在线", time: "10:20:37" }
-      ],
-      alarms: [
+      // 基础状态
+      timeRange: 'realtime',
+      activeWorkshop: 1,
+      traceDialogVisible: false,
+      currentTraceData: null,
+      queryProductId: '',
+      chartType: 'line',
+      updateTime: new Date().toLocaleTimeString(),
+      
+      // 动态数据
+      dynamicData: {
+        production: 12847,
+        qualityRate: 98.6,
+        equipmentUsage: 92.3
+      },
+      
+      // 车间数据
+      workshopData: [
         {
-          level: "high",
-          title: "温度异常",
-          desc: "机房温度超过阈值(32℃)",
-          time: "10:15:22"
+          id: 1,
+          name: '一车间',
+          processes: ['切割下料', '压花键'],
+          status: 'normal',
+          onlineCount: 12,
+          totalCount: 12,
+          efficiency: 96.8,
+          chartData: [45, 52, 49, 63, 58, 67, 72, 68],
+          latestBlock: '0x7d3f8a1b4...',
+          timeLabels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+          metrics: {
+            speed: '450r/min',
+            temperature: '58°C',
+            precision: '±0.02mm',
+            utilization: 92
+          }
         },
         {
-          level: "medium",
-          title: "网络波动",
-          desc: "后门摄像头网络不稳定",
-          time: "09:58:41"
+          id: 2,
+          name: '二车间',
+          processes: ['钻中心孔', '粗抛丸'],
+          status: 'normal',
+          onlineCount: 8,
+          totalCount: 8,
+          efficiency: 94.2,
+          chartData: [38, 42, 45, 41, 44, 48, 46, 50],
+          latestBlock: '0x6c2e7b0a3...',
+          timeLabels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+          metrics: {
+            aperture: '12.5mm',
+            speed: '380r/min',
+            pressure: '0.6MPa',
+            coverage: 98
+          }
         },
         {
-          level: "low",
-          title: "存储不足",
-          desc: "录像存储剩余空间不足20%",
-          time: "09:30:15"
+          id: 3,
+          name: '三车间',
+          processes: ['精车杆', '精校'],
+          status: 'warning',
+          onlineCount: 7,
+          totalCount: 8,
+          efficiency: 89.3,
+          chartData: [52, 55, 48, 42, 46, 50, 45, 49],
+          latestBlock: '0x5b1d6a2e7...',
+          timeLabels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+          metrics: {
+            precision: '±0.005mm',
+            temperature: '62°C',
+            status: '维护中'
+          }
         },
         {
-          level: "high",
-          title: "设备离线",
-          desc: "机房监控已离线30分钟",
-          time: "09:15:07"
-        },
-        {
-          level: "low",
-          title: "电压不稳",
-          desc: "仓库区域电压波动",
-          time: "08:45:52"
+          id: 4,
+          name: '四车间',
+          processes: ['探伤', '包装'],
+          status: 'normal',
+          onlineCount: 5,
+          totalCount: 5,
+          efficiency: 99.2,
+          chartData: [28, 32, 35, 30, 33, 36, 34, 38],
+          latestBlock: '0x4a0c5b1d6...',
+          timeLabels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+          metrics: {
+            sensitivity: '0.5mm',
+            speed: '3m/min',
+            packSpeed: '12件/分钟',
+            completionRate: 97
+          }
         }
       ],
-      imageData: null,
-      defectList: [],
-      isConnected: false // 连接状态
+      
+      // 图表实例
+      charts: {},
+      realtimeChart: null,
+      
+      // 定时器
+      dataUpdateTimer: null
     };
   },
-  computed: {
-    /* 始终只显示前6条，不足补空行，保证表格高度恒定 */
-    showDefectList() {
-      const empty = { category: "", score: 0 };
-      const ret = [...this.defectList];
-      while (ret.length < 6) ret.push(empty);
-      return ret.slice(0, 6);
-    },
-    // 模拟 eventSourcePicture 用于显示连接状态
-    eventSourcePicture() {
-      return {
-        readyState: this.isConnected ? 1 : 0
-      };
-    }
-  },
   mounted() {
-    this.$nextTick(() => {
-      this.initCharts();
-      // 订阅全局SSE
-      sseManager.subscribe('daping', this.handleSSEMessage);
-      window.addEventListener("resize", this.handleResize);
-      
-      // 额外保险：500ms后再次检查图表尺寸
-      setTimeout(() => {
-        this.handleResize();
-      }, 500);
-    });
+    this.initCharts();
+    this.initRealtimeChart();
+    window.addEventListener('resize', this.handleResize);
+    this.currentTraceData = this.generateTraceData(1);
+    this.startDataUpdate();
   },
   beforeDestroy() {
-    Object.values(this.charts).forEach((chart) => chart.dispose());
-    window.removeEventListener("resize", this.handleResize);
-    // 取消订阅
-    sseManager.unsubscribe('daping');
+    Object.values(this.charts).forEach(chart => chart.dispose());
+    if (this.realtimeChart) {
+      this.realtimeChart.dispose();
+    }
+    window.removeEventListener('resize', this.handleResize);
+    if (this.dataUpdateTimer) {
+      clearInterval(this.dataUpdateTimer);
+    }
   },
   methods: {
-    /* ---- SSE消息处理 ---- */
-    handleSSEMessage(type, data) {
-      if (type === 'connection') {
-        this.isConnected = data.connected;
-        if (data.connected) {
-          this.$message?.success('实时连接已建立');
-        }
-      } else if (type === 'message') {
-        const img = data.imgBase64;
-        if (img !== null && img !== undefined && img !== "") {
-          this.imageData = img;
-          this.defectList = data.defections || [];
-          console.log(
-            "📷 收到图片帧，长度:",
-            img.length,
-            "缺陷数:",
-            this.defectList.length
-          );
-        }
-      }
-    },
-    // 辅助方法：为CSS class提供名称
-    getProbabilityClass(score) {
-      if (score >= 0.7) return "bg-danger";
-      if (score >= 0.4) return "bg-warning";
-      return "bg-info";
-    },
-    Refresh() {
-      console.log("🔄 手动刷新数据");
-      this.$message?.info("正在刷新数据...");
-      // 重新初始化SSE连接
-      sseManager.close();
-      sseManager.init();
-      // 强制重绘图表
-      this.$nextTick(() => {
-        this.handleResize();
-      });
-    },
-    handleResize() {
-      Object.values(this.charts).forEach((chart) => {
-        if (chart && !chart.isDisposed()) {
-          try {
-            chart.resize();
-          } catch (error) {
-            console.warn('Chart resize error:', error);
-          }
-        }
-      });
-    },
-
-    /* ---- 图表初始化 ---- */
     initCharts() {
-      this.initGaugeOnline();
-      this.initGaugeOffline();
-      this.initGaugeWarning();
-      this.initGaugeSpeed();
-      this.initGaugeLoad();
-      this.initGaugeTemp();
-      this.initBarAbnormal();
-      this.initLineTrend();
-      this.initPieRegion();
-      this.initDefectDistribution();
+      const chart1 = echarts.init(this.$refs.workshop1Chart);
+      this.charts.workshop1 = chart1;
+      this.setChartOption(chart1, this.workshopData[0], '#00f2ff');
       
-      // 立即执行一次 resize
-      this.$nextTick(() => {
-        this.handleResize();
-      });
+      const chart2 = echarts.init(this.$refs.workshop2Chart);
+      this.charts.workshop2 = chart2;
+      this.setChartOption(chart2, this.workshopData[1], '#ff9966');
+      
+      const chart3 = echarts.init(this.$refs.workshop3Chart);
+      this.charts.workshop3 = chart3;
+      this.setChartOption(chart3, this.workshopData[2], '#ffcc00');
+      
+      const chart4 = echarts.init(this.$refs.workshop4Chart);
+      this.charts.workshop4 = chart4;
+      this.setChartOption(chart4, this.workshopData[3], '#00ff99');
     },
-
-    /* ---- 仪表盘图表 ---- */
-    initGaugeOnline() {
-      const chart = echarts.init(this.$refs.gaugeOnline);
-      this.charts.gaugeOnline = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#00ffcc" },
-                  { offset: 1, color: "#00ccff" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#00ccff'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}%",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 92, name: "在线率" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
+    initRealtimeChart() {
+      this.realtimeChart = echarts.init(this.$refs.realtimeChart);
+      const timeLabels = [];
+      const efficiencyData = [];
+      const qualityData = [];
+      for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0');
+        timeLabels.push(`${hour}:00`);
+        efficiencyData.push(Math.floor(Math.random() * 20) + 80);
+        qualityData.push(Math.floor(Math.random() * 15) + 85);
+      }
+      this.updateRealtimeChart(timeLabels, efficiencyData, qualityData);
     },
-    initGaugeOffline() {
-      const chart = echarts.init(this.$refs.gaugeOffline);
-      this.charts.gaugeOffline = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#ff9966" },
-                  { offset: 1, color: "#ff6666" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#ff6666'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}%",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 5, name: "离线率" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initGaugeWarning() {
-      const chart = echarts.init(this.$refs.gaugeWarning);
-      this.charts.gaugeWarning = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#ffcc00" },
-                  { offset: 1, color: "#ff9900" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#ff9900'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}%",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 3, name: "告警率" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initGaugeSpeed() {
-      const chart = echarts.init(this.$refs.gaugeSpeed);
-      this.charts.gaugeSpeed = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#9966ff" },
-                  { offset: 1, color: "#6666ff" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#6666ff'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 45, name: "Mbps" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initGaugeLoad() {
-      const chart = echarts.init(this.$refs.gaugeLoad);
-      this.charts.gaugeLoad = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#66ccff" },
-                  { offset: 1, color: "#3399ff" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#3399ff'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}%",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 68, name: "负载率" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initGaugeTemp() {
-      const chart = echarts.init(this.$refs.gaugeTemp);
-      this.charts.gaugeTemp = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "gauge",
-            radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
-            center: ['50%', '65%'],
-            axisLine: {
-              lineStyle: { 
-                width: 10, 
-                color: [[1, "rgba(255, 255, 255, 0.1)"]]
-              }
-            },
-            progress: {
-              show: true,
-              width: 10,
-              roundCap: true,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: "#ff6666" },
-                  { offset: 1, color: "#cc0000" }
-                ]),
-                shadowBlur: 10,
-                shadowColor: '#cc0000'
-              }
-            },
-            pointer: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            detail: {
-              valueAnimation: true,
-              formatter: "{value}℃",
-              offsetCenter: [0, "0%"],
-              fontSize: 16,
-              color: "#fff",
-              fontFamily: 'Orbitron',
-              fontWeight: "bold"
-            },
-            title: {
-              offsetCenter: [0, "30%"],
-              fontSize: 12,
-              color: "#99ccff"
-            },
-            data: [{ value: 28, name: "设备温度" }]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initBarAbnormal() {
-      const chart = echarts.init(this.$refs.barAbnormal);
-      this.charts.barAbnormal = chart;
-      chart.setOption({
-        grid: { left: "5%", right: "5%", top: "15%", bottom: "5%", containLabel: true },
-        xAxis: {
-          type: "category",
-          data: ["闯红灯", "超速", "闯禁行", "逆行", "违停"],
-          axisLine: { lineStyle: { color: "#409eff" } },
-          axisLabel: { color: "#fff", fontSize: 11 },
-          axisTick: { show: false }
-        },
-        yAxis: {
-          type: "value",
-          axisLine: { show: false },
-          axisLabel: { color: "#8cbde5", fontSize: 11 },
-          splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)", type: 'dashed' } }
-        },
-        series: [
-          {
-            type: "bar",
-            data: [120, 80, 50, 70, 30],
-            barWidth: "30%",
-            itemStyle: {
-              borderRadius: [20, 20, 0, 0],
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: "#00f2ff" },
-                { offset: 1, color: "rgba(0,242,255,0.1)" }
-              ])
-            }
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initLineTrend() {
-      const chart = echarts.init(this.$refs.lineTrend);
-      this.charts.lineTrend = chart;
-      chart.setOption({
-        grid: { left: "5%", right: "5%", top: "15%", bottom: "5%", containLabel: true },
-        xAxis: {
-          type: "category",
-          data: ["1月", "3月", "5月", "7月", "9月", "11月"],
-          axisLine: { lineStyle: { color: "#409eff" } },
-          axisLabel: { color: "#fff", fontSize: 11 },
-          axisTick: { show: false }
-        },
-        yAxis: {
-          type: "value",
-          axisLine: { show: false },
-          axisLabel: { color: "#8cbde5", fontSize: 11 },
-          splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)", type: 'dashed' } }
-        },
-        series: [
-          {
-            type: "line",
-            data: [35, 28, 42, 58, 45, 52],
-            smooth: true,
-            symbol: "circle",
-            symbolSize: 8,
-            lineStyle: { width: 3, color: "#00f2ff", shadowColor: '#00f2ff', shadowBlur: 10 },
-            itemStyle: { color: "#050a1f", borderColor: "#00f2ff", borderWidth: 2 },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: "rgba(0,242,255,0.4)" },
-                { offset: 1, color: "rgba(0,242,255,0)" }
-              ])
-            }
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-    initPieRegion() {
-      const chart = echarts.init(this.$refs.pieRegion);
-      this.charts.pieRegion = chart;
-      chart.setOption({
-        series: [
-          {
-            type: "pie",
-            radius: ["45%", "70%"],
-            center: ["50%", "50%"],
-            avoidLabelOverlap: false,
-            itemStyle: {
-              borderRadius: 5,
-              borderColor: "#050a1f",
-              borderWidth: 3
-            },
-            label: { show: false },
-            data: [
-              { value: 35, name: "东区", itemStyle: { color: "#00f2ff" } },
-              { value: 25, name: "西区", itemStyle: { color: "#409eff" } },
-              { value: 20, name: "南区", itemStyle: { color: "#7c4dff" } },
-              { value: 20, name: "北区", itemStyle: { color: "#ffcc00" } }
-            ]
-          }
-        ],
-        backgroundColor: "transparent"
-      });
-    },
-
-    /* ---- 缺陷分布图表 ---- */
-    initDefectDistribution() {
-      const chart = echarts.init(this.$refs.defectDistribution);
-      this.charts.defectDistribution = chart;
-      chart.setOption({
+    updateRealtimeChart(timeLabels, efficiencyData, qualityData) {
+      const option = {
+        grid: { left: '5%', right: '5%', top: '15%', bottom: '15%', containLabel: true },
         tooltip: {
           trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          borderColor: '#00f2ff',
-          textStyle: { color: '#fff' }
+          backgroundColor: 'rgba(10, 16, 40, 0.9)',
+          borderColor: '#1890ff',
+          textStyle: { color: '#ffffff' },
+          axisPointer: { type: 'cross', label: { backgroundColor: '#1890ff' } }
         },
         legend: {
-          data: ['区域A', '区域B', '区域C', '区域D', '区域E'],
-          right: 0,
-          top: 0,
-          itemWidth: 10,
-          itemHeight: 10,
-          textStyle: { color: '#99ccff', fontSize: 10 }
-        },
-        grid: {
-          left: '3%', right: '4%', bottom: '3%', top: '20%',
-          containLabel: true
+          data: ['生产效率', '产品质量'],
+          textStyle: { color: 'rgba(255, 255, 255, 0.7)' },
+          top: '5%'
         },
         xAxis: {
           type: 'category',
-          data: ['T1', 'T2', 'T3', 'T4'], // 缩写以节省空间
-          axisLine: { lineStyle: { color: '#409eff' } },
-          axisLabel: { color: '#fff', fontSize: 11 },
-          axisTick: { show: false }
+          data: timeLabels,
+          axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+          axisLabel: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 10 }
         },
         yAxis: {
           type: 'value',
+          min: 70, max: 100,
           axisLine: { show: false },
-          axisLabel: { color: '#8cbde5', fontSize: 11 },
-          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } }
+          axisLabel: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 10, formatter: '{value}%' },
+          splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)', type: 'dashed' } }
         },
         series: [
-          { name: '区域A', type: 'bar', stack: 'total', data: [12, 18, 15, 8], itemStyle: { color: '#00f2ff' } },
-          { name: '区域B', type: 'bar', stack: 'total', data: [8, 12, 10, 6], itemStyle: { color: '#409eff' } },
-          { name: '区域C', type: 'bar', stack: 'total', data: [6, 8, 12, 10], itemStyle: { color: '#7c4dff' } },
-          { name: '区域D', type: 'bar', stack: 'total', data: [10, 6, 8, 12], itemStyle: { color: '#00ff99' } },
-          { name: '区域E', type: 'bar', stack: 'total', data: [15, 10, 6, 8], itemStyle: { color: '#ffcc00' } }
-        ],
-        backgroundColor: 'transparent'
+          {
+            name: '生产效率', type: this.chartType, data: efficiencyData, smooth: true, symbol: 'circle', symbolSize: 4,
+            lineStyle: { width: 3, color: '#00f2ff' }, itemStyle: { color: '#00f2ff' },
+            areaStyle: this.chartType === 'line' ? { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 242, 255, 0.3)' }, { offset: 1, color: 'rgba(0, 242, 255, 0.05)' }]) } : null
+          },
+          {
+            name: '产品质量', type: this.chartType, data: qualityData, smooth: true, symbol: 'circle', symbolSize: 4,
+            lineStyle: { width: 3, color: '#00ff99' }, itemStyle: { color: '#00ff99' },
+            areaStyle: this.chartType === 'line' ? { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 255, 153, 0.3)' }, { offset: 1, color: 'rgba(0, 255, 153, 0.05)' }]) } : null
+          }
+        ]
+      };
+      this.realtimeChart.setOption(option);
+    },
+    setChartOption(chart, workshopData, color) {
+      chart.setOption({
+        grid: { left: '5%', right: '5%', top: '10%', bottom: '10%', containLabel: true },
+        xAxis: {
+          type: 'category', data: workshopData.timeLabels,
+          axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+          axisLabel: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11 }
+        },
+        yAxis: {
+          type: 'value',
+          min: workshopData.status === 'warning' ? 30 : 50,
+          max: workshopData.status === 'warning' ? 80 : 90,
+          axisLine: { show: false },
+          axisLabel: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 11 },
+          splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } }
+        },
+        series: [{
+          type: 'line', data: workshopData.chartData, smooth: true, symbol: 'circle', symbolSize: 5,
+          lineStyle: { width: 2, color: color },
+          itemStyle: { color: color, borderColor: '#0f1736', borderWidth: 2 },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: color + '40' }, { offset: 1, color: color + '00' }]) }
+        }]
       });
+    },
+    handleResize() {
+      Object.values(this.charts).forEach(chart => { if (chart && !chart.isDisposed()) chart.resize(); });
+      if (this.realtimeChart && !this.realtimeChart.isDisposed()) this.realtimeChart.resize();
+    },
+    refreshData() {
+      this.workshopData.forEach(workshop => {
+        workshop.chartData = workshop.chartData.map(val => Math.max(30, Math.min(90, val + (Math.random() - 0.5) * 10)));
+      });
+      this.workshopData.forEach((workshop, index) => {
+        const chartKey = `workshop${index + 1}`;
+        const color = ['#00f2ff', '#ff9966', '#ffcc00', '#00ff99'][index];
+        this.setChartOption(this.charts[chartKey], workshop, color);
+      });
+      const timeLabels = [], efficiencyData = [], qualityData = [];
+      for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0');
+        timeLabels.push(`${hour}:00`);
+        efficiencyData.push(Math.floor(Math.random() * 20) + 80);
+        qualityData.push(Math.floor(Math.random() * 15) + 85);
+      }
+      this.updateRealtimeChart(timeLabels, efficiencyData, qualityData);
+      this.$message.success('数据已刷新');
+    },
+    startDataUpdate() {
+      this.updateData();
+      this.dataUpdateTimer = setInterval(() => { this.updateData(); }, 1500);
+    },
+    updateData() {
+      this.updateTime = new Date().toLocaleTimeString();
+      this.updateDynamicData();
+      this.updateWorkshopCharts();
+      if (this.realtimeChart) {
+        const option = this.realtimeChart.getOption();
+        const efficiencyData = option.series[0].data;
+        const qualityData = option.series[1].data;
+        const timeLabels = option.xAxis[0].data;
+        efficiencyData.shift(); efficiencyData.push(Math.floor(Math.random() * 20) + 80);
+        qualityData.shift(); qualityData.push(Math.floor(Math.random() * 15) + 85);
+        const now = new Date();
+        timeLabels.shift(); timeLabels.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+        this.realtimeChart.setOption({ xAxis: { data: timeLabels }, series: [{ data: efficiencyData }, { data: qualityData }] });
+      }
+    },
+    updateDynamicData() {
+      this.dynamicData.production = Math.floor(this.dynamicData.production + Math.random() * 3);
+      this.dynamicData.qualityRate = Math.min(100, Math.max(95, this.dynamicData.qualityRate + (Math.random() * 0.4 - 0.2))).toFixed(1);
+      this.dynamicData.equipmentUsage = Math.min(100, Math.max(85, this.dynamicData.equipmentUsage + (Math.random() * 0.6 - 0.3))).toFixed(1);
+    },
+    updateWorkshopCharts() {
+      this.workshopData.forEach((workshop, index) => {
+        const chartKey = `workshop${index + 1}`;
+        const chart = this.charts[chartKey];
+        if (chart && !chart.isDisposed()) {
+          const currentData = workshop.chartData;
+          const timeLabels = workshop.timeLabels;
+          let newValue;
+          if (workshop.status === 'normal') {
+            const lastValue = currentData[currentData.length - 1] || 70;
+            newValue = Math.max(60, Math.min(90, lastValue + (Math.random() * 10 - 5)));
+          } else {
+            const lastValue = currentData[currentData.length - 1] || 50;
+            newValue = Math.max(40, Math.min(70, lastValue + (Math.random() * 16 - 8)));
+          }
+          currentData.shift(); currentData.push(newValue);
+          timeLabels.shift();
+          const now = new Date();
+          timeLabels.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+          workshop.efficiency = newValue;
+          chart.setOption({ xAxis: { data: timeLabels }, series: [{ data: currentData }] });
+        }
+      });
+    },
+    showTraceDetails(workshopId) {
+      this.activeWorkshop = workshopId;
+      this.currentTraceData = this.generateTraceData(workshopId);
+      this.traceDialogVisible = true;
+    },
+    generateTraceData(workshopId) {
+      const workshop = this.workshopData.find(w => w.id === workshopId);
+      const blocks = [];
+      for (let i = 0; i < 5; i++) {
+        const now = Date.now() - (4 - i) * 3600000;
+        blocks.push({
+          number: 18472 + i,
+          hash: `0x${Math.random().toString(16).substr(2, 32)}`,
+          productId: `P20241129${workshopId}${i + 100}`,
+          process: workshop.processes[i % workshop.processes.length],
+          operator: `操作员${Math.floor(Math.random() * 10) + 1}`,
+          timestamp: now,
+          valid: Math.random() > 0.1
+        });
+      }
+      return {
+        workshop: workshop.name,
+        totalBlocks: 1287 + workshopId * 32,
+        integrity: 99 + (Math.random() * 1 - 0.2),
+        lastSync: Date.now() - Math.random() * 60000,
+        blocksRate: 24 + Math.random() * 10,
+        blocks: blocks
+      };
+    },
+    queryTrace() {
+      if (!this.queryProductId) return;
+      this.$message.success(`找到产品 ${this.queryProductId} 的溯源记录`);
+    },
+    formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString();
+    }
+  },
+  watch: {
+    chartType() {
+      this.initRealtimeChart();
     }
   }
 };
 </script>
 
 <style scoped>
-/* ================= 引入字体 ================= */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
-
-/* ================= 基础布局 ================= */
-.big-screen {
+/* 基础样式 - 关键修改 */
+.smart-factory {
   width: 100%;
-  min-height: 100vh;
-  background-color: #050a1f;
+  height: 100vh; /* 强制高度等于视口高度 */
+  overflow-y: auto; /* 在容器内部开启滚动 */
+  overflow-x: hidden; /* 禁止横向滚动 */
+  background-color: #0a1028;
   color: #fff;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   position: relative;
-  overflow: hidden;
-  padding-bottom: 20px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-/* 动态网格背景 */
+/* 背景效果 - 修改为 fixed 防止滚动时背景跑偏 */
 .bg-grid {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  position: fixed; /* 改为固定定位 */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-image: 
     linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
+  background-size: 40px 40px;
   z-index: 0;
   pointer-events: none;
 }
 
-/* ================= 头部区域 ================= */
-.header-bar {
-  position: relative;
-  z-index: 2;
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(90deg, transparent 0%, rgba(0, 242, 255, 0.1) 50%, transparent 100%);
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 242, 255, 0.2);
+.bg-glow {
+  position: fixed; /* 改为固定定位 */
+  top: 50%;
+  left: 50%;
+  width: 1200px;
+  height: 800px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(0, 100, 255, 0.1) 0%, rgba(10, 16, 40, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-.title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 32px;
-  color: #00f2ff;
+/* 头部样式 */
+.factory-header {
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(15, 23, 54, 0.6);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+}
+
+.main-title {
   margin: 0;
-  letter-spacing: 4px;
-  text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+  font-size: 22px;
+  color: #00f2ff;
+  text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+  letter-spacing: 1px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .refresh-btn {
-  position: absolute;
-  right: 20px;
-  top: 20px;
-  background: rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid #00f2ff !important;
+  background: transparent !important;
+  border: 1px solid rgba(0, 242, 255, 0.5) !important;
   color: #00f2ff !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
 }
+
 .refresh-btn:hover {
-  background: #00f2ff !important;
-  color: #000 !important;
-  box-shadow: 0 0 15px #00f2ff;
+  background: rgba(0, 242, 255, 0.1) !important;
+  border-color: #00f2ff !important;
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.3) !important;
 }
 
-/* ================= 核心网格布局 ================= */
-.layout {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  /* 定义3列宽度比例 */
-  grid-template-columns: 26% 48% 26%; 
-  /* 定义3行高度 */
-  grid-template-rows: 200px 250px 280px; 
-  gap: 15px;
-  padding: 0 20px;
-  max-width: 1920px;
-  margin: 0 auto;
+.time-select {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 242, 255, 0.3) !important;
+  color: #fff !important;
+  width: 120px !important;
 }
 
-/* 响应式调整 */
-@media (max-width: 1600px) {
-  .layout { grid-template-rows: 180px 220px 250px; }
-}
-
-/* 区域定位 */
-.top-left { grid-area: 1 / 1 / 2 / 2; }
-.top-center { grid-area: 1 / 2 / 2 / 3; }
-.top-right { grid-area: 1 / 3 / 2 / 4; }
-.mid-left { grid-area: 2 / 1 / 3 / 2; }
-.mid-center { grid-area: 2 / 2 / 3 / 3; }
-.mid-right { grid-area: 2 / 3 / 3 / 4; }
-.bottom-left { grid-area: 3 / 1 / 4 / 2; }
-.bottom-center { grid-area: 3 / 2 / 4 / 3; }
-.bottom-right { grid-area: 3 / 3 / 4 / 4; }
-
-/* ================= 通用面板样式 ================= */
-.panel {
-  background: rgba(13, 27, 45, 0.6);
-  border: 1px solid rgba(0, 242, 255, 0.15);
-  backdrop-filter: blur(10px);
-  padding: 15px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  box-shadow: inset 0 0 20px rgba(0, 100, 255, 0.05);
-}
-
-/* 面板四角装饰 */
-.panel-decoration .angle {
-  position: absolute;
-  width: 10px; height: 10px;
-  border: 2px solid #00f2ff;
-  transition: all 0.3s;
-  box-shadow: 0 0 5px #00f2ff;
-}
-.angle:nth-child(1) { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
-.angle:nth-child(2) { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
-.angle:nth-child(3) { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
-.angle:nth-child(4) { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
-
-/* 标题 */
-.panel-title {
-  font-size: 16px;
-  color: #fff;
-  margin: 0 0 10px 0;
-  padding-left: 10px;
-  border-left: 3px solid #00f2ff;
-  font-weight: 500;
-  letter-spacing: 1px;
-  background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, transparent 100%);
-  line-height: 24px;
+.system-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-/* 图表容器 */
-.chart-container {
-  flex: 1;
-  width: 100%;
-  height: 100%; /* 关键 */
-  min-height: 0;
-}
-
-/* 顶部紧凑图表组 */
-.compact-chart-group {
-  display: flex;
-  height: 100%;
   gap: 5px;
-}
-.compact-chart {
-  flex: 1;
+  font-size: 13px;
+  color: #00ff99;
 }
 
-/* ================= 监控画面区 ================= */
-.monitor-feed {
-  flex: 1;
-  background: #000;
+/* 主布局样式 - 修改高度控制 */
+.factory-layout {
+  display: flex;
+  gap: 20px;
   position: relative;
-  overflow: hidden;
+  z-index: 1;
+  min-height: calc(100vh - 120px); /* 保证最小高度 */
+  height: auto; /* 允许撑开高度 */
+  padding-bottom: 20px; /* 底部留白，防止内容贴边 */
+}
+
+/* 左右车间区域 */
+.workshops-left,
+.workshops-right {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 中间实时数据区域 */
+.center-realtime-panel {
+  flex: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: rgba(15, 23, 54, 0.6);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 6px;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.realtime-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.realtime-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #00f2ff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-time {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 核心指标卡片 */
+.core-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 6px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  border-color: rgba(0, 242, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.metric-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  background: rgba(0, 242, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 242, 255, 0.3);
-  cursor: pointer;
-}
-.image-wrapper { width: 100%; height: 100%; position: relative; }
-.monitoring-image { width: 100%; height: 100%; object-fit: contain; }
-
-/* 扫描线动画 */
-.scan-line {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 3px;
-  background: rgba(0, 242, 255, 0.8);
-  box-shadow: 0 0 15px #00f2ff;
-  animation: scan 2.5s linear infinite;
-  z-index: 10;
-  opacity: 0.6;
-}
-@keyframes scan {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
-
-/* 覆盖层信息 */
-.image-overlay {
-  position: absolute;
-  top: 10px; left: 10px;
-  right: 10px;
-  display: flex;
-  justify-content: space-between;
-}
-.overlay-tag {
-  background: #ff0055;
-  color: #fff;
-  padding: 2px 6px;
-  font-size: 12px;
-  font-weight: bold;
-  border-radius: 2px;
-}
-.overlay-time {
+  font-size: 24px;
   color: #00f2ff;
-  font-family: 'Orbitron';
-  font-size: 14px;
-  text-shadow: 0 0 5px #00f2ff;
 }
 
-/* 无信号状态 */
-.no-image {
+.metric-content {
+  flex: 1;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 5px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.metric-unit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 5px;
+}
+
+.metric-trend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.trend-up {
+  color: #00ff99;
+  font-weight: 500;
+}
+
+.trend-down {
+  color: #ff6666;
+  font-weight: 500;
+}
+
+/* 实时图表区域 */
+.realtime-chart-section {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  color: #5c7c99;
 }
-.loader-ring {
-  width: 40px; height: 40px;
-  border: 3px solid rgba(0, 242, 255, 0.2);
-  border-top-color: #00f2ff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+.realtime-chart-container {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 生产进度 */
+.production-progress {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.production-progress h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.progress-item {
+  background: rgba(15, 23, 54, 0.4);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 10px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ================= 缺陷表格列表化 ================= */
-.defect-table-box {
+.progress-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.progress-value {
+  font-size: 14px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 车间面板样式 */
+.workshop {
+  background: rgba(15, 23, 54, 0.4);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 6px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  font-size: 13px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  position: relative;
+  overflow: hidden;
 }
-.table-header {
-  display: flex;
-  padding: 8px 0;
-  background: rgba(0, 242, 255, 0.1);
-  color: #00f2ff;
-  font-weight: bold;
-}
-.table-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  transition: all 0.2s;
-}
-.table-row:hover { background: rgba(0, 242, 255, 0.08); }
 
-.col-seq { flex: 0 0 50px; text-align: center; color: #5c7c99; }
-.col-name { flex: 1; padding-left: 10px; color: #fff; }
-.col-rate { flex: 0 0 80px; padding-right: 10px; }
-
-/* 进度条样式 */
-.progress-bar-container { display: flex; align-items: center; gap: 5px; }
-.progress-track {
-  flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+.workshop::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.5), transparent);
 }
-.progress-fill { height: 100%; border-radius: 2px; }
-.bg-danger { background: #ff4d4f; box-shadow: 0 0 5px #ff4d4f; }
-.bg-warning { background: #ffcc00; box-shadow: 0 0 5px #ffcc00; }
-.bg-info { background: #00f2ff; box-shadow: 0 0 5px #00f2ff; }
-.rate-text { font-size: 11px; width: 35px; text-align: right; font-family: 'Roboto'; color: #ccc; }
 
-.table-footer {
-  margin-top: auto;
-  padding-top: 5px;
-  border-top: 1px solid rgba(0, 242, 255, 0.2);
+.workshop::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(0, 242, 255, 0.5), transparent);
+}
+
+.workshop.active {
+  background: rgba(15, 23, 54, 0.6);
+  border-color: rgba(0, 242, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+}
+
+.workshop-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
-  color: #99ccff;
+  margin-bottom: 15px;
 }
-.glow-text { font-size: 18px; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; font-family: 'Orbitron'; }
 
-/* ================= 告警信息 ================= */
-.alarm-list {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 5px;
-}
-.alarm-list::-webkit-scrollbar { width: 4px; }
-.alarm-list::-webkit-scrollbar-thumb { background: #00f2ff; border-radius: 2px; }
-.alarm-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-
-.alarm-item {
+.workshop-title {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
   display: flex;
-  background: rgba(255,255,255,0.02);
-  margin-bottom: 8px;
-  padding: 8px;
+  flex-direction: column;
+}
+
+.workshop-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: normal;
+  margin-top: 3px;
+}
+
+.workshop-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.online {
+  background-color: #00ff99;
+  box-shadow: 0 0 10px rgba(0, 255, 153, 0.5);
+}
+
+.status-indicator.warning {
+  background-color: #ffcc00;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+}
+
+.status-indicator.offline {
+  background-color: #ff6666;
+  box-shadow: 0 0 10px rgba(255, 102, 102, 0.5);
+}
+
+.status-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 设备面板 */
+.equipment-panel {
+  margin-bottom: 15px;
+}
+
+.equipment-status {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.status-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 3px;
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-value.normal {
+  color: #00ff99;
+}
+
+.status-value.warning {
+  color: #ffcc00;
+}
+
+.equipment-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.machine {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   border-left: 2px solid transparent;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
 }
-.alarm-item:hover { transform: translateX(5px); background: rgba(255,255,255,0.05); }
 
-.alarm-icon-wrapper {
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
+.workshop-1 .machine {
+  border-left-color: #00f2ff;
+}
+
+.workshop-2 .machine {
+  border-left-color: #ff9966;
+}
+
+.workshop-3 .machine {
+  border-left-color: #ffcc00;
+}
+
+.workshop-4 .machine {
+  border-left-color: #00ff99;
+}
+
+.machine-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00f2ff;
   margin-right: 10px;
-  font-size: 16px;
 }
-.alarm-icon-wrapper.high { color: #ff4d4f; background: rgba(255, 77, 79, 0.1); box-shadow: 0 0 10px rgba(255,77,79,0.2); }
-.alarm-icon-wrapper.medium { color: #ffcc00; background: rgba(255, 204, 0, 0.1); }
-.alarm-icon-wrapper.low { color: #00f2ff; background: rgba(0, 242, 255, 0.1); }
 
-.alarm-content { flex: 1; }
-.alarm-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
-.alarm-title { font-size: 13px; font-weight: bold; color: #fff; }
-.alarm-time { font-size: 11px; color: #5c7c99; font-family: 'Roboto'; }
-.alarm-desc { font-size: 12px; color: #99ccff; margin: 0; }
+.machine-info {
+  flex: 1;
+}
 
-/* ================= 底部连接状态 ================= */
-.connection-status {
-  position: fixed; bottom: 15px; right: 20px;
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 16px;
-  border-radius: 20px;
-  background: rgba(5, 10, 31, 0.9);
-  border: 1px solid #333;
-  z-index: 100;
+.machine-name {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.machine-metrics {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.machine-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* 生产图表 */
+.production-chart {
+  flex: 1;
+  margin-bottom: 15px;
+  min-height: 0;
+  position: relative;
+}
+
+.chart-container {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+}
+
+/* 溯源区域 */
+.traceability-section {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 10px;
+  border: 1px solid rgba(0, 242, 255, 0.1);
+}
+
+.trace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.trace-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #00f2ff;
+}
+
+.view-details {
+  background: transparent !important;
+  border: 1px solid rgba(0, 242, 255, 0.5) !important;
+  color: #00f2ff !important;
+  font-size: 12px !important;
+  padding: 2px 8px !important;
+  border-radius: 3px !important;
+}
+
+.trace-metrics {
+  display: flex;
+  justify-content: space-between;
+}
+
+.trace-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 3px;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.hash-value {
+  font-family: monospace;
   font-size: 12px;
-  font-family: 'Orbitron';
-  letter-spacing: 1px;
+  color: #00f2ff;
 }
-.connection-status.connected { border-color: #00ff99; color: #00ff99; box-shadow: 0 0 10px rgba(0,255,153,0.2); }
-.connection-status:not(.connected) { border-color: #ff4d4f; color: #ff4d4f; }
 
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+/* 溯源详情弹窗 */
+.trace-dialog {
+  background: rgba(10, 16, 40, 0.95) !important;
+  border: 1px solid rgba(0, 242, 255, 0.3) !important;
+  color: #fff !important;
+}
+
+.custom-dialog .el-dialog__header {
+  border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+}
+
+.custom-dialog .el-dialog__title {
+  color: #00f2ff !important;
+  font-size: 18px !important;
+}
+
+.custom-dialog .el-dialog__close {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.trace-detail-content {
+  padding: 10px 0;
+}
+
+.trace-header-info {
+  margin-bottom: 20px;
+}
+
+.trace-workshop {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.trace-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.stat-value {
+  font-size: 13px;
+  color: #00f2ff;
+}
+
+/* 区块链可视化 */
+.blockchain-visual {
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.chain-container {
+  display: flex;
+  gap: 15px;
+  padding: 10px 0;
+  min-width: max-content;
+}
+
+.block {
+  width: 200px;
+  background: rgba(15, 23, 54, 0.8);
+  border: 1px solid rgba(0, 242, 255, 0.3);
+  border-radius: 6px;
+  padding: 10px;
+  position: relative;
+}
+
+.block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.5), transparent);
+}
+
+.block-header {
+  margin-bottom: 8px;
+}
+
+.block-number {
+  font-size: 14px;
+  font-weight: 500;
+  color: #00f2ff;
+  margin-bottom: 3px;
+}
+
+.block-hash {
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.block-body {
+  margin-bottom: 8px;
+  padding: 5px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.block-data {
+  margin-bottom: 5px;
+}
+
+.data-item {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.block-timestamp {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.block-footer {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.block-footer.valid {
+  color: #00ff99;
+}
+
+.block-footer.invalid {
+  color: #ff6666;
+}
+
+.chain-connector {
+  align-self: center;
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.5), rgba(0, 242, 255, 0.2));
+  position: relative;
+}
+
+.chain-connector::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 100%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #00f2ff;
+}
+
+/* 溯源查询 */
+.trace-query h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #00f2ff;
+}
+
+.query-form {
+  display: flex;
+  gap: 10px;
+}
+
+.product-input {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 242, 255, 0.3) !important;
+  color: #fff !important;
+  width: 200px !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 1400px) {
+  .factory-layout {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .workshops-left,
+  .workshops-right {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .center-realtime-panel {
+    order: -1;
+    margin-bottom: 20px;
+  }
+}
 </style>

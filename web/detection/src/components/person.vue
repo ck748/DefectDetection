@@ -3,7 +3,7 @@
     <el-card class="person-card">
       <div class="header-section">
         <div class="logo-section">
-          <img src="https://design.gemcoder.com/staticResource/echoAiSystemImages/74c90fddc6191ba7e386f4e4adf2347c.png" alt="软件学院院徽" class="logo"/>
+          <img src="../assets/软件学院院徽.png" alt="软件学院院徽" class="logo"/>
         </div>
         <div class="title">钢铁检测管理系统个人中心</div>
       </div>

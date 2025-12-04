@@ -1,182 +1,123 @@
 <template>
   <div class="annotation-page">
-    <!-- 页面标题 -->
+    <!-- 顶部导航 -->
     <div class="page-header">
-      <h2>数据标注平台</h2>
-      <div class="header-actions">
-        <el-button type="success" icon="el-icon-upload" @click="uploadImage">上传图片</el-button>
+      <div class="header-left">
+        <div class="logo-container"><i class="el-icon-s-data brand-icon"></i></div>
+        <span class="brand-text">数据标注平台</span>
+      </div>
+      <div class="header-right">
+        <el-tooltip content="支持 JPG/PNG 格式" placement="bottom">
+          <el-button type="primary" icon="el-icon-upload" @click="uploadImage" size="medium" round plain>上传图片</el-button>
+        </el-tooltip>
       </div>
     </div>
 
-    <!-- 标注任务和图片展示区域 -->
+    <!-- 主体内容 -->
     <div class="main-content">
-      <!-- 左侧：任务列表 - 隐藏 -->
-      <!-- <div class="task-panel"> ... </div> -->
-
-      <!-- 中间：图片列表 -->
-      <div class="image-panel" style="flex: 1;">
-        <el-card class="image-card">
-          <div slot="header" class="image-header">
-            <span>待标注图片</span>
-            <div class="image-header-actions">
-              <el-button size="small" @click="refreshImages">刷新</el-button>
-            </div>
+      
+      <!-- 左侧：图片列表 -->
+      <div class="image-panel">
+        <div class="panel-card full-height-card">
+          <div class="panel-header">
+            <div class="header-title"><i class="el-icon-picture-outline"></i><span>图片列表 ({{ imageTotal }})</span></div>
+            <el-button type="text" icon="el-icon-refresh" class="refresh-btn" @click="refreshImages">刷新</el-button>
           </div>
-          <div class="image-grid">
-            <div 
-              v-for="image in imageList" 
-              :key="image.id" 
-              class="image-item"
-              :class="{ 'selected': selectedImageId === image.id }"
-            >
-              <div class="image-preview" @click="selectImage(image)">
-                <img 
-                  :src="getImageUrl(image.imagePath)" 
-                  :alt="image.imageName"
-                  @error="handleImageError"
-                />
-                <div class="image-overlay">
-                  <el-tag size="mini" :type="getImageStatusType(image.status)">
-                    {{ getImageStatusText(image.status) }}
-                  </el-tag>
+          <div class="panel-toolbar">
+            <!-- 修改处：page-sizes 改为 [20, 40, 60, 80] -->
+            <el-pagination 
+              small 
+              @size-change="handleSizeChange" 
+              @current-change="handleCurrentChange" 
+              :current-page="imagePage" 
+              :page-sizes="[20, 40, 60, 80]" 
+              :page-size="imagePageSize" 
+              layout="total, prev, pager, next" 
+              :total="imageTotal" 
+              class="custom-pagination"
+            ></el-pagination>
+          </div>
+          <div class="panel-body custom-scrollbar">
+            <div class="image-grid">
+              <div v-for="image in imageList" :key="image.id" class="image-item" :class="{ 'selected': selectedImageId === image.id }" @click="selectImage(image)">
+                <div class="image-wrapper">
+                  <img :src="getImageUrl(image.imagePath)" class="thumbnail" loading="lazy" @error="handleImageError"/>
+                  <div class="status-tag" :class="getImageStatusClass(image.status)">{{ getImageStatusText(image.status) }}</div>
+                  <div class="selected-overlay" v-if="selectedImageId === image.id"><i class="el-icon-check"></i></div>
+                  <div class="hover-actions"><el-button type="danger" icon="el-icon-delete" size="mini" circle @click.stop="deleteImage(image)"></el-button></div>
                 </div>
-                <div class="image-actions">
-                  <el-button 
-                    type="danger" 
-                    icon="el-icon-delete" 
-                    size="mini" 
-                    circle
-                    @click.stop="deleteImage(image)"
-                    title="删除图片"
-                  ></el-button>
-                </div>
-              </div>
-              <div class="image-info">
-                <div class="image-name" :title="image.imageName">{{ image.imageName }}</div>
-                <div class="image-meta">
-                  <span>{{ formatFileSize(image.imageSize) }}</span>
-                  <span>{{ image.imageWidth }}×{{ image.imageHeight }}</span>
+                <div class="item-info">
+                  <div class="item-name" :title="image.imageName">{{ image.imageName }}</div>
+                  <div class="item-meta">{{ formatFileSize(image.imageSize) }}</div>
                 </div>
               </div>
             </div>
+            <div v-if="imageList.length === 0" class="empty-list"><i class="el-icon-folder-opened"></i><p>暂无图片数据</p></div>
           </div>
-          <div class="pagination-container">
-            <el-pagination
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-              :current-page="imagePage"
-              :page-sizes="[12, 24, 36, 48]"
-              :page-size="imagePageSize"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="imageTotal"
-              background
-            >
-            </el-pagination>
-          </div>
-        </el-card>
+        </div>
       </div>
 
-      <!-- 右侧：标注区域 -->
-      <div class="annotation-panel">
-        <el-card class="annotation-card" v-if="selectedImage">
-          <div slot="header" class="annotation-header">
-            <span>图片标注</span>
-            <div class="annotation-actions">
-              <el-button 
-                type="primary" 
-                size="small" 
-                @click="saveAnnotations"
-                :loading="savingAnnotations"
-              >
-                保存标注
-              </el-button>
+      <!-- === 右侧：工作台布局 (保持之前的逻辑) === -->
+      <div class="workspace-panel">
+        
+        <!-- 盒子1：标注工作台 -->
+        <!-- 逻辑：如果没有选中图片，bottom: 0 (全屏)；选中了，bottom: 140px (给下面留空) -->
+        <div class="panel-card annotation-box" :style="{ bottom: selectedImage ? '140px' : '0' }">
+          <div class="panel-header">
+            <div class="header-title">
+              <i class="el-icon-edit-outline"></i>
+              <span>标注工作台</span>
+              <span v-if="selectedImage" class="current-file-name"> - {{ selectedImage.imageName }}</span>
+            </div>
+            <div class="header-actions">
+              <el-button type="success" size="medium" icon="el-icon-check" @click="saveAnnotations" :loading="savingAnnotations" :disabled="!selectedImage">保存标注</el-button>
             </div>
           </div>
-          <div class="annotation-content">
-            <div class="image-container">
-              <div style="position: relative; display: inline-block;">
-                <img 
-                  :src="getImageUrl(selectedImage.imagePath)" 
-                  :alt="selectedImage.imageName"
-                  class="annotation-image"
-                  ref="annotationImage"
-                  @load="initCanvas"
-                  style="display: block;"
-                />
-                <canvas
-                  ref="annotationCanvas"
-                  @mousedown="startDrawing"
-                  @mousemove="drawRectangle"
-                  @mouseup="finishDrawing"
-                  style="position: absolute; top: 0; left: 0; cursor: crosshair; pointer-events: auto;"
-                ></canvas>
+          
+          <div class="workspace-body">
+            <div class="canvas-container custom-scrollbar" v-if="selectedImage">
+              <div class="canvas-wrapper">
+                <img :src="getImageUrl(selectedImage.imagePath)" ref="annotationImage" class="target-image" @load="initCanvas" draggable="false"/>
+                <canvas ref="annotationCanvas" class="drawing-layer" @mousedown="startDrawing" @mousemove="drawRectangle" @mouseup="finishDrawing" @mouseleave="finishDrawing"></canvas>
               </div>
             </div>
-            <div class="annotation-tools">
-              <div class="tool-section">
-                <h4>缺陷类别（请选择一个）</h4>
-                <div class="categories">
-                  <el-tag 
-                    v-for="category in defectCategories" 
-                    :key="category.id"
-                    :type="selectedCategory === category.id ? 'success' : ''"
-                    size="large"
-                    @click.native="selectCategory(category.id)"
-                    class="category-tag"
-                    style="cursor: pointer; margin: 10px; padding: 15px 30px; font-size: 16px;"
-                  >
-                    {{ category.name }}
-                  </el-tag>
-                </div>
-                <div style="margin-top: 20px; color: #909399;" v-if="selectedCategory">
-                  <i class="el-icon-success" style="color: #67C23A;"></i>
-                  已选择：{{ getCategoryName(selectedCategory) }}
-                </div>
-                <div style="margin-top: 15px;" v-if="selectedCategory && (getCategoryName(selectedCategory) === '裂痕' || getCategoryName(selectedCategory) === '划痕')">
-                  <el-alert
-                    title="请在图片上绘制标注框"
-                    type="warning"
-                    description="在图片上按住鼠标左键，拖动到缺陷位置，松开完成绘制"
-                    :closable="false"
-                    show-icon>
-                  </el-alert>
-                </div>
-                <div style="margin-top: 15px;" v-if="currentAnnotations.length > 0">
-                  <h4>已绘制标注框：{{ currentAnnotations.length }} 个</h4>
-                  <el-button size="small" type="danger" @click="clearAnnotations">清除所有标注</el-button>
-                </div>
+            <div class="empty-workspace" v-else>
+              <div class="empty-content">
+                <div class="empty-icon-bg"><i class="el-icon-picture"></i></div>
+                <h3>准备开始标注</h3>
+                <p>请从左侧列表选择一张图片</p>
               </div>
             </div>
           </div>
-        </el-card>
-        <el-card class="annotation-card" v-else>
-          <div class="empty-annotation">
-            <i class="el-icon-picture-outline"></i>
-            <p>请选择一张图片进行标注</p>
+        </div>
+
+        <!-- 盒子2：缺陷类别选择 -->
+        <!-- 逻辑：v-if 只有选中图片才显示 -->
+        <div class="panel-card category-box" v-if="selectedImage">
+          <div class="category-header">
+            <i class="el-icon-s-flag"></i> 
+            <span>选择缺陷类别</span>
           </div>
-        </el-card>
+          <div class="category-content">
+            <div v-for="category in defectCategories" :key="category.id" class="category-btn" :class="{ 'active': selectedCategory === category.id }" @click="selectCategory(category.id)">
+              <span class="dot"></span>
+              <span>{{ category.name }}</span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- 上传图片对话框 -->
-    <el-dialog title="上传图片" :visible.sync="uploadDialogVisible" width="500px">
-      <el-upload
-        class="upload-demo"
-        drag
-        action="/api/annotation/upload/camera"
-        :auto-upload="false"
-        :on-change="handleFileChange"
-        :on-remove="handleFileRemove"
-        :file-list="uploadFileList"
-        multiple
-      >
+    <!-- 上传弹窗 -->
+    <el-dialog title="上传图片" :visible.sync="uploadDialogVisible" width="450px" custom-class="upload-dialog" :close-on-click-modal="false" append-to-body>
+      <el-upload class="upload-area" drag action="/api/annotation/upload/camera" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleFileRemove" :file-list="uploadFileList" multiple>
         <i class="el-icon-upload"></i>
-        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="el-upload__tip" slot="tip">只能上传jpg/png文件，且不超过5MB</div>
+        <div class="el-upload__text">拖拽文件到此处，或<em>点击上传</em></div>
       </el-upload>
       <div slot="footer" class="dialog-footer">
         <el-button @click="uploadDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="confirmUpload" :loading="uploading">上 传</el-button>
+        <el-button type="primary" @click="confirmUpload" :loading="uploading">开始上传</el-button>
       </div>
     </el-dialog>
   </div>
@@ -189,27 +130,20 @@ export default {
   name: 'Annotation',
   data() {
     return {
-      // 图片相关
       imageList: [],
       selectedImage: null,
       selectedImageId: null,
       imagePage: 1,
-      imagePageSize: 12,
+      // 修改处：默认每页显示 20 条 (5行 * 4列)
+      imagePageSize: 20, 
       imageTotal: 0,
-      
-      // 标注相关
       selectedCategory: null,
       defectCategories: [],
       currentAnnotations: [],
-      
-      // Canvas绘图相关
-      canvasContext: null,
       isDrawing: false,
       startX: 0,
       startY: 0,
-      activeTool: 'rectangle',
-      
-      // 对话框相关
+      canvasContext: null,
       uploadDialogVisible: false,
       uploadFileList: [],
       uploading: false,
@@ -219,697 +153,324 @@ export default {
   mounted() {
     this.loadImages()
     this.loadDefectCategories()
+    window.addEventListener('resize', this.handleResize)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.handleResize)
   },
   methods: {
-    // 图片相关方法
     loadImages() {
       axios.get('/api/annotation/images/pending', {
-        params: {
-          page: this.imagePage,
-          pageSize: this.imagePageSize
-        }
+        params: { page: this.imagePage, pageSize: this.imagePageSize }
       }).then(response => {
         if (response.data.code === 200) {
           this.imageList = response.data.data.records || []
           this.imageTotal = response.data.data.total || 0
         }
-      }).catch(error => {
-        console.error('加载图片失败:', error)
-        this.$message.error('加载图片失败')
-      })
+      }).catch(() => {})
     },
-    
-    refreshImages() {
-      this.loadImages()
-      this.$message.success('图片列表已刷新')
-    },
-    
+    refreshImages() { this.loadImages(); this.$message.success('已刷新') },
     selectImage(image) {
+      if (this.selectedImageId === image.id) return
       this.selectedImage = image
       this.selectedImageId = image.id
       this.currentAnnotations = []
-      this.$nextTick(() => {
-        this.initCanvas()
-        this.loadImageAnnotations(image.id)
-      })
+      this.loadImageAnnotations(image.id)
     },
-    
     deleteImage(image) {
-      this.$confirm(`确认删除图片 "${image.imageName}" 吗？`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        // 调用删除接口
-        axios.delete(`/api/annotation/images/${image.id}`)
-          .then(response => {
-            if (response.data.code === 200) {
-              this.$message.success('删除成功')
-              // 如果删除的是当前选中的图片，清空选中状态
-              if (this.selectedImageId === image.id) {
-                this.selectedImage = null
-                this.selectedImageId = null
-                this.selectedCategory = null
-              }
-              // 重新加载图片列表
-              this.loadImages()
-            } else {
-              this.$message.error(response.data.msg || '删除失败')
+      this.$confirm('确认删除该图片吗？', '提示', { type: 'warning' }).then(() => {
+        axios.delete(`/api/annotation/images/${image.id}`).then(res => {
+          if (res.data.code === 200) {
+            this.$message.success('删除成功')
+            if (this.selectedImageId === image.id) {
+              this.selectedImage = null; this.selectedImageId = null; this.selectedCategory = null
             }
-          })
-          .catch(error => {
-            console.error('删除图片失败:', error)
-            this.$message.error('删除图片失败')
-          })
-      }).catch(() => {
-        // 取消删除
-      })
-    },
-    
-    handleSizeChange(val) {
-      this.imagePageSize = val
-      this.imagePage = 1
-      this.loadImages()
-    },
-    
-    handleCurrentChange(val) {
-      this.imagePage = val
-      this.loadImages()
-    },
-    
-    // 标注相关方法
-    initCanvas() {
-      this.$nextTick(() => {
-        if (!this.$refs.annotationCanvas || !this.$refs.annotationImage) {
-          console.log('Canvas或图片引用不存在')
-          return
-        }
-        
-        const canvas = this.$refs.annotationCanvas
-        const image = this.$refs.annotationImage
-        
-        // 等待图片完全加载
-        if (!image.complete) {
-          console.log('图片未加载完成，等待加载...')
-          image.onload = () => this.initCanvas()
-          return
-        }
-        
-        // 直接使用图片的实际显示尺寸
-        const width = image.width || image.offsetWidth || image.clientWidth
-        const height = image.height || image.offsetHeight || image.clientHeight
-        
-        // 设置Canvas尺寸与图片完全一致
-        canvas.width = width
-        canvas.height = height
-        
-        console.log('✅ Canvas初始化成功：', {
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          imageOffsetWidth: image.offsetWidth,
-          imageOffsetHeight: image.offsetHeight,
-          imageClientWidth: image.clientWidth,
-          imageClientHeight: image.clientHeight
-        })
-        
-        // 初始化画布上下文
-        this.canvasContext = canvas.getContext('2d')
-        this.canvasContext.strokeStyle = '#ff0000'
-        this.canvasContext.lineWidth = 3
-        
-        // 重绘已有标注
-        this.redrawAnnotations()
-      })
-    },
-    
-    setActiveTool(tool) {
-      this.activeTool = tool
-    },
-    
-    selectCategory(categoryId) {
-      this.selectedCategory = categoryId
-      console.log('选择缺陷类别:', categoryId, this.getCategoryName(categoryId))
-    },
-    
-    startDrawing(event) {
-      if (this.activeTool !== 'rectangle') return
-      
-      const canvas = this.$refs.annotationCanvas
-      const rect = canvas.getBoundingClientRect()
-      this.startX = event.clientX - rect.left
-      this.startY = event.clientY - rect.top
-      this.isDrawing = true
-    },
-    
-    drawRectangle(event) {
-      if (!this.isDrawing || this.activeTool !== 'rectangle') return
-      
-      const canvas = this.$refs.annotationCanvas
-      const rect = canvas.getBoundingClientRect()
-      const currentX = event.clientX - rect.left
-      const currentY = event.clientY - rect.top
-      
-      // 清除之前的临时矩形
-      this.redrawAnnotations()
-      
-      // 绘制新的临时矩形
-      this.canvasContext.strokeStyle = '#ff0000'
-      this.canvasContext.lineWidth = 2
-      this.canvasContext.strokeRect(
-        this.startX, 
-        this.startY, 
-        currentX - this.startX, 
-        currentY - this.startY
-      )
-    },
-    
-    finishDrawing(event) {
-      if (!this.isDrawing || this.activeTool !== 'rectangle') return
-      
-      const canvas = this.$refs.annotationCanvas
-      const rect = canvas.getBoundingClientRect()
-      const endX = event.clientX - rect.left
-      const endY = event.clientY - rect.top
-      
-      // 创建标注数据
-      const annotation = {
-        rawImageId: this.selectedImage.id,
-        taskId: parseInt(this.activeTaskId) || null,
-        categoryId: this.selectedCategory,
-        category: this.getCategoryName(this.selectedCategory),
-        x: Math.min(this.startX, endX),
-        y: Math.min(this.startY, endY),
-        width: Math.abs(endX - this.startX),
-        height: Math.abs(endY - this.startY),
-        confidence: 1.0,
-        annotatorId: 1, // 假设当前用户ID为1
-        annotatorName: '标注员',
-        annotationTime: new Date().toISOString()
-      }
-      
-      this.currentAnnotations.push(annotation)
-      this.isDrawing = false
-      this.redrawAnnotations()
-    },
-    
-    redrawAnnotations() {
-      if (!this.canvasContext) return
-      
-      // 清除画布
-      this.canvasContext.clearRect(0, 0, this.$refs.annotationCanvas.width, this.$refs.annotationCanvas.height)
-      
-      // 重新绘制所有标注
-      this.currentAnnotations.forEach(annotation => {
-        this.canvasContext.strokeStyle = '#ff0000'
-        this.canvasContext.lineWidth = 2
-        this.canvasContext.strokeRect(
-          annotation.x, 
-          annotation.y, 
-          annotation.width, 
-          annotation.height
-        )
-        
-        // 绘制标签
-        this.canvasContext.fillStyle = '#ff0000'
-        this.canvasContext.font = '12px Arial'
-        this.canvasContext.fillText(
-          annotation.category, 
-          annotation.x, 
-          annotation.y - 5
-        )
-      })
-    },
-    
-    loadImageAnnotations(imageId) {
-      axios.get(`/api/annotation/data/image/${imageId}`)
-        .then(response => {
-          if (response.data.code === 200) {
-            this.currentAnnotations = response.data.data || []
-            this.$nextTick(() => {
-              this.redrawAnnotations()
-            })
-          }
-        })
-        .catch(error => {
-          console.error('加载标注数据失败:', error)
-          this.$message.error('加载标注数据失败')
-        })
-    },
-    
-    deleteAnnotation(annotation) {
-      const index = this.currentAnnotations.indexOf(annotation)
-      if (index > -1) {
-        this.currentAnnotations.splice(index, 1)
-        this.redrawAnnotations()
-      }
-    },
-    
-    clearAnnotations() {
-      this.currentAnnotations = []
-      this.redrawAnnotations()
-    },
-    
-    saveAnnotations() {
-      if (!this.selectedCategory) {
-        this.$message.warning('请先选择缺陷类别')
-        return
-      }
-      
-      this.savingAnnotations = true
-      
-      // 检查是否是裂痕或划痕，如果是，需要有标注框
-      const categoryName = this.getCategoryName(this.selectedCategory)
-      const isDefect = categoryName === '裂痕' || categoryName === '划痕'
-      
-      if (isDefect && this.currentAnnotations.length === 0) {
-        this.$message.warning('请在图片上绘制标注框')
-        this.savingAnnotations = false
-        return
-      }
-      
-      let annotationDataList = []
-      
-      if (isDefect && this.currentAnnotations.length > 0) {
-        // 如果是裂痕或划痕，使用绘制的标注框数据
-        annotationDataList = this.currentAnnotations.map(annotation => ({
-          ...annotation,
-          categoryId: this.selectedCategory,
-          category: categoryName
-        }))
-      } else {
-        // 合格类别，不需要坐标
-        annotationDataList = [{
-          rawImageId: this.selectedImage.id,
-          taskId: parseInt(this.activeTaskId) || null,
-          categoryId: this.selectedCategory,
-          category: categoryName,
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-          confidence: 1.0,
-          annotatorId: 1,
-          annotatorName: '标注员',
-          annotationTime: new Date().toISOString()
-        }]
-      }
-      
-      axios.post('/api/annotation/data', annotationDataList)
-        .then(response => {
-          if (response.data.code === 200) {
-            if (isDefect) {
-              this.$message.success('保存标注成功，已自动生成带框图片')
-            } else {
-              this.$message.success('保存标注数据成功')
-            }
-            // 清空选择
-            this.selectedCategory = null
-            this.selectedImage = null
-            this.selectedImageId = null
-            this.currentAnnotations = []
-            // 自动刷新图片列表，更新状态
             this.loadImages()
-          } else {
-            this.$message.error(response.data.msg || '保存标注数据失败')
           }
         })
-        .catch(error => {
-          console.error('保存标注数据失败:', error)
-          this.$message.error('保存标注数据失败')
+      }).catch(() => {})
+    },
+    handleSizeChange(val) { this.imagePageSize = val; this.imagePage = 1; this.loadImages() },
+    handleCurrentChange(val) { this.imagePage = val; this.loadImages() },
+    handleResize() { if (this.selectedImage) this.initCanvas() },
+    initCanvas() {
+      if (!this.$refs.annotationCanvas || !this.$refs.annotationImage) return
+      const canvas = this.$refs.annotationCanvas; const image = this.$refs.annotationImage
+      canvas.width = image.clientWidth; canvas.height = image.clientHeight
+      canvas.style.top = image.offsetTop + 'px'; canvas.style.left = image.offsetLeft + 'px'
+      this.canvasContext = canvas.getContext('2d')
+      this.redrawAnnotations()
+    },
+    selectCategory(categoryId) { this.selectedCategory = categoryId },
+    startDrawing(event) {
+      if (!this.selectedCategory) return this.$message.warning('请先在下方选择缺陷类别')
+      const canvas = this.$refs.annotationCanvas; const rect = canvas.getBoundingClientRect()
+      this.startX = event.clientX - rect.left; this.startY = event.clientY - rect.top; this.isDrawing = true
+    },
+    drawRectangle(event) {
+      if (!this.isDrawing) return
+      const canvas = this.$refs.annotationCanvas; const rect = canvas.getBoundingClientRect()
+      const currentX = event.clientX - rect.left; const currentY = event.clientY - rect.top
+      this.redrawAnnotations()
+      this.canvasContext.strokeStyle = '#00E676'; this.canvasContext.lineWidth = 2
+      this.canvasContext.setLineDash([4, 2])
+      this.canvasContext.strokeRect(this.startX, this.startY, currentX - this.startX, currentY - this.startY)
+      this.canvasContext.setLineDash([])
+    },
+    finishDrawing(event) {
+      if (!this.isDrawing) return
+      const canvas = this.$refs.annotationCanvas; const rect = canvas.getBoundingClientRect()
+      const endX = event.clientX - rect.left; const endY = event.clientY - rect.top
+      const width = Math.abs(endX - this.startX); const height = Math.abs(endY - this.startY)
+      if (width > 5 && height > 5) {
+        this.currentAnnotations.push({
+          rawImageId: this.selectedImage.id, categoryId: this.selectedCategory,
+          category: this.getCategoryName(this.selectedCategory), x: Math.min(this.startX, endX), y: Math.min(this.startY, endY),
+          width, height, confidence: 1.0, annotatorId: 1, annotatorName: '标注员', annotationTime: new Date().toISOString()
         })
-        .finally(() => {
-          this.savingAnnotations = false
-        })
-    },
-    
-    // 上传相关方法
-    uploadImage() {
-      this.uploadDialogVisible = true
-    },
-    
-    handleFileChange(file, fileList) {
-      this.uploadFileList = fileList
-    },
-    
-    handleFileRemove(file, fileList) {
-      this.uploadFileList = fileList
-    },
-    
-    confirmUpload() {
-      if (this.uploadFileList.length === 0) {
-        this.$message.warning('请选择要上传的文件')
-        return
       }
-      
-      this.uploading = true
-      
-      // 使用FormData上传文件
-      const promises = this.uploadFileList.map(fileItem => {
-        const formData = new FormData()
-        formData.append('image', fileItem.raw)
-        formData.append('uploadSource', 'manual')
-        
-        return axios.post('/api/annotation/upload/camera', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
+      this.isDrawing = false; this.redrawAnnotations()
+    },
+    redrawAnnotations() {
+      if (!this.canvasContext || !this.$refs.annotationCanvas) return
+      this.canvasContext.clearRect(0, 0, this.$refs.annotationCanvas.width, this.$refs.annotationCanvas.height)
+      this.currentAnnotations.forEach(ann => {
+        this.canvasContext.strokeStyle = '#FF3D00'; this.canvasContext.lineWidth = 2
+        this.canvasContext.strokeRect(ann.x, ann.y, ann.width, ann.height)
+        this.canvasContext.fillStyle = '#FF3D00'
+        const textWidth = this.canvasContext.measureText(ann.category).width
+        this.canvasContext.fillRect(ann.x, ann.y - 20, textWidth + 10, 20)
+        this.canvasContext.fillStyle = '#fff'; this.canvasContext.font = '12px Arial'
+        this.canvasContext.fillText(ann.category, ann.x + 5, ann.y - 6)
       })
-      
-      Promise.all(promises)
-        .then(responses => {
-          const successCount = responses.filter(r => r.data.code === 200).length
-          this.uploading = false
-          this.uploadDialogVisible = false
-          this.uploadFileList = []
-          this.$message.success(`成功上传 ${successCount} 张图片`)
-          // 自动刷新图片列表
-          this.loadImages()
-        })
-        .catch(error => {
-          console.error('上传失败:', error)
-          this.uploading = false
-          this.$message.error('上传失败，请重试')
-        })
     },
-    
-    // 工具方法
-    getImageUrl(imagePath) {
-      // 如果是完整的URL，直接返回
-      if (imagePath && imagePath.startsWith('http')) {
-        return imagePath
-      }
-      // 提取文件名（假设路径格式为：uploads/images/xxx.jpg 或 uploads\\images\\xxx.jpg）
-      if (imagePath) {
-        const filename = imagePath.replace(/\\/g, '/').split('/').pop()
-        return `/api/annotation/files/${filename}`
-      }
-      return ''
+    loadImageAnnotations(imageId) {
+      axios.get(`/api/annotation/data/image/${imageId}`).then(res => {
+        if (res.data.code === 200) {
+          this.currentAnnotations = res.data.data || []
+          if (this.currentAnnotations.length > 0) this.selectedCategory = this.currentAnnotations[0].categoryId
+          this.$nextTick(this.initCanvas)
+        }
+      })
     },
-    
-    handleImageError(event) {
-      event.target.src = '/default-image.png' // 默认图片
+    saveAnnotations() {
+      if (!this.selectedCategory) return this.$message.warning('请选择类别')
+      this.savingAnnotations = true
+      let data = this.currentAnnotations.length ? this.currentAnnotations : [{
+        rawImageId: this.selectedImage.id, taskId: null, categoryId: this.selectedCategory, category: this.getCategoryName(this.selectedCategory),
+        x:0, y:0, width:0, height:0, confidence: 1.0, annotatorId: 1, annotatorName: '标注员', annotationTime: new Date().toISOString()
+      }]
+      axios.post('/api/annotation/data', data).then(res => {
+        if (res.data.code === 200) {
+          this.$message.success('保存成功'); this.selectedCategory = null; this.selectedImage = null; this.selectedImageId = null; this.currentAnnotations = []; this.loadImages()
+        } else { this.$message.error(res.data.msg || '保存失败') }
+      }).finally(() => this.savingAnnotations = false)
     },
-    
-    formatFileSize(size) {
-      if (size < 1024) {
-        return size + ' B'
-      } else if (size < 1024 * 1024) {
-        return (size / 1024).toFixed(1) + ' KB'
-      } else {
-        return (size / (1024 * 1024)).toFixed(1) + ' MB'
-      }
+    uploadImage() { this.uploadDialogVisible = true; this.uploadFileList = [] },
+    handleFileChange(f, list) { this.uploadFileList = list },
+    handleFileRemove(f, list) { this.uploadFileList = list },
+    confirmUpload() {
+      if (!this.uploadFileList.length) return this.$message.warning('请选择文件')
+      this.uploading = true
+      const reqs = this.uploadFileList.map(f => {
+        const fd = new FormData(); fd.append('image', f.raw); fd.append('uploadSource', 'manual')
+        return axios.post('/api/annotation/upload/camera', fd, { headers: { 'Content-Type': 'multipart/form-data' }})
+      })
+      Promise.all(reqs).then(res => {
+        const count = res.filter(r => r.data.code === 200).length
+        this.$message.success(`成功上传 ${count} 张`); this.uploadDialogVisible = false; this.loadImages()
+      }).finally(() => this.uploading = false)
     },
-    
-    getTaskStatusType(status) {
-      const statusMap = {
-        0: '',      // 待开始
-        1: 'primary', // 进行中
-        2: 'success', // 已完成
-        3: 'warning'  // 已暂停
-      }
-      return statusMap[status] || ''
-    },
-    
-    getTaskStatusText(status) {
-      const statusMap = {
-        0: '待开始',
-        1: '进行中',
-        2: '已完成',
-        3: '已暂停'
-      }
-      return statusMap[status] || '未知'
-    },
-    
-    getImageStatusType(status) {
-      const statusMap = {
-        0: '',      // 待标注
-        1: 'primary', // 标注中
-        2: 'success', // 已标注
-        3: 'info'     // 已检测
-      }
-      return statusMap[status] || ''
-    },
-    
-    getImageStatusText(status) {
-      const statusMap = {
-        0: '待标注',
-        1: '标注中',
-        2: '已标注',
-        3: '已检测'
-      }
-      return statusMap[status] || '未知'
-    },
-    
-    getCategoryName(categoryId) {
-      const category = this.defectCategories.find(c => c.id === categoryId)
-      return category ? category.name : '未知'
-    },
-    
-    // 加载缺陷类别
-    loadDefectCategories() {
-      // 使用固定的三个类别：合格、裂痕、划痕
-      this.defectCategories = [
-        { id: 1, name: '合格' },
-        { id: 2, name: '裂痕' },
-        { id: 3, name: '划痕' }
-      ]
-      console.log('加载缺陷类别成功:', this.defectCategories)
-    }
+    getImageUrl(path) { if (!path) return ''; if (path.startsWith('http')) return path; return `/api/annotation/files/${path.replace(/\\/g, '/').split('/').pop()}` },
+    handleImageError(e) { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3QgZmlsbD0iI2Y1ZjdmYSIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCBmaWxsPSIjOTA5Mzk5IiB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkVycm9yPC90ZXh0Pjwvc3ZnPg==' },
+    formatFileSize(s) { if (!s) return '0 B'; return s < 1024 ? s + ' B' : s < 1048576 ? (s/1024).toFixed(1) + ' KB' : (s/1048576).toFixed(1) + ' MB' },
+    getImageStatusClass(s) { return {0:'status-pending',1:'status-wip',2:'status-done',3:'status-check'}[s] || 'status-pending' },
+    getImageStatusText(s) { return {0:'待标',1:'进行中',2:'完成',3:'质检'}[s] || '未知' },
+    getCategoryName(id) { return (this.defectCategories.find(c => c.id === id) || {}).name || '' },
+    loadDefectCategories() { this.defectCategories = [{id:1,name:'合格'},{id:2,name:'裂痕'},{id:3,name:'划痕'}] }
   }
 }
 </script>
 
 <style scoped>
+/* 全局变量 */
 .annotation-page {
-  padding: 20px;
-  height: calc(100vh - 40px);
+  --header-height: 60px;
+  --bg-color: #f0f2f5;
+  --panel-bg: #fff;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-color);
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  overflow: hidden; 
 }
 
+/* 顶部导航 */
 .page-header {
+  height: var(--header-height);
+  background: var(--panel-bg);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 0 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  flex-shrink: 0;
+  z-index: 20;
 }
+.header-left { display: flex; align-items: center; }
+.logo-container { width: 32px; height: 32px; background: #ecf5ff; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+.brand-icon { font-size: 20px; color: #409EFF; }
+.brand-text { font-size: 18px; font-weight: bold; color: #303133; }
 
-.page-header h2 {
-  margin: 0;
-  color: #303133;
-}
-
+/* 主体内容布局 */
 .main-content {
-  flex: 1;
+  flex: 1; /* 占满剩余高度 */
   display: flex;
-  gap: 20px;
-  overflow: hidden;
+  padding: 16px;
+  gap: 16px;
+  overflow: hidden; /* 防止溢出 */
+  height: calc(100vh - var(--header-height)); 
+  position: relative; /* 为内部绝对定位做参考 */
 }
 
-.task-panel {
-  width: 250px;
-  flex-shrink: 0;
-}
-
-.task-card, .image-card, .annotation-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.task-menu {
-  border: none;
-}
-
-.image-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-  padding: 10px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.image-item {
+/* 通用面板卡片样式 */
+.panel-card {
+  background: var(--panel-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
   border: 1px solid #ebeef5;
-  border-radius: 4px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s;
 }
 
-.image-item:hover {
-  border-color: #409eff;
-  box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.2);
-}
-
-.image-item.selected {
-  border-color: #409eff;
-  box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.4);
-}
-
-.image-preview {
-  position: relative;
-  height: 120px;
-  overflow: hidden;
-}
-
-.image-preview img {
-  width: 100%;
+/* 1. 左侧图片列表 */
+.image-panel {
+  flex: 0 0 540px;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  object-fit: cover;
 }
-
-.image-overlay {
-  position: absolute;
-  top: 5px;
-  right: 5px;
+.full-height-card { display: flex; flex-direction: column; height: 100%; }
+.panel-header {
+  height: 50px; padding: 0 16px; border-bottom: 1px solid #ebeef5;
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
 }
+.header-title { font-weight: 600; color: #303133; display: flex; align-items: center; gap: 8px; }
+.panel-toolbar { padding: 8px 16px; background: #f9fafb; border-bottom: 1px solid #ebeef5; flex-shrink: 0; }
+.panel-body { flex: 1; overflow-y: auto; padding: 16px; }
 
-.image-actions {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
+/* 左侧网格样式 */
+.image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.image-item { border: 1px solid #ebeef5; border-radius: 4px; cursor: pointer; background: #fff; transition: all 0.2s; position: relative; }
+.image-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.image-item.selected { border-color: #409EFF; box-shadow: 0 0 0 2px rgba(64,158,255,0.2); }
+.image-wrapper { height: 100px; background: #f5f7fa; border-radius: 4px 4px 0 0; position: relative; overflow: hidden; }
+.thumbnail { width: 100%; height: 100%; object-fit: cover; }
+.status-tag { position: absolute; top: 4px; left: 4px; font-size: 10px; padding: 1px 5px; border-radius: 2px; color: #fff; background: rgba(0,0,0,0.5); }
+.status-tag.status-done { background: rgba(103,194,58,0.9); }
+.selected-overlay { position: absolute; top: 0; right: 0; width: 20px; height: 20px; background: #409EFF; border-radius: 0 0 0 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
+.hover-actions { position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+.image-item:hover .hover-actions { opacity: 1; }
+.item-info { padding: 6px 8px; }
+.item-name { font-size: 12px; color: #606266; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { font-size: 10px; color: #909399; }
 
-.image-item:hover .image-actions {
-  opacity: 1;
-}
-
-.image-info {
-  padding: 8px;
-}
-
-.image-name {
-  font-size: 12px;
-  color: #606266;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 5px;
-}
-
-.image-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: #909399;
-}
-
-.pagination-container {
-  padding: 10px;
-  border-top: 1px solid #ebeef5;
-}
-
-.annotation-panel {
-  width: 400px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.annotation-content {
+/* === 右侧布局：使用绝对定位确保位置 === */
+.workspace-panel {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  min-width: 0;
+  height: 100%;
+  position: relative; /* 为内部 absolute 提供基准 */
 }
 
-.image-container {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
-  background: #f5f7fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-}
-
-.annotation-image {
-  max-width: 100%;
-  max-height: 100%;
-  display: block;
-  object-fit: contain;
-}
-
-.annotation-canvas {
+/* 盒子1：标注工作台 (上方) */
+/* 使用 absolute 定位：top=0, bottom 动态调整 */
+.annotation-box {
   position: absolute;
   top: 0;
   left: 0;
-  cursor: crosshair;
-}
-
-.annotation-tools {
-  padding: 15px;
-  border-top: 1px solid #ebeef5;
-  overflow-y: auto;
-  max-height: 300px;
-}
-
-.tool-section {
-  margin-bottom: 20px;
-}
-
-.tool-section h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #606266;
-}
-
-.tools {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.categories {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.category-tag {
-  cursor: pointer;
-}
-
-.annotations-list {
-  margin-top: 10px;
-}
-
-.empty-annotation {
+  right: 0;
+  /* bottom 属性通过 :style 动态控制 */
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #909399;
+  overflow: hidden;
+  transition: bottom 0.3s; /* 增加平滑过渡效果 */
 }
 
-.empty-annotation i {
-  font-size: 48px;
-  margin-bottom: 10px;
-}
-
-.upload-demo {
-  text-align: center;
-}
-
-.dialog-footer {
-  text-align: right;
-}
-
-.image-header-actions {
+.workspace-body {
+  flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  background-color: #f5f7fa;
+  position: relative;
+  overflow: hidden;
 }
+
+.canvas-container {
+  flex: 1;
+  overflow: auto; /* 图片区域内部滚动 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.canvas-wrapper {
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.target-image { display: block; }
+.drawing-layer { position: absolute; top: 0; left: 0; cursor: crosshair; }
+
+/* 盒子2：类别选择 (下方) */
+/* 使用 absolute 定位：bottom=0, height=130px */
+.category-box {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 130px; /* 固定高度 */
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.08); /* 增加一点阴影使其区分明显 */
+  margin-bottom: 16px; /* 增加底部外边距，防止贴底 */
+  margin-right: 1px; /* 微调右侧边距 */
+  width: calc(100% - 2px); /* 减去边框宽度，防止水平滚动条 */
+}
+
+.category-header {
+  font-weight: 600; color: #303133; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px; font-size: 15px;
+}
+
+.category-content {
+  display: flex; gap: 16px; flex-wrap: wrap;
+}
+
+.category-btn {
+  display: flex; align-items: center; padding: 10px 24px;
+  background: #fff; border: 1px solid #dcdfe6; border-radius: 4px;
+  cursor: pointer; transition: all 0.2s; min-width: 100px; justify-content: center;
+}
+.category-btn:hover { border-color: #c6e2ff; color: #409EFF; }
+.category-btn.active { border-color: #409EFF; background-color: #ecf5ff; color: #409EFF; font-weight: 500; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #dcdfe6; margin-right: 10px; }
+.category-btn.active .dot { background: #409EFF; }
+
+/* 空状态 */
+.empty-workspace, .empty-list { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #909399; }
+.empty-icon-bg { width: 64px; height: 64px; background: #e4e7ed; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.empty-icon-bg i { font-size: 32px; color: #fff; }
+
+/* 滚动条美化 */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+/* 覆盖 Element UI */
+.custom-pagination >>> .btn-prev, .custom-pagination >>> .btn-next, .custom-pagination >>> .el-pager li { background: transparent; }
+.refresh-btn { padding: 0; color: #909399; font-size: 14px; }
+.refresh-btn:hover { color: #409EFF; }
 </style>

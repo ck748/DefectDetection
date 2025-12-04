@@ -116,6 +116,10 @@ public class OpPanel {
     @LogPoint(value = OpEnum.Start, mainRole = Operator.class, target = SysStatus.class)
     public void clickStartButton() {
         log.info("点击开始");
+        // Ensure button focus is cleared before processing
+        startButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> startButton.setFocusable(true));
+        
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() {
@@ -143,6 +147,10 @@ public class OpPanel {
     @LogPoint(value = OpEnum.Pause, mainRole = Operator.class, target = SysStatus.class)
     public void clickPauseButton() {
         log.info("点击暂停/继续");
+        // Ensure button focus is cleared before processing
+        pauseAndContinueButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> pauseAndContinueButton.setFocusable(true));
+        
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
@@ -177,6 +185,10 @@ public class OpPanel {
     @LogPoint(value = OpEnum.Stop, mainRole = Operator.class, target = SysStatus.class)
     public void clickStopButton() {
         log.info("点击停止");
+        // Ensure button focus is cleared before processing
+        stopButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> stopButton.setFocusable(true));
+        
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
             @Override
@@ -202,6 +214,10 @@ public class OpPanel {
     }
 
     public void clickTestModelButton(){
+        // Ensure button focus is cleared before processing
+        testConnectModelButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> testConnectModelButton.setFocusable(true));
+        
         SwingWorker<Void,Void> worker=new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {

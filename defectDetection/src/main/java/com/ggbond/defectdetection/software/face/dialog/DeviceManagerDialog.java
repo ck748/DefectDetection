@@ -247,7 +247,7 @@ public class DeviceManagerDialog extends JDialog {
 
 
         confirmButton.addActionListener(e->{
-            dispose();
+            SwingUtilities.invokeLater(() -> dispose());
         });
 
         saveButton.addActionListener(e->{
@@ -295,6 +295,10 @@ public class DeviceManagerDialog extends JDialog {
 
     public void clickSaveButton(){
         log.info("点击保存");
+        // Ensure button focus is cleared before processing
+        saveButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> saveButton.setFocusable(true));
+        
         SwingWorker<Void,Void> worker= new SwingWorker<>() {
             @Override
             protected Void doInBackground() throws Exception {
@@ -418,6 +422,10 @@ public class DeviceManagerDialog extends JDialog {
 
     public void clickTestButton(){
         log.info("点击测试");
+        // Ensure button focus is cleared before processing
+        testButton.setFocusable(false);
+        SwingUtilities.invokeLater(() -> testButton.setFocusable(true));
+        
         SwingWorker<Void,Void> worker=new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
