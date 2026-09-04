@@ -1,0 +1,21 @@
+{
+  "name": "pc-camera-watcher",
+  "version": "1.0.0",
+  "description": "PC端摄像头文件夹监听上传服务",
+  "main": "pc-camera-watcher.js",
+  "scripts": {
+    "start": "node pc-camera-watcher.js",
+    "dev": "nodemon pc-camera-watcher.js"
+  },
+  "keywords": ["camera", "watcher", "upload"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chokidar": "^3.5.3",
+    "form-data": "^4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

@@ -1,0 +1,350 @@
+# ====================================
+# 多阶段构建 - 第一阶段：构建Java应用
+# ====================================
+FROM maven:3.8-openjdk-17 AS java-builder
+WORKDIR /build
+COPY defectDetection/pom.xml .
+COPY defectDetection/src ./src
+RUN mvn clean package -DskipTests
+
+# ====================================
+# 多阶段构建 - 第二阶段：构建前端应用
+# ====================================
+FROM node:16 AS frontend-builder
+WORKDIR /build
+COPY web/detection/package*.json ./
+RUN npm install --registry=https://registry.npmmirror.com
+COPY web/detection .  
+RUN npm run build
+
+# ====================================
+# 最终镜像：集成所有服务
+# ====================================
+FROM ubuntu:22.04
+
+# ====================================
+# 1. 基础环境配置
+# ====================================
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# 配置时区和locale
+RUN apt-get update && \
+    apt-get install -y \
+    tzdata \
+    locales \
+    wget \
+    curl \
+    supervisor \
+    ca-certificates \
+    gnupg \
+    nginx \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && locale-gen zh_CN.UTF-8 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ====================================
+# 2. 安装MySQL 8.0
+# ====================================
+RUN apt-get update && \
+    apt-get install -y mysql-server && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# 配置MySQL（允许本地连接，优化性能）
+RUN mkdir -p /var/run/mysqld && \
+    chown -R mysql:mysql /var/run/mysqld && \
+    sed -i 's/bind-address.*=.*/bind-address = 127.0.0.1/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "[mysqld]" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "skip-name-resolve" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "max_connections = 500" >> /etc/mysql/mysql.conf.d/mysqld.cnf
+
+# ====================================
+# 3. 安装Java 17运行环境
+# ====================================
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# ====================================
+# 4. 安装Python 3.10和依赖
+# ====================================
+RUN apt-get update && \
+    apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libopencv-dev \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 升级pip并安装Python依赖（严格控制版本和安装顺序）
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    # 先安装基础依赖
+    pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ \
+    flask==2.3.0 \
+    torch==2.0.1 \
+    torchvision==0.15.2 \
+    ultralytics==8.0.196 \
+    huggingface_hub && \
+    # 安装opencv（不自动安装依赖）
+    pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --no-deps opencv-python-headless==4.8.1.78 && \
+    # 最后强制安装numpy 1.24.3
+    pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ numpy==1.24.3 --force-reinstall
+
+# 复制本地克隆的yolov10源码到容器
+COPY yolov10 /tmp/yolov10
+
+# 安装本地的yolov10（不自动安装依赖）
+RUN pip3 install --no-cache-dir --no-deps /tmp/yolov10 && \
+    rm -rf /tmp/yolov10 && \
+    # 再次确保numpy版本正确
+    pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ numpy==1.24.3 --force-reinstall
+
+# ====================================
+# 5. 安装Ollama AI模型服务
+# ====================================
+# 使用ghproxy镜像加速下载
+RUN wget --timeout=60 --tries=3 -O /tmp/ollama https://mirror.ghproxy.com/https://github.com/ollama/ollama/releases/download/v0.1.17/ollama-linux-amd64 || \
+    wget --timeout=60 --tries=3 -O /tmp/ollama https://gh.llkk.cc/https://github.com/ollama/ollama/releases/download/v0.1.17/ollama-linux-amd64 || \
+    curl -L --max-time 60 --retry 3 -o /tmp/ollama https://ghproxy.net/https://github.com/ollama/ollama/releases/download/v0.1.17/ollama-linux-amd64
+RUN chmod +x /tmp/ollama && mv /tmp/ollama /usr/local/bin/ollama
+
+# 创建ollama数据目录
+RUN mkdir -p /root/.ollama
+
+# ====================================
+# 6. 创建工作目录和必要文件夹
+# ====================================
+WORKDIR /app
+
+# 创建上传目录
+RUN mkdir -p /app/uploads/camera \
+    /app/uploads/detected \
+    /var/lib/mysql
+
+# ====================================
+# 7. 复制应用文件
+# ====================================
+
+# 复制Java应用
+COPY --from=java-builder /build/target/*.jar /app/app.jar
+COPY defectDetection/src/main/resources/config.json /app/src/main/resources/config.json
+COPY defectDetection/src/main/resources/attributes.yaml /app/src/main/resources/attributes.yaml
+
+# 复制Python算法服务
+COPY predict/main.py /app/predict/main.py
+COPY predict/v10best.pt /app/predict/v10best.pt
+
+# 复制数据库初始化脚本（使用1.sql完整数据库文件）
+COPY sql/1.sql /docker-entrypoint-initdb.d/01-init.sql
+
+# 复制前端构建产物到Nginx目录
+COPY --from=frontend-builder /build/dist /usr/share/nginx/html
+
+# 配置Nginx
+RUN echo 'server {\n\
+    listen 90;\n\
+    server_name localhost;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    \n\
+    location / {\n\
+        try_files \$uri \$uri/ /index.html;\n\
+    }\n\
+    \n\
+    # 代理后端API请求\n\
+    location /api/ {\n\
+        proxy_pass http://localhost:8085/;\n\
+        proxy_set_header Host \$host;\n\
+        proxy_set_header X-Real-IP \$remote_addr;\n\
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n\
+    }\n\
+    \n\
+    # 代理Python检测服务\n\
+    location /detect/ {\n\
+        proxy_pass http://localhost:8095/;\n\
+        proxy_set_header Host \$host;\n\
+        proxy_set_header X-Real-IP \$remote_addr;\n\
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\n\
+    }\n\
+}' > /etc/nginx/sites-available/default
+
+# ====================================
+# 8. 创建数据库初始化脚本
+# ====================================
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# 启动MySQL（安全模式，跳过权限表）\n\
+echo "启动MySQL服务..."\n\
+mysqld_safe --skip-grant-tables &\n\
+MYSQL_PID=\$!\n\
+\n\
+# 等待MySQL完全启动\n\
+echo "等待MySQL启动..."\n\
+for i in {1..30}; do\n\
+    if mysqladmin ping -h localhost --silent 2>/dev/null; then\n\
+        echo "MySQL已启动"\n\
+        break\n\
+    fi\n\
+    sleep 1\n\
+done\n\
+\n\
+# 初始化数据库（检查数据库目录是否存在）\n\
+if [ ! -d /var/lib/mysql/defect_detection ]; then\n\
+    echo "初始化数据库..."\n\
+    \n\
+    # 刷新权限并设置密码\n\
+    mysql -uroot --skip-password << EOF\n\
+USE mysql;\n\
+FLUSH PRIVILEGES;\n\
+ALTER USER '\''root'\''@'\''localhost'\'' IDENTIFIED WITH mysql_native_password BY '\''000000'\''; \n\
+GRANT ALL PRIVILEGES ON *.* TO '\''root'\''@'\''localhost'\'' WITH GRANT OPTION;\n\
+CREATE USER IF NOT EXISTS '\''root'\''@'\''127.0.0.1'\'' IDENTIFIED BY '\''000000'\''; \n\
+GRANT ALL PRIVILEGES ON *.* TO '\''root'\''@'\''127.0.0.1'\'' WITH GRANT OPTION;\n\
+FLUSH PRIVILEGES;\n\
+CREATE DATABASE IF NOT EXISTS defect_detection DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n\
+EOF\n\
+\n\
+    # 导入表结构和数据\n\
+    mysql -uroot -p000000 defect_detection < /docker-entrypoint-initdb.d/01-init.sql\n\
+    \n\
+    echo "数据库初始化完成"\n\
+else\n\
+    echo \"数据库已存在，跳过初始化\"\n\
+fi\n\
+\n\
+# 停止MySQL（将由Supervisor接管）\n\
+echo "停止临时MySQL进程..."\n\
+mysqladmin -uroot -p000000 shutdown 2>/dev/null || killall -9 mysqld mysqld_safe 2>/dev/null || true\n\
+sleep 3\n\
+' > /app/init-db.sh && chmod +x /app/init-db.sh
+
+# ====================================
+# 9. 配置Supervisor管理多个服务
+# ====================================
+RUN echo '[supervisord]\n\
+nodaemon=true\n\
+user=root\n\
+logfile=/var/log/supervisor/supervisord.log\n\
+pidfile=/var/run/supervisord.pid\n\
+\n\
+# MySQL服务\n\
+[program:mysql]\n\
+command=/usr/bin/mysqld_safe\n\
+autostart=true\n\
+autorestart=true\n\
+priority=1\n\
+stdout_logfile=/var/log/supervisor/mysql.log\n\
+stderr_logfile=/var/log/supervisor/mysql_err.log\n\
+\n\
+# Python算法服务 (端口8090)\n\
+[program:python-detect]\n\
+command=python3 /app/predict/main.py\n\
+directory=/app/predict\n\
+autostart=true\n\
+autorestart=true\n\
+priority=2\n\
+stdout_logfile=/var/log/supervisor/python.log\n\
+stderr_logfile=/var/log/supervisor/python_err.log\n\
+environment=PYTHONUNBUFFERED=1\n\
+startsecs=10\n\
+\n\
+# Ollama AI模型服务 (端口11437)\n\
+[program:ollama]\n\
+command=/usr/local/bin/ollama serve\n\
+autostart=true\n\
+autorestart=true\n\
+priority=2\n\
+stdout_logfile=/var/log/supervisor/ollama.log\n\
+stderr_logfile=/var/log/supervisor/ollama_err.log\n\
+environment=OLLAMA_HOST=0.0.0.0:11437,OLLAMA_MODELS=/root/.ollama/models\n\
+startsecs=10\n\
+\n\
+# Nginx前端服务 (端口80)\n\
+[program:nginx]\n\
+command=/usr/sbin/nginx -g '\''daemon off;'\''\n\
+autostart=true\n\
+autorestart=true\n\
+priority=2\n\
+stdout_logfile=/var/log/supervisor/nginx.log\n\
+stderr_logfile=/var/log/supervisor/nginx_err.log\n\
+startsecs=5\n\
+\n\
+# Java后端服务 (端口8085)\n\
+[program:java-backend]\n\
+command=java -Djava.security.egd=file:/dev/./urandom -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Xms512m -Xmx1024m -jar /app/app.jar\n\
+directory=/app\n\
+autostart=true\n\
+autorestart=true\n\
+priority=3\n\
+stdout_logfile=/var/log/supervisor/java.log\n\
+stderr_logfile=/var/log/supervisor/java_err.log\n\
+environment=SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/defect_detection?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=UTC,SPRING_DATASOURCE_USERNAME=root,SPRING_DATASOURCE_PASSWORD=000000,APP_GUI_ENABLED=false,SERVER_PORT=8085\n\
+startsecs=15\n\
+' > /etc/supervisor/conf.d/supervisord.conf
+
+# 创建日志目录
+RUN mkdir -p /var/log/supervisor
+
+# ====================================
+# 10. 创建启动脚本
+# ====================================
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "========================================"\n\
+echo "启动缺陷检测一体化容器"\n\
+echo "========================================"\n\
+\n\
+# 初始化数据库\n\
+echo "1. 初始化MySQL数据库..."\n\
+/app/init-db.sh\n\
+\n\
+echo "2. 启动所有服务..."\n\
+echo "   - MySQL: 3306"\n\
+echo "   - Ollama AI: 11437"\n\
+echo "   - Python算法: 8095"\n\
+echo "   - Java后端: 8085"\n\
+echo "   - Nginx前端: 90"\n\
+echo "========================================"\n\
+\n\
+# 启动supervisor管理所有服务\n\
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# ====================================
+# 11. 环境变量配置
+# ====================================
+ENV SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/defect_detection?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=UTC"
+ENV SPRING_DATASOURCE_USERNAME="root"
+ENV SPRING_DATASOURCE_PASSWORD="000000"
+ENV APP_GUI_ENABLED="false"
+ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=true -Dfile.encoding=UTF-8"
+
+# ====================================
+# 12. 暴露端口
+# ====================================
+EXPOSE 90
+EXPOSE 8085
+EXPOSE 8095
+EXPOSE 11437
+EXPOSE 3306
+
+# ====================================
+# 13. 健康检查
+# ====================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8085/api/device/getAllDevices || exit 1
+
+# ====================================
+# 14. 启动容器
+# ====================================
+ENTRYPOINT ["/app/start.sh"]

@@ -1,0 +1,53 @@
+spring:
+  datasource:
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/defect_detection?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=UTC
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+  main:
+    banner-mode: off
+  devtools:
+    restart:
+      enabled: false  # 禁用DevTools自动重启，防止桌面应用重复创建窗口
+    livereload:
+      enabled: false  # 禁用LiveReload
+server:
+  port: 8081
+  tomcat:
+    max-http-response-header-size: "16KB"
+mybatis-plus:
+  global-config:
+    db-config:
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      logic-delete-field: is_deleted
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+#  configuration:
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+logging:
+  level:
+    org:
+      springframework: INFO
+
+# AI模型配置
+ai:
+  # 模式选择: local(本地Ollama) 或(阿里云)
+  mode: local
+  
+  # 本地Ollama配置
+  local:
+    url: http://localhost:11434/v1/chat/completions
+    model: qwen2.5:7b  # 推荐模型: qwen2.5:7b, qwen2.5:14b, llama3.1:8b
+  
+  # 阿里云通义千问配置
+  cloud:
+    url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    key: sk-931696cf528645f280b7c3aa5684b8e4
+    model: qwen-turbo  # 可选: qwen-turbo(快速), qwen-plus(平衡), qwen-max(高级)

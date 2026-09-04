@@ -1,0 +1,22 @@
+{
+  "name": "camera-upload-test",
+  "version": "1.0.0",
+  "description": "摄像头上传接口测试工具",
+  "main": "test-camera-upload.js",
+  "scripts": {
+    "test": "node test-camera-upload.js single",
+    "test:batch": "node test-camera-upload.js batch",
+    "test:performance": "node test-camera-upload.js performance"
+  },
+  "keywords": [
+    "camera",
+    "upload",
+    "test"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0"
+  }
+}
