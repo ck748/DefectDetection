@@ -45,17 +45,48 @@
           </el-form>
         </el-card>
 
-        <!-- 运动控制 -->
+        <!-- AGV 控制 -->
         <el-card shadow="hover" class="card-move">
           <div slot="header" class="card-header">
-            <span>运动控制</span>
+            <span>AGV 控制</span>
             <el-tag :type="agvMode === 0 ? 'success' : agvMode === 2 ? 'warning' : 'info'" size="mini">{{ modeText(agvMode) }}</el-tag>
           </div>
-          <!-- 站点导航按钮 -->
-          <div class="station-btns">
-            <el-button v-for="n in 6" :key="n" type="primary" size="medium" :disabled="!connected" @click="agvGoStation(n)">站点 {{ n }}</el-button>
+          <div class="agv-btns">
+            <el-button type="danger" size="small" :disabled="!connected" @click="agvEmergencyStop">急停</el-button>
+            <el-button type="warning" size="small" :disabled="!connected" @click="agvReset">复位（回1号站）</el-button>
           </div>
-          <div class="muted hint" style="text-align:center;margin-top:6px;">指令：sub=0x9D，p1=站点号，p2=0x00</div>
+        </el-card>
+
+        <!-- 机械臂 + 工作流（合并卡片） -->
+        <el-card shadow="hover" class="card-robot">
+          <div slot="header" class="card-header">
+            <span>机械臂 & 工作流</span>
+            <el-tag :type="robotConnected ? 'success' : 'info'" size="mini">{{ robotConnected ? '已连接' : '未连接' }}</el-tag>
+          </div>
+          <div class="robot-row">
+            <div class="robot-section">
+              <div class="section-title">机械臂</div>
+              <div class="robot-btns">
+                <el-button v-if="!robotConnected" type="primary" size="mini" icon="el-icon-link" :loading="robotConnecting" @click="connectRobot">连接</el-button>
+                <el-button v-else type="danger" size="mini" icon="el-icon-switch-button" @click="disconnectRobot">断开</el-button>
+                <el-button size="mini" type="success" :disabled="!robotConnected" @click="setDO(0, true)">DO0开</el-button>
+                <el-button size="mini" type="warning" :disabled="!robotConnected" @click="setDO(0, false)">DO0关</el-button>
+                <el-button size="mini" :disabled="!robotConnected" @click="robotMoveHome">回原位</el-button>
+                <el-button size="mini" :disabled="!robotConnected" @click="robotMovePhoto">拍照位</el-button>
+                <el-button size="mini" type="danger" :disabled="!robotConnected" @click="robotStop">急停</el-button>
+              </div>
+            </div>
+            <el-divider style="margin: 6px 0;"></el-divider>
+            <div class="robot-section">
+              <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="mini" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
+              <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 发信号→机械臂 → 完成信号→AGV→3号站</div>
+              <div class="workflow-btns">
+                <el-button type="success" size="mini" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
+                <el-button type="warning" size="mini" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
+                <el-button size="mini" @click="resetWorkflow">重置</el-button>
+              </div>
+            </div>
+          </div>
         </el-card>
 
         <!-- 左下：实时状态 -->
@@ -141,6 +172,10 @@ export default {
       agvMode: null,  // AGV当前工作模式：0=普通(基础) 1=站点编辑 2=站点召回
       agvSpeed: 500,  // AGV设定速度(米/小时)
       // 机械臂控制数据
+      robotConnected: false,
+      robotConnecting: false,
+      workflowState: 'IDLE',
+      workflowPollTimer: null,
       // 只使用 elbow(旋转)和 cameraX(摄像头左右平移),其余保持 0
       robotAngles: {
         turntable: 0,
@@ -158,6 +193,34 @@ export default {
   computed: {
     canControl() {
       return this.connected;
+    },
+    canStartWorkflow() {
+      return this.connected && this.robotConnected &&
+        (this.workflowState === 'IDLE' || this.workflowState === 'COMPLETED' || this.workflowState === 'ERROR');
+    },
+    workflowStateText() {
+      const map = {
+        IDLE: '空闲',
+        AGV_TO_STATION6: 'AGV→6号站',
+        SIGNAL_ROBOT: '已发信号→等待机械臂响应',
+        WAIT_ROBOT_DONE: '机械臂动作中→等待完成信号',
+        AGV_TO_STATION3: '收到完成信号→AGV→3号站',
+        COMPLETED: '已完成',
+        ERROR: '异常'
+      };
+      return map[this.workflowState] || this.workflowState;
+    },
+    workflowTagType() {
+      const map = {
+        IDLE: 'info',
+        AGV_TO_STATION6: '',
+        SIGNAL_ROBOT: 'warning',
+        WAIT_ROBOT_DONE: 'warning',
+        AGV_TO_STATION3: '',
+        COMPLETED: 'success',
+        ERROR: 'danger'
+      };
+      return map[this.workflowState] || 'info';
     },
     view() {
       const s = this.status;
@@ -186,6 +249,7 @@ export default {
   },
   beforeDestroy() {
     this.stopStatusPolling();
+    this.stopWorkflowPolling();
     this.disposeAgv();
   },
   methods: {
@@ -304,6 +368,31 @@ export default {
     async agvGoStation(station) {
       const ok = await this.sendCmd(0x9D, station, 0x00);
       if (ok) this.$message.success(`已发送目标站点 ${station}`);
+    },
+
+    /** AGV 急停 */
+    async agvEmergencyStop() {
+      try {
+        const res = await axios.post('api/agv/command', { sub: 0x9D, p1: 0, p2: 0x00 });
+        // 急停：发送停止指令
+        this.$message.warning('AGV 急停指令已发送');
+      } catch (e) {
+        this.$message.error('急停指令发送失败');
+      }
+    },
+
+    /** AGV 复位（回 1 号站） */
+    async agvReset() {
+      try {
+        const res = await axios.post('api/agv/command', { sub: 0x9D, p1: 1, p2: 0x00 });
+        if (res.data.code === 200) {
+          this.$message.success('AGV 正在返回 1 号站');
+        } else {
+          this.$message.error(res.data.message);
+        }
+      } catch (e) {
+        this.$message.error('复位指令发送失败');
+      }
     },
 
     clickStep(i) {
@@ -446,6 +535,108 @@ export default {
       if (i >= 0 && i < this.steps.length) this.steps[i].state = 'done';
       this.pendingStep = -1;
       this.pendingStation = null;
+    },
+
+    // ==================== 机械臂控制 ====================
+    async connectRobot() {
+      this.robotConnecting = true;
+      try {
+        const res = await axios.post('api/aubo/connect');
+        if (res.data.code === 200) {
+          this.robotConnected = true;
+          this.$message.success('机械臂已连接');
+        } else {
+          this.$message.error(res.data.message || '连接失败');
+        }
+      } catch (e) {
+        this.$message.error('机械臂连接失败：请确认控制器IP(192.168.1.6)可达');
+      } finally {
+        this.robotConnecting = false;
+      }
+    },
+    async disconnectRobot() {
+      try {
+        await axios.post('api/aubo/disconnect');
+      } catch (e) { /* ignore */ }
+      this.robotConnected = false;
+    },
+    async setDO(index, value) {
+      try {
+        const res = await axios.post('api/aubo/setDO', { index, value });
+        if (res.data.code === 200) {
+          this.$message.success(`DO${index} = ${value ? '开' : '关'}`);
+        } else {
+          this.$message.error(res.data.message);
+        }
+      } catch (e) {
+        this.$message.error('DO 设置失败');
+      }
+    },
+    async robotMoveHome() {
+      try {
+        const res = await axios.post('api/aubo/photo/moveToHome');
+        res.data.code === 200 ? this.$message.success('已回原位') : this.$message.error(res.data.message);
+      } catch (e) { this.$message.error('移动失败'); }
+    },
+    async robotMovePhoto() {
+      try {
+        const res = await axios.post('api/aubo/photo/moveToPosition');
+        res.data.code === 200 ? this.$message.success('已到拍照位') : this.$message.error(res.data.message);
+      } catch (e) { this.$message.error('移动失败'); }
+    },
+    async robotStop() {
+      try {
+        const res = await axios.post('api/aubo/stop');
+        res.data.code === 200 ? this.$message.success('已发送急停') : this.$message.error(res.data.message);
+      } catch (e) { this.$message.error('急停失败'); }
+    },
+
+    // ==================== 工作流控制 ====================
+    async startWorkflow() {
+      try {
+        const res = await axios.post('api/workflow/start');
+        if (res.data.code === 200) {
+          this.$message.success('工作流已启动');
+          this.startWorkflowPolling();
+        } else {
+          this.$message.error(res.data.message);
+        }
+      } catch (e) { this.$message.error('启动失败'); }
+    },
+    async stopWorkflow() {
+      try {
+        await axios.post('api/workflow/stop');
+        this.$message.success('工作流已停止');
+        this.stopWorkflowPolling();
+      } catch (e) { /* ignore */ }
+    },
+    async resetWorkflow() {
+      try {
+        await axios.post('api/workflow/reset');
+        this.workflowState = 'IDLE';
+        this.$message.success('工作流已重置');
+      } catch (e) { /* ignore */ }
+    },
+    startWorkflowPolling() {
+      this.stopWorkflowPolling();
+      this.workflowPollTimer = setInterval(() => this.fetchWorkflowStatus(), 1000);
+    },
+    stopWorkflowPolling() {
+      if (this.workflowPollTimer) {
+        clearInterval(this.workflowPollTimer);
+        this.workflowPollTimer = null;
+      }
+    },
+    async fetchWorkflowStatus() {
+      try {
+        const res = await axios.get('api/workflow/status');
+        if (res.data.code === 200 && res.data.data) {
+          this.workflowState = res.data.data.state;
+          if (this.workflowState === 'COMPLETED' || this.workflowState === 'ERROR') {
+            this.stopWorkflowPolling();
+          }
+        }
+      } catch (e) { /* ignore */ }
     },
     resetFlow() {
       this.steps.forEach(s => { s.state = 'pending'; });
@@ -824,16 +1015,16 @@ export default {
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "left flow";
 }
-.area-left { grid-area: left; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.area-left { grid-area: left; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .card-flow { grid-area: flow; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .card-flow ::v-deep .el-card__body { flex: 1; min-height: 0; overflow: hidden; }
 .card-status { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .card-status ::v-deep .el-card__body { flex: 1; overflow: auto; }
 
-.area-left ::v-deep .el-card__header { padding: 8px 12px; }
-.area-left ::v-deep .el-card__body { padding: 8px 12px 10px; }
-.area-left .card-header { font-size: 15px; }
-.area-left .card-header > span::before { height: 13px; }
+.area-left ::v-deep .el-card__header { padding: 6px 12px; }
+.area-left ::v-deep .el-card__body { padding: 6px 12px 8px; }
+.area-left .card-header { font-size: 14px; }
+.area-left .card-header > span::before { height: 12px; }
 
 .agv-page ::v-deep .el-card {
   background: linear-gradient(180deg, rgba(23, 30, 40, .95), rgba(15, 20, 28, .95));
@@ -857,9 +1048,9 @@ export default {
 }
 .muted { color: #8fa0b3; font-size: 12px; }
 .hint { margin-top: 2px; font-size: 11px; line-height: 14px; color: #75879c; }
-.agv-page ::v-deep .el-form-item { margin-bottom: 5px; }
-.agv-page ::v-deep .el-form-item__label { font-size: 13px; line-height: 30px; color: #aeb9c7; }
-.agv-page ::v-deep .el-form-item__content { line-height: 30px; }
+.agv-page ::v-deep .el-form-item { margin-bottom: 3px; }
+.agv-page ::v-deep .el-form-item__label { font-size: 13px; line-height: 26px; color: #aeb9c7; }
+.agv-page ::v-deep .el-form-item__content { line-height: 26px; }
 .agv-page ::v-deep .el-input__inner {
   font-size: 13px;
   background: #0c121b;
@@ -932,12 +1123,12 @@ export default {
 }
 
 /* 实时状态 */
-.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; align-content: start; gap: 6px; }
+.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; align-content: start; gap: 4px; }
 .status-item {
-  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
   background: rgba(0, 229, 255, .05);
   border: 1px solid rgba(0, 229, 255, .10);
-  border-radius: 6px; padding: 5px 7px;
+  border-radius: 6px; padding: 3px 6px;
 }
 .status-item .k { font-size: 12px; color: #8fa0b3; }
 .status-item .v { font-size: 13px; font-weight: 600; color: #eaf3fc; }
@@ -948,9 +1139,29 @@ export default {
 .station-cfg { display: flex; align-items: center; gap: 6px; font-weight: normal; }
 .station-cfg .el-input-number { width: 78px; }
 
-/* 运动控制 */
+/* AGV 控制 */
 .card-move ::v-deep .el-card__header { padding: 8px 12px; }
 .card-move ::v-deep .el-card__body { padding: 10px 12px 12px; }
-.station-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.station-btns .el-button { min-width: 80px; font-weight: 600; }
+.agv-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.agv-btns .el-button { min-width: 120px; font-weight: 600; }
+
+/* 机械臂 + 工作流合并卡片 */
+.card-robot ::v-deep .el-card__header { padding: 6px 12px; }
+.card-robot ::v-deep .el-card__body { padding: 6px 12px 8px; }
+.robot-row { display: flex; flex-direction: column; gap: 4px; }
+.robot-section { display: flex; flex-direction: column; gap: 4px; }
+.section-title { font-size: 13px; font-weight: 600; color: #aeb9c7; }
+.robot-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.robot-btns .el-button { font-size: 12px; padding: 5px 8px; }
+
+/* 工作流控制 */
+.card-workflow ::v-deep .el-card__header { padding: 8px 12px; }
+.card-workflow ::v-deep .el-card__body { padding: 10px 12px 12px; }
+.workflow-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.workflow-btns .el-button { font-size: 12px; padding: 5px 10px; }
+
+/* 左侧滚动条 */
+.area-left::-webkit-scrollbar { width: 4px; }
+.area-left::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, .2); border-radius: 2px; }
+.area-left::-webkit-scrollbar-track { background: transparent; }
 </style>
