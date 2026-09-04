@@ -120,7 +120,7 @@ export default {
     return {
       portName: '',
       ports: [],
-      statusSource: null,
+      statusPollTimer: null,
       connected: false,
       connecting: false,
       stationLoading: 1,
@@ -182,10 +182,10 @@ export default {
     this.initAgv();
     this.loadPorts();
     this.fetchStatus();
-    this.openSse();
+    this.startStatusPolling();
   },
   beforeDestroy() {
-    this.closeSse();
+    this.stopStatusPolling();
     this.disposeAgv();
   },
   methods: {
@@ -237,18 +237,18 @@ export default {
         }
       } catch (e) { /* 后端未启动 */ }
     },
-    openSse() {
-      if (!window.EventSource || this.statusSource) return;
-      this.statusSource = new EventSource('api/agv/status/stream');
-      this.statusSource.addEventListener('status', e => {
-        try { this.handleStatus(JSON.parse(e.data)); } catch (err) { /* ignore */ }
-      });
-      this.statusSource.onerror = () => { /* EventSource 自动重连 */ };
+    startStatusPolling() {
+      this.stopStatusPolling();
+      this.statusPollTimer = setInterval(() => {
+        if (this.connected) {
+          this.fetchStatus();
+        }
+      }, 1000);
     },
-    closeSse() {
-      if (this.statusSource) {
-        this.statusSource.close();
-        this.statusSource = null;
+    stopStatusPolling() {
+      if (this.statusPollTimer) {
+        clearInterval(this.statusPollTimer);
+        this.statusPollTimer = null;
       }
     },
 
@@ -262,7 +262,7 @@ export default {
         const res = await axios.post('api/agv/connect', { portName: this.portName });
         if (res.data.code === 200) {
           this.connected = true;
-          this.openSse();
+          this.startStatusPolling();
           this.$message.success('串口已连接');
         } else {
           this.$message.error(res.data.message || '连接失败');
@@ -280,24 +280,7 @@ export default {
       this.connected = false;
       this.status = null;
       this.lastUpdate = '';
-    },
-
-    handleStatus(obj) {
-      if (!obj) return;
-      if (obj.connected === false) {
-        this.connected = false;
-        this.status = null;
-        return;
-      }
-      this.connected = true;
-      if (obj.portName) this.portName = obj.portName;
-      if (obj.battery === undefined) return;
-      this.status = obj;
-      if (obj.mode !== undefined) this.agvMode = obj.mode;
-      this.lastUpdate = new Date().toLocaleTimeString();
-      if (this.pendingStation !== null && obj.arriveStop === 1 && obj.currentStation === this.pendingStation) {
-        this.completeStep(this.pendingStep);
-      }
+      this.stopStatusPolling();
     },
 
     async sendCmd(sub, p1, p2) {

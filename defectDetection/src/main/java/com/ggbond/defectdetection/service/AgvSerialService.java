@@ -222,7 +222,7 @@ public class AgvSerialService {
     }
 
     public boolean sendQuery() {
-        // 如果正在发送指令，跳过本次轮询
+        // 如果正在发送指令,跳过本次轮询
         if (sendingCommand.get()) return false;
         // 轮询前也清空缓冲区
         SerialPort p = port;
@@ -363,17 +363,26 @@ public class AgvSerialService {
     public SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(0L);
         emitters.add(emitter);
-        emitter.onCompletion(() -> emitters.remove(emitter));
+        log.info("[AGV] SSE 订阅者已添加, 当前订阅者数量: {}", emitters.size());
+        emitter.onCompletion(() -> {
+            emitters.remove(emitter);
+            log.info("[AGV] SSE 订阅者完成, 剩余数量: {}", emitters.size());
+        });
         emitter.onTimeout(() -> {
             emitters.remove(emitter);
             emitter.complete();
+            log.info("[AGV] SSE 订阅者超时, 剩余数量: {}", emitters.size());
         });
-        emitter.onError(ex -> emitters.remove(emitter));
+        emitter.onError(ex -> {
+            emitters.remove(emitter);
+            log.info("[AGV] SSE 订阅者错误: {}, 剩余数量: {}", ex.getMessage(), emitters.size());
+        });
         try {
             Map<String, Object> hello = new LinkedHashMap<>();
             hello.put("connected", isConnected());
             hello.put("portName", portName);
             emitter.send(SseEmitter.event().name("status").data(hello));
+            log.info("[AGV] SSE 初始消息已发送");
         } catch (Exception e) {
             log.warn("SSE 初始状态推送失败：{}", e.getMessage());
         }
@@ -381,10 +390,13 @@ public class AgvSerialService {
     }
 
     private void broadcast(Map<String, Object> payload) {
+        log.info("[AGV] 广播状态数据, 订阅者数量: {}, 数据: {}", emitters.size(), payload);
         for (SseEmitter e : emitters) {
             try {
                 e.send(SseEmitter.event().name("status").data(payload));
+                log.info("[AGV] 状态数据已发送");
             } catch (Exception ex) {
+                log.warn("[AGV] 发送状态数据失败: {}, 移除订阅者", ex.getMessage());
                 emitters.remove(e);
                 e.complete();
             }
