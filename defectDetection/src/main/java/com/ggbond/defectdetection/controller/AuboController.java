@@ -7,8 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * AUBO 机械臂控制接口（方案A：TCP 发送 Lua 脚本）
@@ -20,16 +18,6 @@ public class AuboController {
 
     @Autowired
     private AuboRobotService auboRobotService;
-
-    /** 扫描任务线程池 */
-    private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "aubo-scan-thread");
-        t.setDaemon(true);
-        return t;
-    });
-
-    /** 最近一次扫描日志 */
-    private volatile String lastScanLog = "";
 
     /** 连接机械臂控制器 */
     @PostMapping("/connect")
@@ -155,50 +143,5 @@ public class AuboController {
                 ? Integer.parseInt(String.valueOf(body.get("agvDoIndex"))) : 0;
         boolean ok = auboRobotService.executePhotoWorkflow(agvDoIndex);
         return ok ? Result.success("拍照流程执行完成") : Result.fail("拍照流程执行失败");
-    }
-
-    // ==================== 7 点位扫描 ====================
-
-    /**
-     * 启动 7 点位扫描（异步执行，28 次拍照）
-     * @param body settleMs(稳定等待ms,默认1500), cameraWait(相机等待ms,默认2000)
-     */
-    @PostMapping("/scan/start")
-    public Result startScan(@RequestBody(required = false) Map<String, Object> body) {
-        if (auboRobotService.isScanning()) {
-            return Result.fail("扫描正在运行中，请勿重复启动");
-        }
-        if (!auboRobotService.isConnected()) {
-            return Result.fail("机械臂未连接");
-        }
-
-        int settleMs = body != null && body.containsKey("settleMs")
-                ? Integer.parseInt(String.valueOf(body.get("settleMs"))) : 1500;
-        int cameraWait = body != null && body.containsKey("cameraWait")
-                ? Integer.parseInt(String.valueOf(body.get("cameraWait"))) : 2000;
-
-        scanExecutor.submit(() -> {
-            log.info("[扫描] 开始执行，settleMs={}, cameraWait={}", settleMs, cameraWait);
-            lastScanLog = auboRobotService.executeScanPattern(settleMs, cameraWait);
-            log.info("[扫描] 执行完毕");
-        });
-
-        return Result.success("扫描已启动（共 28 次拍照，预计约 " + (28 * (settleMs + cameraWait) / 1000) + " 秒）");
-    }
-
-    /** 停止扫描 */
-    @PostMapping("/scan/stop")
-    public Result stopScan() {
-        auboRobotService.stopScan();
-        return Result.success("已发送停止信号");
-    }
-
-    /** 扫描状态 */
-    @GetMapping("/scan/status")
-    public Result scanStatus() {
-        return Result.success("查询成功", Map.of(
-                "scanning", auboRobotService.isScanning(),
-                "lastLog", lastScanLog != null ? lastScanLog : ""
-        ));
     }
 }

@@ -26,6 +26,14 @@
             <el-form-item label="波特率">
               <span class="muted">9600，8 数据位，1 停止位，无校验（后端托管串口）</span>
             </el-form-item>
+            <el-form-item label="检测结果">
+              <el-select v-model="inspectResult" size="small" style="width: 160px;">
+                <el-option label="合格（走合格线）" value="ok"></el-option>
+                <el-option label="划痕（走划痕线）" value="scratch"></el-option>
+                <el-option label="裂痕（走裂痕线）" value="crack"></el-option>
+              </el-select>
+              <div class="muted hint">分拣时 AGV 按此结果行驶到对应路线（模拟）</div>
+            </el-form-item>
             <el-form-item label="站号配置">
               <div class="station-cfg">
                 <span class="muted">上料区</span>
@@ -61,6 +69,8 @@
               <div class="robot-btns">
                 <el-button v-if="!robotConnected" type="primary" size="mini" icon="el-icon-link" :loading="robotConnecting" @click="connectRobot">连接</el-button>
                 <el-button v-else type="danger" size="mini" icon="el-icon-switch-button" @click="disconnectRobot">断开</el-button>
+                <el-button size="mini" type="success" :disabled="!robotConnected" @click="setDO(0, true)">DO0开</el-button>
+                <el-button size="mini" type="warning" :disabled="!robotConnected" @click="setDO(0, false)">DO0关</el-button>
                 <el-button size="mini" :disabled="!robotConnected" @click="robotMoveHome">回原位</el-button>
                 <el-button size="mini" :disabled="!robotConnected" @click="robotMovePhoto">拍照位</el-button>
                 <el-button size="mini" type="danger" :disabled="!robotConnected" @click="robotStop">急停</el-button>
@@ -69,46 +79,13 @@
             <el-divider style="margin: 6px 0;"></el-divider>
             <div class="robot-section">
               <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="mini" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
-              <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 28次扫描 → AGV→3号站</div>
+              <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 发信号→机械臂 → 完成信号→AGV→3号站</div>
               <div class="workflow-btns">
                 <el-button type="success" size="mini" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
                 <el-button type="warning" size="mini" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
                 <el-button size="mini" @click="resetWorkflow">重置</el-button>
               </div>
             </div>
-          </div>
-        </el-card>
-
-        <!-- 7 点位扫描控制 -->
-        <el-card shadow="hover" class="card-scan">
-          <div slot="header" class="card-header">
-            <span>7 点位扫描</span>
-            <el-tag :type="scanning ? 'warning' : 'info'" size="mini">{{ scanning ? '扫描中...' : '待命' }}</el-tag>
-          </div>
-          <div class="scan-info muted hint" style="margin-bottom:6px;">
-            左→右→左→右，4 轮共 28 次拍照
-          </div>
-          <div class="scan-params" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">稳定等待(ms)</span>
-              <el-input-number v-model="scanSettleMs" :min="500" :max="5000" :step="100" size="mini" style="width:100%;"></el-input-number>
-            </div>
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">相机等待(ms)</span>
-              <el-input-number v-model="scanCameraWait" :min="500" :max="10000" :step="500" size="mini" style="width:100%;"></el-input-number>
-            </div>
-          </div>
-          <div class="scan-btns">
-            <el-button type="success" size="small" :disabled="!robotConnected || scanning" @click="startScan">
-              <i class="el-icon-video-play"></i> 启动扫描
-            </el-button>
-            <el-button type="danger" size="small" :disabled="!scanning" @click="stopScan">
-              <i class="el-icon-video-pause"></i> 停止
-            </el-button>
-          </div>
-          <div v-if="scanLog" class="scan-log" style="margin-top:8px;">
-            <div class="muted" style="font-size:11px;margin-bottom:4px;">扫描日志：</div>
-            <pre class="scan-log-text">{{ scanLog }}</pre>
           </div>
         </el-card>
 
@@ -194,12 +171,6 @@ export default {
       lastUpdate: '',
       agvMode: null,  // AGV当前工作模式：0=普通(基础) 1=站点编辑 2=站点召回
       agvSpeed: 500,  // AGV设定速度(米/小时)
-      // 扫描控制
-      scanning: false,
-      scanSettleMs: 1500,
-      scanCameraWait: 2000,
-      scanLog: '',
-      scanPollTimer: null,
       // 机械臂控制数据
       robotConnected: false,
       robotConnecting: false,
@@ -231,8 +202,9 @@ export default {
       const map = {
         IDLE: '空闲',
         AGV_TO_STATION6: 'AGV→6号站',
-        SCANNING: '28点位扫描中',
-        AGV_TO_STATION3: '扫描完成→AGV→3号站',
+        SIGNAL_ROBOT: '已发信号→等待机械臂响应',
+        WAIT_ROBOT_DONE: '机械臂动作中→等待完成信号',
+        AGV_TO_STATION3: '收到完成信号→AGV→3号站',
         COMPLETED: '已完成',
         ERROR: '异常'
       };
@@ -242,7 +214,8 @@ export default {
       const map = {
         IDLE: 'info',
         AGV_TO_STATION6: '',
-        SCANNING: 'warning',
+        SIGNAL_ROBOT: 'warning',
+        WAIT_ROBOT_DONE: 'warning',
         AGV_TO_STATION3: '',
         COMPLETED: 'success',
         ERROR: 'danger'
@@ -277,7 +250,6 @@ export default {
   beforeDestroy() {
     this.stopStatusPolling();
     this.stopWorkflowPolling();
-    this.stopScanPolling();
     this.disposeAgv();
   },
   methods: {
@@ -676,56 +648,6 @@ export default {
         }
       } catch (e) { /* ignore */ }
     },
-
-    // ==================== 扫描控制 ====================
-    async startScan() {
-      try {
-        const res = await axios.post('api/aubo/scan/start', {
-          settleMs: this.scanSettleMs,
-          cameraWait: this.scanCameraWait
-        });
-        if (res.data.code === 200) {
-          this.$message.success(res.data.message);
-          this.scanning = true;
-          this.scanLog = '';
-          this.startScanPolling();
-        } else {
-          this.$message.error(res.data.message);
-        }
-      } catch (e) {
-        this.$message.error('启动扫描失败');
-      }
-    },
-    async stopScan() {
-      try {
-        await axios.post('api/aubo/scan/stop');
-        this.$message.success('已发送停止信号');
-      } catch (e) { /* ignore */ }
-    },
-    startScanPolling() {
-      this.stopScanPolling();
-      this.scanPollTimer = setInterval(async () => {
-        try {
-          const res = await axios.get('api/aubo/scan/status');
-          if (res.data.code === 200 && res.data.data) {
-            this.scanning = res.data.data.scanning;
-            if (res.data.data.lastLog) {
-              this.scanLog = res.data.data.lastLog;
-            }
-            if (!this.scanning) {
-              this.stopScanPolling();
-              this.$message.success('扫描已完成');
-            }
-          }
-        } catch (e) { /* ignore */ }
-      }, 2000);
-    },
-    stopScanPolling() {
-      if (this.scanPollTimer) {
-        clearInterval(this.scanPollTimer);
-        this.scanPollTimer = null;
-      }
-    },
     resetFlow() {
       this.steps.forEach(s => { s.state = 'pending'; });
       this.pendingStep = -1;
@@ -1076,9 +998,9 @@ export default {
 <style scoped>
 .agv-page {
   padding: 10px;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 120px);
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   background-color: #0c1017;
   background-image:
     radial-gradient(ellipse at 50% -10%, rgba(0, 114, 179, .28) 0%, transparent 60%),
@@ -1096,14 +1018,14 @@ export default {
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "left flow";
 }
-.area-left { grid-area: left; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+.area-left { grid-area: left; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .card-flow { grid-area: flow; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .card-flow ::v-deep .el-card__body { flex: 1; min-height: 0; overflow: hidden; }
 .card-status { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .card-status ::v-deep .el-card__body { flex: 1; overflow: auto; }
 
-.area-left ::v-deep .el-card__header { padding: 5px 12px; }
-.area-left ::v-deep .el-card__body { padding: 5px 12px 6px; }
+.area-left ::v-deep .el-card__header { padding: 6px 12px; }
+.area-left ::v-deep .el-card__body { padding: 6px 12px 8px; }
 .area-left .card-header { font-size: 14px; }
 .area-left .card-header > span::before { height: 12px; }
 
@@ -1228,8 +1150,8 @@ export default {
 
 /* 机械臂 + 工作流合并卡片 */
 .card-robot ::v-deep .el-card__header { padding: 6px 12px; }
-.card-robot ::v-deep .el-card__body { padding: 8px 12px 10px; }
-.robot-row { display: flex; flex-direction: column; gap: 6px; }
+.card-robot ::v-deep .el-card__body { padding: 6px 12px 8px; }
+.robot-row { display: flex; flex-direction: column; gap: 4px; }
 .robot-section { display: flex; flex-direction: column; gap: 4px; }
 .section-title { font-size: 13px; font-weight: 600; color: #aeb9c7; }
 .robot-btns { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -1240,14 +1162,6 @@ export default {
 .card-workflow ::v-deep .el-card__body { padding: 10px 12px 12px; }
 .workflow-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .workflow-btns .el-button { font-size: 12px; padding: 5px 10px; }
-
-/* 7 点位扫描 */
-.card-scan ::v-deep .el-card__header { padding: 6px 12px; }
-.card-scan ::v-deep .el-card__body { padding: 6px 12px 8px; }
-.scan-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.scan-btns .el-button { font-size: 12px; padding: 5px 10px; }
-.scan-log { max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px; }
-.scan-log-text { margin: 0; font-size: 11px; color: #aeb9c7; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.4; }
 
 /* 左侧滚动条 */
 .area-left::-webkit-scrollbar { width: 4px; }

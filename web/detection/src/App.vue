@@ -27,9 +27,23 @@ export default {
 </script>
 
 <style>
-/* 确保根容器支持定位 */
+/* 全局重置浏览器默认外边距与内边距，彻底消除四周白边与滚动条 */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 确保根容器完全撑满视口 */
 #app {
   position: relative;
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
 }
 </style>

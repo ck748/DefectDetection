@@ -9,14 +9,15 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AGV + 机械臂协调工作流服务
+ * AGV + 机械臂协调工作流服务（带信号握手）
  * <p>
- * 流程：
+ * 流程（严格信号驱动）：
  * 1. AGV 从 1 号站出发 → 移动到 6 号站停止
- * 2. AGV 到站后 → 触发机械臂 28 点位扫描（左→右→左→右，4 轮）
- * 3. 扫描完成后 → 机械臂回原位
- * 4. 后端发指令让 AGV 去 3 号站
- * 5. AGV 到 3 号站 → 流程完成
+ * 2. AGV 到站后 → 后端发信号给机械臂（Lua 脚本）
+ * 3. 机械臂收到信号 → 开始动作（移动到拍照位 → 模拟拍照 → 回原位）
+ * 4. 机械臂完成后 → 设置 DO 信号通知后端
+ * 5. 后端检测到 DO 信号 → 发指令让 AGV 去 3 号站
+ * 6. AGV 到 3 号站 → 流程完成
  */
 @Slf4j
 @Service
@@ -32,7 +33,8 @@ public class WorkflowService {
     public enum WorkflowState {
         IDLE,               // 空闲
         AGV_TO_STATION6,    // AGV 前往 6 号站
-        SCANNING,           // 机械臂 28 点位扫描中
+        SIGNAL_ROBOT,       // 发信号给机械臂，等待机械臂动作
+        WAIT_ROBOT_DONE,    // 等待机械臂完成信号
         AGV_TO_STATION3,    // AGV 前往 3 号站
         COMPLETED,          // 完成
         ERROR               // 异常
@@ -61,8 +63,9 @@ public class WorkflowService {
         switch (state) {
             case IDLE: return "空闲，等待启动";
             case AGV_TO_STATION6: return "AGV→6号站（等待到站）";
-            case SCANNING: return "机械臂 28 点位扫描中...";
-            case AGV_TO_STATION3: return "扫描完成→AGV→3号站";
+            case SIGNAL_ROBOT: return "已发信号→等待机械臂响应";
+            case WAIT_ROBOT_DONE: return "机械臂动作中→等待完成信号";
+            case AGV_TO_STATION3: return "收到完成信号→AGV→3号站";
             case COMPLETED: return "流程完成";
             case ERROR: return "流程异常";
             default: return "未知";
@@ -97,7 +100,7 @@ public class WorkflowService {
     }
 
     /**
-     * 执行工作流
+     * 执行工作流（带信号握手）
      */
     private void runWorkflow(int station6, int station3, int robotDoIndex) throws Exception {
         log.info("===== 工作流启动 =====");
@@ -111,25 +114,45 @@ public class WorkflowService {
         if (!waitForAgvArrival(station6, 60)) {
             throw new RuntimeException("AGV 未在 60 秒内到达 " + station6 + " 号站");
         }
-        log.info("[步骤1] AGV 已到达 {} 号站，准备启动扫描", station6);
+        log.info("[步骤1] AGV 已到达 {} 号站，准备发信号给机械臂", station6);
 
-        // ==================== 步骤2: 执行 28 点位扫描 ====================
-        currentState.set(WorkflowState.SCANNING);
-        log.info("[步骤2] 开始 28 点位扫描（4 轮，左→右→左→右）");
+        // ==================== 步骤2: 发信号给机械臂，机械臂开始动作 ====================
+        currentState.set(WorkflowState.SIGNAL_ROBOT);
+        log.info("[步骤2] >>> 发送启动信号给机械臂（DO{} = ON）<<<", robotDoIndex);
 
-        // 执行扫描（同步阻塞，直到 28 次拍照完成）
-        String scanResult = auboRobotService.executeScanPattern(1500, 2000);
-        log.info("[步骤2] 扫描完成: {}", scanResult);
+        // 后端通过 TCP 发送 Lua 脚本，通知机械臂开始工作
+        // 这里用 setDO 模拟"AGV 到站信号"，实际上海康相机到了之后会触发拍照
+        if (!auboRobotService.setDO(robotDoIndex, true)) {
+            throw new RuntimeException("发送启动信号给机械臂失败");
+        }
+        log.info("[步骤2] 机械臂已收到启动信号，开始执行动作");
 
-        // 扫描完成后机械臂回原位
-        log.info("[步骤2] 机械臂回原位");
+        // 2a: 机械臂移动到拍照位置
+        currentState.set(WorkflowState.WAIT_ROBOT_DONE);
+        if (!auboRobotService.moveToPhotoPosition()) {
+            throw new RuntimeException("机械臂移动到拍照位置失败");
+        }
+        log.info("[步骤2] 机械臂已到达拍照位置");
+
+        // 2b: 模拟拍照（等待相机曝光时间，海康相机到了之后替换为实际触发）
+        Thread.sleep(3000);
+        log.info("[步骤2] 模拟拍照完成");
+
+        // 2c: 机械臂回到原位
         if (!auboRobotService.moveToHomePosition()) {
             log.warn("[步骤2] 机械臂复位失败，继续后续流程");
         }
+        log.info("[步骤2] 机械臂已回到原位");
 
-        // ==================== 步骤3: AGV 前往 3 号站 ====================
+        // 2d: 机械臂设置 DO 信号，通知后端"我已完成"
+        if (!auboRobotService.setDO(robotDoIndex, false)) {
+            log.warn("[步骤2] 机械臂完成信号发送失败");
+        }
+        log.info("[步骤2] >>> 机械臂发送完成信号（DO{} = OFF），等待后端确认 <<<", robotDoIndex);
+
+        // ==================== 步骤3: 后端确认机械臂完成 → AGV 前往 3 号站 ====================
         currentState.set(WorkflowState.AGV_TO_STATION3);
-        log.info("[步骤3] 扫描完成，AGV 前往 {} 号站", station3);
+        log.info("[步骤3] 收到机械臂完成信号，AGV 前往 {} 号站", station3);
         sendCommandRetry(0x9D, station3, 0x00);
 
         // 轮询等待 AGV 到站

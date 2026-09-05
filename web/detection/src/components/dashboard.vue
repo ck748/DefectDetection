@@ -101,38 +101,10 @@
       <!-- 底部统计信息 & AI智能工艺研判 -->
       <div class="stats-section">
         <el-card class="stats-card" shadow="hover">
-          <div slot="header" class="card-header stats-header-container" style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important;">
+          <div slot="header" class="card-header stats-header-container">
             <div class="stats-header-left" style="display: flex; align-items: center; gap: 8px;">
               <i class="el-icon-data-analysis header-icon" style="color: #409EFF; font-size: 16px;"></i>
-              <span class="stats-header-title" style="font-weight: 600; color: #303133; font-size: 16px;">统计信息与决策研判</span>
-            </div>
-
-            <!-- 头部右侧：严格横向单行排列的 AI 智能决策胶囊卡片 -->
-            <div class="ai-decision-pill" v-if="qwenAdvice || defectList.length > 0" style="display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important; background: #ffffff !important; border: 1px solid #dcdfe6 !important; padding: 4px 12px !important; border-radius: 20px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;">
-              <div class="pill-badge-label" style="display: flex; align-items: center; gap: 4px; color: #409EFF; font-weight: 600; font-size: 13px;">
-                <i class="el-icon-cpu"></i>
-                <span>AI智能决策</span>
-              </div>
-              <div class="pill-tag-wrap" style="display: flex; align-items: center;">
-                <el-tag :type="getSeverityTagType(qwenAdvice ? qwenAdvice['最严重等级'] : '')" size="small" effect="dark" style="border-radius: 4px;">
-                  {{ qwenAdvice ? qwenAdvice['最严重等级'] : '待研判' }}
-                </el-tag>
-              </div>
-              <div class="pill-text" :class="getSuggestionClass(qwenAdvice ? qwenAdvice['最终处置建议'] : '')" style="font-size: 13px; font-weight: 500; color: #606266; white-space: nowrap;">
-                {{ qwenAdvice ? qwenAdvice['最终处置建议'] : '正在实时综合研判...' }}
-              </div>
-            </div>
-            <div class="ai-decision-pill pass" v-else style="display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important; background: #f0f9eb !important; border: 1px solid #c2e7b0 !important; padding: 4px 12px !important; border-radius: 20px !important; box-shadow: 0 2px 8px rgba(103,194,58,0.1) !important;">
-              <div class="pill-badge-label pass" style="display: flex; align-items: center; gap: 4px; color: #67C23A; font-weight: 600; font-size: 13px;">
-                <i class="el-icon-circle-check"></i>
-                <span>AI智能决策</span>
-              </div>
-              <div class="pill-tag-wrap" style="display: flex; align-items: center;">
-                <el-tag type="success" size="small" effect="dark" style="border-radius: 4px;">合格放行</el-tag>
-              </div>
-              <div class="pill-text suggestion-pass" style="font-size: 13px; font-weight: 500; color: #529b2e; white-space: nowrap;">
-                工件状态良好，未检出缺陷，建议直接放行
-              </div>
+              <span class="stats-header-title" style="font-weight: 600; color: #303133; font-size: 16px;">统计信息</span>
             </div>
           </div>
           <div class="table-container">

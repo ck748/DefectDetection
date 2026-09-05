@@ -33,6 +33,10 @@ public class WarnController {
 
     @Autowired
     WarningsService warningsService;
+
+    @Autowired
+    com.ggbond.defectdetection.service.DetectLogService detectLogService;
+
     @GetMapping("/warnings/load")
     public Result loadInfoHandler(HttpSession session){
 
@@ -56,7 +60,10 @@ public class WarnController {
         WarningsDto warningsDto=new WarningsDto();
         warningsDto.generateFromManager(manager);
 
-        warningsDto.setWarningsSum(Math.toIntExact(warningsService.count()));
+        long detectLogCount = detectLogService != null ? detectLogService.count() : 0;
+        long warningsCount = warningsService.count();
+        long totalCount = Math.max(detectLogCount, warningsCount);
+        warningsDto.setWarningsSum(Math.toIntExact(totalCount));
 
         List<Warnings> warningsList=warningsService.list();
         warningsDto.setWarningsList(warningsList);

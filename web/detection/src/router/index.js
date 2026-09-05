@@ -42,9 +42,12 @@ const routes = [
             // 国赛2.0 升级核心页面
             { path: '/omni-inspection', name: 'OmniInspection', meta: { name: '360°全周质检', isFullLayout: true }, component: () => import('../components/OmniInspection.vue') },
             { path: '/feature-checklist', name: 'FeatureChecklist', meta: { name: '功能核对' }, component: () => import('../components/featureChecklist.vue') },
+            { path: '/six-s-manager', name: 'SixSManager', meta: { name: '6S管家' }, component: () => import('../components/SixSManager.vue') },
 
             // 同学新增页面：AGV控制
             { path: '/agv', name: 'Agv', meta: { name: 'AGV控制' }, component: () => import('../components/agvControl.vue') },
+            // 设备管理页面
+            { path: '/device-manager', name: 'DeviceManager', meta: { name: '设备管理' }, component: () => import('../components/deviceManager.vue') },
         ]
     }
 ]

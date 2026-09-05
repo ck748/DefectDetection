@@ -105,93 +105,17 @@ public class DetectInfoController {
         if (params == null || !params.containsKey("id")) {
             return Result.fail("图片ID参数缺失");
         }
-        String id = String.valueOf(params.get("id"));
+        Object idObj = params.get("id");
+        Integer id = null;
+        if (idObj instanceof Number) {
+            id = ((Number) idObj).intValue();
+        } else if (idObj != null) {
+            try {
+                id = Integer.parseInt(idObj.toString());
+            } catch (NumberFormatException ignored) {}
+        }
         boolean deleteSourceFile = Boolean.TRUE.equals(params.get("deleteSourceFile"));
         return cameraFolderWatchService.deleteImage(id, deleteSourceFile);
-    }
-
-    /**
-     * 视频/多媒体流式播放接口，完整支持 HTTP 206 Range 分片传输
-     */
-    @GetMapping("/cameraWatch/mediaStream")
-    public void mediaStreamHandler(@RequestParam("fileName") String fileName,
-                                  jakarta.servlet.http.HttpServletRequest request,
-                                  jakarta.servlet.http.HttpServletResponse response) {
-        try {
-            java.io.File file = new java.io.File("defectDetection/defectDetection/uploads/images", fileName);
-            if (!file.exists()) {
-                file = new java.io.File("defectDetection/uploads/images", fileName);
-            }
-            if (!file.exists()) {
-                file = new java.io.File("uploads/images", fileName);
-            }
-            if (!file.exists()) {
-                // 如果是绝对路径或者直接在当前目录下
-                file = new java.io.File(fileName);
-            }
-            if (!file.exists()) {
-                log.warn("视频流文件不存在: {}", fileName);
-                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
-
-            long fileLength = file.length();
-            String range = request.getHeader("Range");
-
-            String mimeType = "video/mp4";
-            String lower = fileName.toLowerCase();
-            if (lower.endsWith(".webm")) mimeType = "video/webm";
-            else if (lower.endsWith(".ogg")) mimeType = "video/ogg";
-            else if (lower.endsWith(".avi")) mimeType = "video/x-msvideo";
-            else if (lower.endsWith(".mov")) mimeType = "video/quicktime";
-
-            response.setContentType(mimeType);
-            response.setHeader("Accept-Ranges", "bytes");
-
-            if (range == null) {
-                response.setHeader("Content-Length", String.valueOf(fileLength));
-                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
-                try (java.io.InputStream in = new java.io.FileInputStream(file);
-                     java.io.OutputStream out = response.getOutputStream()) {
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, len);
-                    }
-                }
-            } else {
-                long start = 0;
-                long end = fileLength - 1;
-                String[] parts = range.replace("bytes=", "").split("-");
-                if (parts.length > 0 && !parts[0].isEmpty()) {
-                    start = Long.parseLong(parts[0]);
-                }
-                if (parts.length > 1 && !parts[1].isEmpty()) {
-                    end = Long.parseLong(parts[1]);
-                }
-                long contentLength = end - start + 1;
-
-                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_PARTIAL_CONTENT);
-                response.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + fileLength);
-                response.setHeader("Content-Length", String.valueOf(contentLength));
-
-                try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "r");
-                     java.io.OutputStream out = response.getOutputStream()) {
-                    raf.seek(start);
-                    byte[] buffer = new byte[8192];
-                    long bytesToRead = contentLength;
-                    while (bytesToRead > 0) {
-                        int readLen = (int) Math.min(buffer.length, bytesToRead);
-                        int read = raf.read(buffer, 0, readLen);
-                        if (read == -1) break;
-                        out.write(buffer, 0, read);
-                        bytesToRead -= read;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("流式读取视频异常:", e);
-        }
     }
 
 
@@ -283,6 +207,16 @@ public class DetectInfoController {
         lqw.eq(Defection::getDetectId,id);
 
         List<Defection> defectionList=defectionService.list(lqw);
+        if (defectionList != null) {
+            for (Defection d : defectionList) {
+                if (d.getCategory() != null) {
+                    d.setCategory(d.getCategory().replace("裂痕", "裂纹"));
+                }
+                if (d.getRepairSuggestion() != null) {
+                    d.setRepairSuggestion(d.getRepairSuggestion().replace("裂痕", "裂纹"));
+                }
+            }
+        }
 
         DetectResDto detectResDto=DetectResDto.generateFromFather(detectLog) ;
         detectResDto.setDefections(defectionList);
