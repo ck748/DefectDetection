@@ -176,17 +176,17 @@ export default {
       robotConnecting: false,
       workflowState: 'IDLE',
       workflowPollTimer: null,
-      // 只使用 elbow(旋转)和 cameraX(摄像头左右平移),其余保持 0
+      // 机械臂控制数据
+      // 每一节均支持: 转台左右 / 肘部前伸下压与左右 / 头部下压与左右 / 相机前伸与左右平移
       robotAngles: {
-        turntable: 0,
-        elbow: 0,
-        headA: 0,
-        headB: 0,
-        headC: 0,
-        headD: 0,
-        headE: 0,
-        cameraX: 0,
-        cameraOut: 0
+        turntableYaw: 0,   // 转台左右(绕 Y)
+        elbowPitch: 0,     // 肘部向前/下压(绕 X, 负值为前压)
+        elbowYaw: 0,       // 肘部左右(绕 Y)
+        elbowRoll: 0,      // 肘部侧倾(绕 Z)
+        headPitch: 0,      // 头部低头/下压(绕 X, 负值为下压)
+        headYaw: 0,        // 头部左右(绕 Y)
+        cameraX: 0,        // 相机左右平移(米)
+        cameraOut: 0       // 相机向前伸出(米)
       }
     };
   },
@@ -426,8 +426,8 @@ export default {
           // "分拣已完成"：按检测结果走 合格线(直行) / 划痕线 / 裂痕线
           if (this.inspectResult === 'scratch') {
             const tl = gsap.timeline();
-            tl.to(pos, { x: 3.8, z: 2.0, duration: 1.5, ease: 'power1.inOut' })
-              .to(pos, { x: 7.0, z: 2.3, duration: 1.6, ease: 'power1.inOut' });
+            tl.to(pos, { x: 3.8, z: 0.15, duration: 1.5, ease: 'power1.inOut' })
+              .to(pos, { x: 7.0, z: -0.35, duration: 1.8, ease: 'power1.inOut' });
           } else if (this.inspectResult === 'crack') {
             const tl = gsap.timeline();
             tl.to(pos, { x: 3.8, z: 2.85, duration: 1.5, ease: 'power1.inOut' })
@@ -466,11 +466,10 @@ export default {
     },
 
     /**
-     * “检测中”扫描控制器 - 可随时重触发。
-     * 动作(只驱动 elbow + cameraX 两个真实关节)：
-     *   1) 肘部左右俯身(elbow: -28°~+28°)
-     *   2) 相机挂点左右平移(cameraX: -0.18~+0.18 米)
-     *   3) 在 左/中/右 三个站位触发拍照事件
+     * "检测中"扫描控制器 - 可随时重触发。
+     * 流程(每次转到站位只下压一次):
+     *   转台转到 左/中/右 站位 → 肘部向前下压(elbowPitch) + 头部低头(headPitch)
+     *   + 相机伸出(cameraOut) → 拍照 → 抬起复位 → 转下一站位
      * @param {boolean} loop
      */
     runInfiniteInspectionAnimation(loop = false) {
@@ -484,28 +483,39 @@ export default {
           onComplete: () => { if (this._scanLoop && this._scanning) run(); }
         });
         this._scanTl = tl;
-
+    
         // 0) 复位到初始姿态
         tl.to(this.robotAngles, {
-          turntable: 0, elbow: 0, headA: 0, headB: 0, headC: 0, headD: 0, headE: 0,
-          duration: 0.5, ease: 'power2.out'
+          turntableYaw: 0, elbowPitch: 0, elbowYaw: 0, elbowRoll: 0,
+          headPitch: 0, headYaw: 0, cameraX: 0, cameraOut: 0,
+          duration: 0.4, ease: 'power2.out'
         })
-        // 1) 向左俯身 + 相机左移 → 左侧站位拍照
-        .to(this.robotAngles, { elbow: -28, cameraX: -0.18, duration: 1.4, ease: 'power1.inOut' })
+        // 1) 转台转到左侧站位
+        .to(this.robotAngles, { turntableYaw: 28, cameraX: -0.15, duration: 0.8, ease: 'power1.inOut' })
+        // 2) 下压一次 → 左侧拍照
+        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
         .add(() => this.onPhoto('left'))
-        .to({}, { duration: 0.8 })
-        // 2) 扫回中间 → 中间站位拍照
-        .to(this.robotAngles, { elbow: -6, cameraX: 0, duration: 1.0, ease: 'power1.inOut' })
+        .to({}, { duration: 0.5 })
+        // 3) 抬起复位
+        .to(this.robotAngles, { elbowPitch: 0, headPitch: 0, cameraOut: 0, duration: 0.7, ease: 'power2.inOut' })
+        // 4) 转台回中间
+        .to(this.robotAngles, { turntableYaw: 0, cameraX: 0, duration: 0.7, ease: 'power1.inOut' })
+        // 5) 下压一次 → 中间拍照
+        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
         .add(() => this.onPhoto('mid'))
-        .to({}, { duration: 0.8 })
-        // 3) 向右俯身 + 相机右移 → 右侧站位拍照
-        .to(this.robotAngles, { elbow: 28, cameraX: 0.18, duration: 1.2, ease: 'power1.inOut' })
+        .to({}, { duration: 0.5 })
+        // 6) 抬起复位
+        .to(this.robotAngles, { elbowPitch: 0, headPitch: 0, cameraOut: 0, duration: 0.7, ease: 'power2.inOut' })
+        // 7) 转台转到右侧站位
+        .to(this.robotAngles, { turntableYaw: -28, cameraX: 0.15, duration: 0.7, ease: 'power1.inOut' })
+        // 8) 下压一次 → 右侧拍照
+        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
         .add(() => this.onPhoto('right'))
-        .to({}, { duration: 0.8 })
-        // 4) 回中复位, 准备下一轮
+        .to({}, { duration: 0.5 })
+        // 9) 抬起复位并回中, 准备下一轮
         .to(this.robotAngles, {
-          turntable: 0, elbow: 0, cameraX: 0,
-          duration: 1.4, ease: 'power2.inOut'
+          turntableYaw: 0, elbowPitch: 0, headPitch: 0, cameraX: 0, cameraOut: 0,
+          duration: 1.0, ease: 'power2.inOut'
         });
       };
       run();
@@ -526,8 +536,8 @@ export default {
       }
       gsap.killTweensOf(this.robotAngles);
       Object.assign(this.robotAngles, {
-        turntable: 0, elbow: 0, cameraX: 0,
-        headA: 0, headB: 0, headC: 0, headD: 0, headE: 0
+        turntableYaw: 0, elbowPitch: 0, elbowYaw: 0, elbowRoll: 0,
+        headPitch: 0, headYaw: 0, cameraX: 0, cameraOut: 0
       });
     },
 
@@ -680,8 +690,8 @@ export default {
       dirLight.position.set(5, 10, 7.5);
       scene.add(dirLight);
 
-      // 1. 添加实体地面 (调亮地面颜色)
-      const floorGeo = new THREE.PlaneGeometry(20, 10);
+      // 1. 添加统一颜色的实体地面(放大铺满整个可视区域, 避免露出外围深色地面)
+      const floorGeo = new THREE.PlaneGeometry(60, 60);
       const floorMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.7 }); // 改为亮灰蓝色
       const floor = new THREE.Mesh(floorGeo, floorMat);
       floor.rotation.x = -Math.PI / 2;
@@ -696,11 +706,12 @@ export default {
       scene.add(this.buildIndustrialScene());
 
       // 3. 添加 AGV 运行轨迹：上料/检测共用引导线 → 卸货区分 合格线 / 划痕线 / 裂痕线
-      // 履带主体
-      const trackGeo = new THREE.BoxGeometry(16, 0.02, 0.4); 
-      const trackMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+      // 履带主体(亮蓝色地板轨道, 不受光照影响)
+      // 缩短总长，使其不过度超出。设长度为 15.5，中心点 x 向左平移以匹配缩短量。
+      const trackGeo = new THREE.BoxGeometry(15.5, 0.02, 0.4); 
+      const trackMat = new THREE.MeshBasicMaterial({ color: 0x42a5f5 });
       const track = new THREE.Mesh(trackGeo, trackMat);
-      track.position.set(0, 0.02, 1.5);
+      track.position.set(-0.45, 0.02, 1.5);
       scene.add(track);
 
       // 放置一段引导线的辅助函数
@@ -715,17 +726,18 @@ export default {
       };
       // 共用引导线: 上料区(X:-7) → 检测区(X:0) → 分岔口(X:1.2)
       tape(8.2, 0xffd700, -2.9, 1.5);
-      // 合格线(绿): 分岔口直行 → 合格区(X:7)
-      tape(5.8, 0x67c23a, 4.1, 1.5);
-      // 划痕线/裂痕线: 分岔口分别拐向两条支线, 每段下面垫黑色地板轨道条
+      // 合格线(绿): 分岔口直行(X:1.2起点) → 合格区(X:6.5)
+      // 长度 L = 6.5 - 1.2 = 5.3，中心点 = 1.2 + 5.3/2 = 3.85
+      tape(5.3, 0x67c23a, 3.85, 1.5);
+      // 划痕线/裂痕线: 分岔口分别拐向两条支线, 每段下面垫蓝色地板轨道条
       const laneSeg = (x1, z1, x2, z2, color) => {
         const dx = x2 - x1, dz = z2 - z1;
-        const len = Math.sqrt(dx * dx + dz * dz);
+        const len = Math.sqrt(dx * dx + dz * dz) + 0.15; // 增加长度以防止拼接处留空
         const ax = -Math.atan2(dz, dx);
-        // 黑色地板轨道
+        // 亮蓝色地板轨道(不受光照影响)
         const base = new THREE.Mesh(
           new THREE.BoxGeometry(len, 0.02, 0.55),
-          new THREE.MeshStandardMaterial({ color: 0x1d242e, roughness: 0.9 })
+          new THREE.MeshBasicMaterial({ color: 0x42a5f5 })
         );
         base.position.set((x1 + x2) / 2, 0.02, (z1 + z2) / 2);
         base.rotation.y = ax;
@@ -733,14 +745,14 @@ export default {
         // 上面的引导色带
         tape(len, color, (x1 + x2) / 2, (z1 + z2) / 2, ax);
       };
-      // 划痕线(橙)
-      laneSeg(1.2, 1.5, 3.8, 2.0, 0xe6a23c);
-      laneSeg(3.8, 2.0, 7.0, 2.3, 0xe6a23c);
-      // 裂痕线(红)
+      // 划痕线(橙) - 向左分支
+      laneSeg(1.2, 1.5, 3.8, 0.15, 0xe6a23c);
+      laneSeg(3.8, 0.15, 7.0, -0.35, 0xe6a23c);
+      // 裂痕线(红) - 向右分支
       laneSeg(1.2, 1.5, 3.8, 2.85, 0xf56c6c);
       laneSeg(3.8, 2.85, 7.0, 3.35, 0xf56c6c);
 
-      // 末端卸货区域块(合格区 / 划痕区 / 裂痕区)
+      // 末端卸货区域块(划痕区 / 合格区 / 裂痕区)
       const zone = (x, z, color) => {
         const m = new THREE.Mesh(
           new THREE.BoxGeometry(0.9, 0.015, 0.8),
@@ -749,8 +761,8 @@ export default {
         m.position.set(x, 0.033, z);
         scene.add(m);
       };
+      zone(7.0, -0.35, 0xe6a23c); // 划痕区
       zone(7.0, 1.5, 0x67c23a);   // 合格区
-      zone(7.0, 2.3, 0xe6a23c);   // 划痕区
       zone(7.0, 3.35, 0xf56c6c);  // 裂痕区
 
       // 地面文字标牌(合格区 / 划痕区 / 裂痕区)
@@ -772,21 +784,21 @@ export default {
         tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
       };
-      const floorLabel = (text, color, x, z) => {
+      const floorLabel = (text, color, x, z, w = 0.9, h = 0.225) => {
         const mat = new THREE.MeshBasicMaterial({
           map: labelTexture(text, color),
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide
         });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.42), mat);
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
         mesh.position.set(x, 0.05, z);
         mesh.rotation.x = Math.PI / 2;
         scene.add(mesh);
       };
-      floorLabel('合格区', '#67C23A', 8.6, 1.5);
-      floorLabel('划痕区', '#E6A23C', 8.6, 2.3);
-      floorLabel('裂痕区', '#F56C6C', 8.6, 3.35);
+      floorLabel('划痕区', '#E6A23C', 7.0, -0.35);
+      floorLabel('合格区', '#67C23A', 7.0, 1.5);
+      floorLabel('裂纹区', '#F56C6C', 7.0, 3.35);
 
       // 使用普通变量存储 Three.js 核心对象及关节节点，避免 Vue 响应式污染
       let model = null;
@@ -803,10 +815,10 @@ export default {
         // 初始位置：放置在起点 (X: -7)
         model.position.set(-7, 0.03, 1.5);
         
-        model.scale.set(0.8, 0.8, 0.8); // 放大模型的尺寸 (之前是 0.5)
+        model.scale.set(2, 2, 2); // 放大模型的尺寸 (之前是 0.8)
         
         // 向右旋转90度，让车头朝向右侧行驶方向
-        model.rotation.y = Math.PI / 2;
+        model.rotation.y = -Math.PI / 30;
         
         scene.add(model);
       }, undefined, (error) => {
@@ -822,12 +834,15 @@ export default {
         robotArm.traverse((child) => {
           if (child.name === 'J_Turntable') {
             this._jointNodes.j1 = child;      // 转台
+            child.userData.baseQuat = child.quaternion.clone();
           } else if (child.name === 'J_Elbow') {
             this._jointNodes.j2 = child;      // 肘部
+            child.userData.baseQuat = child.quaternion.clone();
           } else if (child.name === 'J_Head_A') {
             this._jointNodes.headA = child;   // 头部
+            child.userData.baseQuat = child.quaternion.clone();
           } else if (child.name === 'J_Camera') {
-            this._jointNodes.camera = child;  // 相机挂点(左右平移)
+            this._jointNodes.camera = child;  // 相机挂点(左右平移 + 前后伸出)
             child.userData.baseX = child.position.x;
             child.userData.baseY = child.position.y;
             child.userData.baseZ = child.position.z;
@@ -838,7 +853,7 @@ export default {
 
         // 将机械臂放置在场景原点
         robotArm.position.set(0, 0, 0);
-        robotArm.scale.set(1, 1, 1);
+        robotArm.scale.set(1.5, 1.5, 1);
         scene.add(robotArm);
       }, undefined, (error) => {
         console.error('Error loading robot arm model:', error);
@@ -862,25 +877,54 @@ export default {
         // 每一帧将 Vue 响应式状态（角度/位移）同步到真实关节节点
         if (this._jointNodes) {
           const J = this._jointNodes;
-          // 1) 转台/立柱偏航：绕 Y（扫描时保持 0）
+          // 1) 转台左右: 在基础姿态上绕本地 Y 叠加偏航
           if (J.j1) {
-            J.j1.rotation.y = THREE.MathUtils.degToRad(this.robotAngles.turntable);
+            J.j1.quaternion
+              .copy(J.j1.userData.baseQuat)
+              .multiply(
+                new THREE.Quaternion().setFromAxisAngle(
+                  new THREE.Vector3(0, 1, 0),
+                  THREE.MathUtils.degToRad(this.robotAngles.turntableYaw)
+                )
+              );
           }
-          // 2) 肘部左右俯身：绕 Z（负号与 Blender Y 轴旋转方向保持一致）
+          // 2) 肘部: 前伸/下压绕 X, 左右绕 Y, 侧倾绕 Z
           if (J.j2) {
-            J.j2.rotation.z = -THREE.MathUtils.degToRad(this.robotAngles.elbow);
+            J.j2.quaternion
+              .copy(J.j2.userData.baseQuat)
+              .multiply(
+                new THREE.Quaternion().setFromEuler(
+                  new THREE.Euler(
+                    THREE.MathUtils.degToRad(this.robotAngles.elbowPitch),
+                    THREE.MathUtils.degToRad(this.robotAngles.elbowYaw),
+                    -THREE.MathUtils.degToRad(this.robotAngles.elbowRoll),
+                    'XYZ'
+                  )
+                )
+              );
           }
-          // 3) 头部微调偏航(默认 0)
+          // 3) 头部: 下压绕 X, 左右绕 Y
           if (J.headA) {
-            J.headA.rotation.y = THREE.MathUtils.degToRad(this.robotAngles.headA);
+            J.headA.quaternion
+              .copy(J.headA.userData.baseQuat)
+              .multiply(
+                new THREE.Quaternion().setFromEuler(
+                  new THREE.Euler(
+                    THREE.MathUtils.degToRad(this.robotAngles.headPitch),
+                    THREE.MathUtils.degToRad(this.robotAngles.headYaw),
+                    0,
+                    'XYZ'
+                  )
+                )
+              );
           }
-          // 4) 相机挂点: 在基础位置做左右平移 cameraX(米)
+          // 4) 相机挂点: 左右平移 cameraX(米) + 向前伸出 cameraOut(米)
           if (J.camera) {
             const c = J.camera;
             c.position.set(
               c.userData.baseX + this.robotAngles.cameraX,
               c.userData.baseY,
-              c.userData.baseZ
+              c.userData.baseZ - this.robotAngles.cameraOut
             );
           }
         }
@@ -893,30 +937,10 @@ export default {
       const group = new THREE.Group();
 
       const metal = new THREE.MeshStandardMaterial({ color: 0x37424f, roughness: 0.55, metalness: 0.8 });
-      const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1f2730, roughness: 0.7, metalness: 0.65 });
       const orange = new THREE.MeshStandardMaterial({ color: 0xcc6a2b, roughness: 0.6, metalness: 0.1 });
       const crate = new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.9 });
       const beltMat = new THREE.MeshStandardMaterial({ color: 0x11161d, roughness: 0.95 });
       const cyanMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 0.85 });
-      const greenMat = new THREE.MeshStandardMaterial({ color: 0x67ff8a, emissive: 0x2fcf5f, emissiveIntensity: 0.7 });
-      const redMat = new THREE.MeshStandardMaterial({ color: 0xff5555, emissive: 0xff2222, emissiveIntensity: 0.7 });
-
-      // 黄黑警示条纹贴图
-      const cv = document.createElement('canvas');
-      cv.width = 256; cv.height = 64;
-      const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#e8b32a';
-      ctx.fillRect(0, 0, 256, 64);
-      ctx.fillStyle = '#181c22';
-      for (let i = -64; i < 320; i += 64) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0); ctx.lineTo(i + 32, 0); ctx.lineTo(i - 32, 64); ctx.lineTo(i - 64, 64);
-        ctx.closePath(); ctx.fill();
-      }
-      const hazardTex = new THREE.CanvasTexture(cv);
-      hazardTex.wrapS = THREE.RepeatWrapping;
-      hazardTex.colorSpace = THREE.SRGBColorSpace;
-      const hazard = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.55, metalness: 0.25 });
 
       const box = (w, h, d, mat, x, y, z) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -924,36 +948,15 @@ export default {
         group.add(m);
         return m;
       };
-      const cyl = (rt, rb, h, mat, x, y, z) => {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 16), mat);
-        m.position.set(x, y, z);
-        group.add(m);
-        return m;
-      };
-
-      // 深色工业地面
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x12171e, roughness: 0.95 }));
+      // 深色工业地面(与上方主地面同色, 保证整体颜色统一)
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.95 }));
       ground.rotation.x = -Math.PI / 2;
       ground.position.y = -0.02;
       group.add(ground);
 
-      // 龙门架 + 警示柱脚 + 指示灯
-      const corners = [[-5.6, -1.2], [5.6, -1.2], [-5.6, 5.6], [5.6, 5.6]];
-      corners.forEach(([px, pz], idx) => {
-        box(0.3, 4.0, 0.3, darkMetal, px, 2.0, pz);
-        box(0.44, 0.2, 0.44, hazard, px, 0.1, pz);
-        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), idx % 2 ? greenMat : redMat);
-        lamp.position.set(px, 4.08, pz);
-        group.add(lamp);
-      });
-      box(12.4, 0.26, 0.26, metal, 0, 4.06, -1.2);
-      box(12.4, 0.26, 0.26, metal, 0, 4.06, 5.6);
-      box(0.26, 0.26, 7.6, metal, -5.6, 4.06, 2.2);
-      box(0.26, 0.26, 7.6, metal, 5.6, 4.06, 2.2);
-
-      // 左侧油桶/货架
-      cyl(0.28, 0.28, 0.9, orange, -6.2, 0.45, -0.4);
-      cyl(0.28, 0.28, 0.9, metal, -6.2, 0.45, 0.35);
+      // 左侧方形箱体/货架
+      box(0.5, 0.9, 0.5, orange, -6.2, 0.45, -0.4);
+      box(0.5, 0.9, 0.5, metal, -6.2, 0.45, 0.35);
       box(1.8, 1.1, 0.5, metal, -5.6, 0.55, -2.5);
       box(0.9, 0.5, 0.4, crate, -6.0, 1.45, -2.5);
       box(1.2, 0.5, 0.4, orange, -5.4, 1.72, -2.5);
