@@ -98,14 +98,15 @@ export default {
 
 <style scoped>
 .person-container {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   background-color: #f5f7fa;
   padding: 20px;
   box-sizing: border-box;
-  padding-top: 10vh;
+  padding-top: 6vh;
 }
 
 .person-card {

@@ -124,14 +124,15 @@ export default {
 
 <style scoped>
 .password-container {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   display: flex;
   justify-content: center;
   align-items: flex-start; /* 改为顶部对齐 */
   background-color: #f5f7fa;
   padding: 20px;
   box-sizing: border-box;
-  padding-top: 10vh; /* 向上移动，只保留10%的顶部间距 */
+  padding-top: 6vh;
 }
 
 .password-card {

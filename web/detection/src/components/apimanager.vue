@@ -11,12 +11,12 @@
         <p class="page-desc">管理边缘质检工位、相机采集终端及算法推理中台的安全访问凭证与调用配额</p>
       </div>
       <div class="header-right">
-        <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">新建凭证</el-button>
-        <el-button size="small" icon="el-icon-document-add" @click="handleAddmore">批量生成</el-button>
+        <el-button type="primary" size="medium" icon="el-icon-plus" @click="handleAdd">新建凭证</el-button>
+        <el-button size="medium" icon="el-icon-document-add" @click="handleAddmore">批量生成</el-button>
         <el-button
           type="danger"
           plain
-          size="small"
+          size="medium"
           icon="el-icon-delete"
           :disabled="selectedRows.length === 0"
           @click="deleteMore"
@@ -77,165 +77,166 @@
       </div>
     </div>
 
-    <!-- 工具栏 -->
-    <div class="toolbar-section">
-      <div class="toolbar-left">
-        <el-input
-          v-model="searchKeyword"
-          size="small"
-          placeholder="搜索 API 密钥 / 创建人 / 备注..."
-          prefix-icon="el-icon-search"
-          clearable
-          class="search-input"
-          @input="onFilterChange"
-          @clear="onFilterChange"
-        ></el-input>
-        <el-select v-model="filterStatus" size="small" placeholder="运行状态" clearable class="filter-select" @change="onFilterChange">
-          <el-option label="全部状态" value=""></el-option>
-          <el-option label="正常启用" :value="1"></el-option>
-          <el-option label="已停用" :value="0"></el-option>
-        </el-select>
-        <el-select v-model="filterLevel" size="small" placeholder="权限等级" clearable class="filter-select" @change="onFilterChange">
-          <el-option label="全部等级" value=""></el-option>
-          <el-option label="权限1 (基础读取)" value="1"></el-option>
-          <el-option label="权限2 (标准质检)" value="2"></el-option>
-          <el-option label="权限3 (系统调度)" value="3"></el-option>
-        </el-select>
-        <el-button size="small" icon="el-icon-refresh-left" @click="resetFilters">重置</el-button>
+    <!-- 内容区域 (Content Section - 对应红框3自适应充满) -->
+    <div class="content-box">
+      <!-- 工具栏 -->
+      <div class="toolbar-section">
+        <div class="toolbar-left">
+          <el-input
+            v-model="searchKeyword"
+            size="small"
+            placeholder="搜索 API 密钥 / 创建人 / 备注..."
+            prefix-icon="el-icon-search"
+            clearable
+            class="search-input"
+            @input="onFilterChange"
+            @clear="onFilterChange"
+          ></el-input>
+          <el-select v-model="filterStatus" size="small" placeholder="运行状态" clearable class="filter-select" @change="onFilterChange">
+            <el-option label="全部状态" value=""></el-option>
+            <el-option label="正常启用" :value="1"></el-option>
+            <el-option label="已停用" :value="0"></el-option>
+          </el-select>
+          <el-select v-model="filterLevel" size="small" placeholder="权限等级" clearable class="filter-select" @change="onFilterChange">
+            <el-option label="全部等级" value=""></el-option>
+            <el-option label="权限1 (基础读取)" value="1"></el-option>
+            <el-option label="权限2 (标准质检)" value="2"></el-option>
+            <el-option label="权限3 (系统调度)" value="3"></el-option>
+          </el-select>
+          <el-button size="small" icon="el-icon-refresh-left" @click="resetFilters">重置</el-button>
+        </div>
+        <div class="toolbar-right">
+          <el-tooltip content="刷新列表" placement="top">
+            <el-button size="small" icon="el-icon-refresh" circle @click="fetchData"></el-button>
+          </el-tooltip>
+        </div>
       </div>
-      <div class="toolbar-right">
-        <el-tooltip content="刷新列表" placement="top">
-          <el-button size="small" icon="el-icon-refresh" circle @click="fetchData"></el-button>
-        </el-tooltip>
+
+      <!-- 表格区域 -->
+      <div class="table-container">
+        <el-table
+          :height="tableHeight"
+          v-loading="loading"
+          element-loading-text="正在加载数据..."
+          element-loading-spinner="el-icon-loading"
+          :data="filteredData"
+          stripe
+          style="width: 100%;"
+          class="enterprise-table"
+          @selection-change="handleSelectionChange"
+        >
+          <el-table-column type="selection" width="45" align="center"></el-table-column>
+          <el-table-column label="序号" width="60" align="center">
+            <template slot-scope="scope">
+              <span>{{ (page - 1) * pageSize + scope.$index + 1 }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="创建人" prop="createName" width="100">
+            <template slot-scope="scope">
+              <span class="user-badge"><i class="el-icon-user"></i> {{ scope.row.createName }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="API 密钥 (Secret Key)" min-width="210">
+            <template slot-scope="scope">
+              <div class="key-cell">
+                <span class="key-text">{{ isKeyVisible(scope.$index) ? scope.row.apiKey : maskApiKey(scope.row.apiKey) }}</span>
+                <el-tooltip :content="isKeyVisible(scope.$index) ? '隐藏密钥' : '显示完整密钥'" placement="top">
+                  <i
+                    :class="isKeyVisible(scope.$index) ? 'el-icon-view is-visible' : 'el-icon-view'"
+                    class="key-action-icon"
+                    @click="toggleKeyVisible(scope.$index)"
+                  ></i>
+                </el-tooltip>
+                <el-tooltip content="复制密钥" placement="top">
+                  <i class="el-icon-document-copy key-action-icon copy-icon" @click="copyApiKey(scope.row.apiKey)"></i>
+                </el-tooltip>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="到期日期" prop="expirationDate" width="120" align="center">
+            <template slot-scope="scope">
+              <span v-if="scope.row.validityPeriod < 0 || scope.row.expirationDate === '无限期'" class="text-secondary">无限期</span>
+              <span v-else :class="{ 'text-expired': isExpired(scope.row.expirationDate) }">
+                {{ scope.row.expirationDate }}
+              </span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="有效期" prop="validityPeriod" width="95" align="center">
+            <template slot-scope="scope">
+              <el-tag :type="getValidityPeriodType(scope.row.validityPeriod)" size="mini" effect="plain">
+                {{ scope.row.validityPeriod < 0 ? '无限期' : scope.row.validityPeriod + ' 天' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="有效次数" prop="validityTimes" width="95" align="center">
+            <template slot-scope="scope">
+              <el-tag :type="getValidityTimesType(scope.row.validityTimes)" size="mini" effect="plain">
+                {{ scope.row.validityTimes < 0 ? '无限次' : scope.row.validityTimes + ' 次' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="权限等级" prop="permissionLevel" width="95" align="center">
+            <template slot-scope="scope">
+              <el-tag :type="getPermissionLevelType(scope.row.permissionLevel)" size="mini" effect="light">
+                权限{{ scope.row.permissionLevel }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="运行状态" prop="status" width="90" align="center">
+            <template slot-scope="scope">
+              <span class="status-badge" :class="scope.row.status === 1 ? 'status-active' : 'status-disabled'">
+                <span class="status-dot"></span>
+                <span class="status-text">{{ scope.row.status === 1 ? '启用' : '停用' }}</span>
+              </span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="备注说明" prop="remark" min-width="110" show-overflow-tooltip>
+            <template slot-scope="scope">
+              <span class="remark-text">{{ scope.row.remark || '-' }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="140" align="center">
+            <template slot-scope="scope">
+              <div class="action-links">
+                <el-button type="text" size="small" icon="el-icon-edit" @click="handleedit(scope.$index)">修改</el-button>
+                <el-popconfirm
+                  title="确定注销并删除此 API 凭证？"
+                  confirm-button-text="确定"
+                  cancel-button-text="取消"
+                  icon="el-icon-warning"
+                  icon-color="#f56c6c"
+                  @confirm="handleDelete(scope.$index, scope.row)"
+                >
+                  <el-button slot="reference" type="text" size="small" class="delete-btn" icon="el-icon-delete">删除</el-button>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
-    </div>
 
-﻿    <!-- 表格区域 -->
-    <div class="table-container">
-      <el-table
-        :height="tableHeight"
-        v-loading="loading"
-        element-loading-text="正在加载数据..."
-        element-loading-spinner="el-icon-loading"
-        :data="filteredData"
-        size="small"
-        stripe
-        style="width: 100%;"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="45" align="center"></el-table-column>
-        <el-table-column label="序号" width="60" align="center">
-          <template slot-scope="scope">
-            <span>{{ (page - 1) * pageSize + scope.$index + 1 }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="创建人" prop="createName" width="100">
-          <template slot-scope="scope">
-            <span class="user-badge"><i class="el-icon-user"></i> {{ scope.row.createName }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="API 密钥 (Secret Key)" min-width="210">
-          <template slot-scope="scope">
-            <div class="key-cell">
-              <span class="key-text">{{ isKeyVisible(scope.$index) ? scope.row.apiKey : maskApiKey(scope.row.apiKey) }}</span>
-              <el-tooltip :content="isKeyVisible(scope.$index) ? '隐藏密钥' : '显示完整密钥'" placement="top">
-                <i
-                  :class="isKeyVisible(scope.$index) ? 'el-icon-view is-visible' : 'el-icon-view'"
-                  class="key-action-icon"
-                  @click="toggleKeyVisible(scope.$index)"
-                ></i>
-              </el-tooltip>
-              <el-tooltip content="复制密钥" placement="top">
-                <i class="el-icon-document-copy key-action-icon copy-icon" @click="copyApiKey(scope.row.apiKey)"></i>
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="到期日期" prop="expirationDate" width="120" align="center">
-          <template slot-scope="scope">
-            <span v-if="scope.row.validityPeriod < 0 || scope.row.expirationDate === '无限期'" class="text-secondary">无限期</span>
-            <span v-else :class="{ 'text-expired': isExpired(scope.row.expirationDate) }">
-              {{ scope.row.expirationDate }}
-            </span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="有效期" prop="validityPeriod" width="95" align="center">
-          <template slot-scope="scope">
-            <el-tag :type="getValidityPeriodType(scope.row.validityPeriod)" size="mini" effect="plain">
-              {{ scope.row.validityPeriod < 0 ? '无限期' : scope.row.validityPeriod + ' 天' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="有效次数" prop="validityTimes" width="95" align="center">
-          <template slot-scope="scope">
-            <el-tag :type="getValidityTimesType(scope.row.validityTimes)" size="mini" effect="plain">
-              {{ scope.row.validityTimes < 0 ? '无限次' : scope.row.validityTimes + ' 次' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="权限等级" prop="permissionLevel" width="95" align="center">
-          <template slot-scope="scope">
-            <el-tag :type="getPermissionLevelType(scope.row.permissionLevel)" size="mini" effect="light">
-              权限{{ scope.row.permissionLevel }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="运行状态" prop="status" width="90" align="center">
-          <template slot-scope="scope">
-            <span class="status-badge" :class="scope.row.status === 1 ? 'status-active' : 'status-disabled'">
-              <span class="status-dot"></span>
-              <span class="status-text">{{ scope.row.status === 1 ? '启用' : '停用' }}</span>
-            </span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="备注说明" prop="remark" min-width="110" show-overflow-tooltip>
-          <template slot-scope="scope">
-            <span class="remark-text">{{ scope.row.remark || '-' }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="140" align="center">
-          <template slot-scope="scope">
-            <div class="action-links">
-              <el-button type="text" size="small" icon="el-icon-edit" @click="handleedit(scope.$index)">修改</el-button>
-              <el-popconfirm
-                title="确定注销并删除此 API 凭证？"
-                confirm-button-text="确定"
-                cancel-button-text="取消"
-                icon="el-icon-warning"
-                icon-color="#f56c6c"
-                @confirm="handleDelete(scope.$index, scope.row)"
-              >
-                <el-button slot="reference" type="text" size="small" class="delete-btn" icon="el-icon-delete">删除</el-button>
-              </el-popconfirm>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <!-- 分页栏 -->
-    <div class="pagination-footer">
-      <div class="pagination-total">
-        共 <span class="total-count">{{ total }}</span> 条凭据记录，当前第 {{ page }} / {{ Math.ceil(total / pageSize) || 1 }} 页
+      <!-- 分页栏 -->
+      <div class="pagination-footer">
+        <div class="pagination-total">
+          共 <span class="total-count">{{ total }}</span> 条凭据记录，当前第 {{ page }} / {{ Math.ceil(total / pageSize) || 1 }} 页
+        </div>
+        <el-pagination
+          @current-change="handleCurrentChange"
+          :current-page="page"
+          :page-size="pageSize"
+          layout="total, prev, pager, next, jumper"
+          :total="total"
+        ></el-pagination>
       </div>
-      <el-pagination
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        :current-page="page"
-        :page-sizes="[10, 20, 30, 50]"
-        :page-size="pageSize"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-      ></el-pagination>
     </div>
 
 ﻿    <!-- 新增弹窗 -->
@@ -466,8 +467,15 @@ export default {
   },
   methods: {
     calculateTableHeight() {
-      const vh = window.innerHeight || 800;
-      this.tableHeight = Math.max(vh - 410, 260);
+      this.$nextTick(() => {
+        const container = this.$el ? this.$el.querySelector('.table-container') : document.querySelector('.table-container');
+        if (container && container.clientHeight > 100) {
+          this.tableHeight = container.clientHeight;
+        } else {
+          const vh = window.innerHeight || 800;
+          this.tableHeight = Math.max(vh - 440, 280);
+        }
+      });
     },
     fetchData() {
       this.loading = true;
@@ -740,168 +748,205 @@ export default {
 };
 </script>
 
-﻿<style scoped>
+<style scoped>
 .api-management {
   width: 100%;
+  height: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  overflow: hidden;
+  background: #f0f2f5;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: #303133;
 }
 
-/* 页面头部栏 */
+/* 页面顶部标题与操作栏 - 对应红框 1 放大 */
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #ebeef5;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 18px 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #ebeef5;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .title-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .title-icon {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   background: #e6f7ff;
-  border-radius: 6px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #1890ff;
-  font-size: 16px;
+  font-size: 22px;
 }
 
 .page-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: #1f2d3d;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
 }
 
 .title-tag {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: #1890ff;
   background: #e6f7ff;
   border: 1px solid #91d5ff;
-  border-radius: 3px;
-  padding: 1px 7px;
+  border-radius: 4px;
+  padding: 3px 10px;
 }
 
 .page-desc {
-  margin: 6px 0 0 0;
-  font-size: 13px;
-  color: #8c8c8c;
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: #606266;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-/* 集成式指标统计条 */
+.header-right .el-button {
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* 运行指标透视条 (Stats Bar) - 对应红框 2 放大 */
 .stats-bar {
   display: flex;
   align-items: center;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  padding: 8px 18px;
-  margin-bottom: 12px;
+  background: #ffffff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: 16px 24px;
+  margin-bottom: 8px;
+  min-height: 88px;
+  flex-shrink: 0;
 }
 
 .stat-item {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.stat-divider {
-  width: 1px;
-  height: 32px;
-  background: #e8e8e8;
-  margin: 0 18px;
+  gap: 6px;
 }
 
 .stat-meta {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 2px;
+  align-items: center;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #8c8c8c;
-  font-weight: 500;
-}
-
-.stat-icon {
   font-size: 14px;
-  color: #bfbfbf;
-}
-
-.stat-value {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.stat-value .num {
-  font-size: 20px;
   font-weight: 600;
-  color: #262626;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.2;
+  color: #4e5969;
 }
 
-.stat-value .unit {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.stat-value.text-success .num {
-  color: #52c41a;
-}
-
-.stat-value.text-warning .num {
-  color: #fa8c16;
-}
-
-.stat-foot {
-  font-size: 12px;
-  color: #bfbfbf;
-  margin-top: 2px;
+.stat-meta .stat-icon {
+  font-size: 18px;
+  color: #86909c;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 10px;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
 .status-badge.success {
   background: #f6ffed;
-  color: #52c41a;
   border: 1px solid #b7eb8f;
+  color: #52c41a;
 }
 
-.status-badge .dot {
+.status-badge.success .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #52c41a;
+}
+
+.stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.stat-value .num {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1d2129;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.stat-value .unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: #86909c;
+}
+
+.stat-value.text-success .num {
+  color: #52c41a !important;
+}
+
+.stat-value.text-warning .num {
+  color: #fa8c16 !important;
+}
+
+.stat-foot {
+  font-size: 12.5px;
+  color: #86909c;
+  margin-top: 2px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 52px;
+  background: #e5e6eb;
+  margin: 0 28px;
+}
+
+/* 内容区域整体大卡片 - 对应红框 3 充满剩余视口 */
+.content-box {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: 16px 20px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* 工具栏区域 */
@@ -909,8 +954,10 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .toolbar-left {
@@ -931,27 +978,34 @@ export default {
 /* 表格容器 */
 .table-container {
   width: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
 ::v-deep .el-table {
   width: 100% !important;
+  height: 100%;
 }
 
 ::v-deep .el-table th.el-table__cell {
   background-color: #fafafa !important;
   color: #262626 !important;
   font-weight: 600;
-  font-size: 13px;
-  padding: 6px 0 !important;
+  font-size: 14px;
+  padding: 8px 0 !important;
   border-bottom: 1px solid #f0f0f0;
 }
 
 ::v-deep .el-table td.el-table__cell {
-  padding: 5px 0 !important;
-  font-size: 13px;
+  padding: 6px 0 !important;
+  font-size: 14px;
   color: #595959;
   border-bottom: 1px solid #f0f0f0;
+}
+
+::v-deep .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #fafbfc;
 }
 
 ::v-deep .el-table__body-wrapper {
@@ -961,12 +1015,13 @@ export default {
 
 /* 单元格元素 */
 .user-badge {
-  color: #595959;
-  font-size: 13px;
+  color: #262626;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .user-badge i {
-  color: #8c8c8c;
+  color: #1890ff;
   margin-right: 4px;
 }
 
@@ -975,7 +1030,7 @@ export default {
   align-items: center;
   gap: 6px;
   font-family: "JetBrains Mono", "SF Mono", Consolas, Monaco, monospace;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #1f2937;
   background: #f8fafc;
   padding: 3px 8px;
@@ -1009,15 +1064,17 @@ export default {
 
 .text-secondary {
   color: #8c8c8c;
+  font-size: 13px;
 }
 
 .text-expired {
   color: #f5222d;
   font-weight: 500;
+  font-size: 13px;
 }
 
 .remark-text {
-  color: #8c8c8c;
+  color: #595959;
   font-size: 13px;
 }
 
@@ -1062,7 +1119,7 @@ export default {
 
 .action-links .el-button--text {
   padding: 0;
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
 }
 
@@ -1079,8 +1136,10 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 14px;
-  padding: 6px 0 2px;
+  margin-top: 12px;
+  padding: 10px 0 0;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
 
 .pagination-total {

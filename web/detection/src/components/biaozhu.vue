@@ -607,7 +607,8 @@ export default {
 .history-page {
   padding: 15px;
   background: #f8f9fa;
-  min-height: calc(100vh - 30px);
+  height: 100%;
+  min-height: 100%;
   width: 100%;
   box-sizing: border-box;
   display: flex;
@@ -688,14 +689,14 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 500px;
+  min-height: 0;
 }
 
 .table-wrapper {
   width: 100%;
   flex: 1;
   overflow: auto;
-  max-height: calc(100vh - 250px);
+  min-height: 0;
 }
 
 .custom-table {

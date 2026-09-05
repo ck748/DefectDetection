@@ -501,14 +501,14 @@ export default {
 /* ================= 主内容布局 (Main Layout) ================= */
 .main-container {
   height: 100vh;
+  max-height: 100vh;
   flex: 1;
   min-width: 0;
   margin-left: 0 !important;
   background-color: #07152b;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto !important;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -518,7 +518,7 @@ export default {
 
 /* ================= 头部导航 (Navbar) ================= */
 .navbar {
-  height: 120px;
+  height: 96px !important;
   width: 100%;
   background-color: #07152b;
   box-shadow: 0 4px 16px rgba(0, 15, 30, 0.45);
@@ -796,29 +796,35 @@ export default {
   padding: 0 !important;
   width: 100%;
   position: relative;
-  overflow: visible !important; /* 彻底取消 el-main 的内部滚动 */
+  overflow: hidden !important;
   box-sizing: border-box;
   flex: 1; /* 自动撑满剩余视口高度 */
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 120px);
+  height: calc(100vh - 96px);
+  max-height: calc(100vh - 96px);
   background-color: #f0f2f5;
 }
 
 .app-main.is-fullscreen-view {
   padding: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .main-content-view {
-  background: #fff;
-  padding: 9px 11px;
+  background: #f0f2f5;
+  padding: 0;
   border-radius: 0 !important;
-  min-height: 100%;
+  height: 100%;
+  max-height: 100%;
   flex: 1;
+  display: flex;
+  flex-direction: column;
   box-shadow: none !important;
   box-sizing: border-box;
   width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .main-content-view.flush-view {

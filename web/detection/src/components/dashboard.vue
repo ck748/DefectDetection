@@ -395,10 +395,11 @@ export default {
 
 <style scoped>
 .monitoring-dashboard {
-  padding: 20px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
-  min-height: 100vh;
-  height: 100vh;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;

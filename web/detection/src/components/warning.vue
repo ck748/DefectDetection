@@ -1733,6 +1733,7 @@ export default {
 <style scoped>
 .warning-management {
   width: 100%;
+  height: 100%;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: #303133;
@@ -1810,20 +1811,20 @@ export default {
   align-items: center;
 }
 
-/* 运行指标卡片网格 (Stats Cards Grid - 1:1 还原参考图) */
+/* 运行指标卡片网格 (Stats Cards Grid - 紧凑自适应版) */
 .stats-cards-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 
 .stat-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid #e8f0fe;
-  padding: 16px 20px;
+  padding: 10px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1845,10 +1846,10 @@ export default {
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1f2d3d;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1879,11 +1880,11 @@ export default {
 }
 
 .card-num {
-  font-size: 44px;
+  font-size: 32px;
   font-weight: 800;
   line-height: 1;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  letter-spacing: -1.5px;
+  letter-spacing: -1px;
 }
 
 .card-num.text-blue {
@@ -2052,6 +2053,8 @@ export default {
   display: flex;
   gap: 12px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 /* 左侧预警列表区域 */
