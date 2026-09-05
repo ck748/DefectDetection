@@ -168,8 +168,8 @@ export default {
   name: 'SixSButler',
   data() {
     return {
-      // 相对路径引入 Logo
-      logoImg: require('@/assets/logo.png'),
+      // 独立引入 6S 管家专属图标
+      logoImg: require('@/assets/logo.7f766218.png'),
       defaultAvatar: require('@/assets/头像.jpg'),
       drawerVisible: false,
       isDragging: false,

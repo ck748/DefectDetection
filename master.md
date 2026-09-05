@@ -1,4 +1,4 @@
-# 云擎智检 · 工业质检工作台设计系统规范 (Master Design System)
+# 灵眸巡诊 · 工业质检工作台设计系统规范 (Master Design System)
 
 > 版本：v2.4 | 适配场景：精密制造工业质检工作台、AGV运检一体化控制台  
 > 核心哲学：**精密工程感 (Precision Engineering)、高信息吞吐 (High Density)、克制专注 (Anti-Slop)**

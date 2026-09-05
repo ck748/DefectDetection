@@ -26,82 +26,36 @@
             <el-form-item label="波特率">
               <span class="muted">9600，8 数据位，1 停止位，无校验（后端托管串口）</span>
             </el-form-item>
+            <el-form-item label="检测结果">
+              <el-select v-model="inspectResult" size="small" style="width: 160px;">
+                <el-option label="合格（走合格线）" value="ok"></el-option>
+                <el-option label="划痕（走划痕线）" value="scratch"></el-option>
+                <el-option label="裂痕（走裂痕线）" value="crack"></el-option>
+              </el-select>
+              <div class="muted hint">分拣时 AGV 按此结果行驶到对应路线（模拟）</div>
+            </el-form-item>
+            <el-form-item label="站号配置">
+              <div class="station-cfg">
+                <span class="muted">上料区</span>
+                <el-input-number v-model="stationLoading" :min="1" :max="255" size="mini"></el-input-number>
+                <span class="muted">检测区</span>
+                <el-input-number v-model="stationDetect" :min="1" :max="255" size="mini"></el-input-number>
+              </div>
+            </el-form-item>
           </el-form>
         </el-card>
 
-        <!-- AGV 控制 -->
+        <!-- 运动控制 -->
         <el-card shadow="hover" class="card-move">
           <div slot="header" class="card-header">
-            <span>AGV 控制</span>
+            <span>运动控制</span>
             <el-tag :type="agvMode === 0 ? 'success' : agvMode === 2 ? 'warning' : 'info'" size="mini">{{ modeText(agvMode) }}</el-tag>
           </div>
-          <div class="agv-btns">
-            <el-button type="danger" size="small" :disabled="!connected" @click="agvEmergencyStop">急停</el-button>
-            <el-button type="warning" size="small" :disabled="!connected" @click="agvReset">复位（回1号站）</el-button>
+          <!-- 站点导航按钮 -->
+          <div class="station-btns">
+            <el-button v-for="n in 6" :key="n" type="primary" size="medium" :disabled="!connected" @click="agvGoStation(n)">站点 {{ n }}</el-button>
           </div>
-        </el-card>
-
-        <!-- 机械臂 + 工作流（合并卡片） -->
-        <el-card shadow="hover" class="card-robot">
-          <div slot="header" class="card-header">
-            <span>机械臂 & 工作流</span>
-            <el-tag :type="robotConnected ? 'success' : 'info'" size="mini">{{ robotConnected ? '已连接' : '未连接' }}</el-tag>
-          </div>
-          <div class="robot-row">
-            <div class="robot-section">
-              <div class="section-title">机械臂</div>
-              <div class="robot-btns">
-                <el-button v-if="!robotConnected" type="primary" size="mini" icon="el-icon-link" :loading="robotConnecting" @click="connectRobot">连接</el-button>
-                <el-button v-else type="danger" size="mini" icon="el-icon-switch-button" @click="disconnectRobot">断开</el-button>
-                <el-button size="mini" :disabled="!robotConnected" @click="robotMoveHome">回原位</el-button>
-                <el-button size="mini" :disabled="!robotConnected" @click="robotMovePhoto">拍照位</el-button>
-                <el-button size="mini" type="danger" :disabled="!robotConnected" @click="robotStop">急停</el-button>
-              </div>
-            </div>
-            <el-divider style="margin: 6px 0;"></el-divider>
-            <div class="robot-section">
-              <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="mini" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
-              <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 28次扫描 → AGV→3号站</div>
-              <div class="workflow-btns">
-                <el-button type="success" size="mini" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
-                <el-button type="warning" size="mini" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
-                <el-button size="mini" @click="resetWorkflow">重置</el-button>
-              </div>
-            </div>
-          </div>
-        </el-card>
-
-        <!-- 7 点位扫描控制 -->
-        <el-card shadow="hover" class="card-scan">
-          <div slot="header" class="card-header">
-            <span>7 点位扫描</span>
-            <el-tag :type="scanning ? 'warning' : 'info'" size="mini">{{ scanning ? '扫描中...' : '待命' }}</el-tag>
-          </div>
-          <div class="scan-info muted hint" style="margin-bottom:6px;">
-            左→右→左→右，4 轮共 28 次拍照
-          </div>
-          <div class="scan-params" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">稳定等待(ms)</span>
-              <el-input-number v-model="scanSettleMs" :min="500" :max="5000" :step="100" size="mini" style="width:100%;"></el-input-number>
-            </div>
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">相机等待(ms)</span>
-              <el-input-number v-model="scanCameraWait" :min="500" :max="10000" :step="500" size="mini" style="width:100%;"></el-input-number>
-            </div>
-          </div>
-          <div class="scan-btns">
-            <el-button type="success" size="small" :disabled="!robotConnected || scanning" @click="startScan">
-              <i class="el-icon-video-play"></i> 启动扫描
-            </el-button>
-            <el-button type="danger" size="small" :disabled="!scanning" @click="stopScan">
-              <i class="el-icon-video-pause"></i> 停止
-            </el-button>
-          </div>
-          <div v-if="scanLog" class="scan-log" style="margin-top:8px;">
-            <div class="muted" style="font-size:11px;margin-bottom:4px;">扫描日志：</div>
-            <pre class="scan-log-text">{{ scanLog }}</pre>
-          </div>
+          <div class="muted hint" style="text-align:center;margin-top:6px;">指令：sub=0x9D，p1=站点号，p2=0x00</div>
         </el-card>
 
         <!-- 左下：实时状态 -->
@@ -186,17 +140,6 @@ export default {
       lastUpdate: '',
       agvMode: null,  // AGV当前工作模式：0=普通(基础) 1=站点编辑 2=站点召回
       agvSpeed: 500,  // AGV设定速度(米/小时)
-      // 扫描控制
-      scanning: false,
-      scanSettleMs: 1500,
-      scanCameraWait: 2000,
-      scanLog: '',
-      scanPollTimer: null,
-      // 机械臂控制数据
-      robotConnected: false,
-      robotConnecting: false,
-      workflowState: 'IDLE',
-      workflowPollTimer: null,
       // 机械臂控制数据
       // 每一节均支持: 转台左右 / 肘部前伸下压与左右 / 头部下压与左右 / 相机前伸与左右平移
       robotAngles: {
@@ -214,32 +157,6 @@ export default {
   computed: {
     canControl() {
       return this.connected;
-    },
-    canStartWorkflow() {
-      return this.connected && this.robotConnected &&
-        (this.workflowState === 'IDLE' || this.workflowState === 'COMPLETED' || this.workflowState === 'ERROR');
-    },
-    workflowStateText() {
-      const map = {
-        IDLE: '空闲',
-        AGV_TO_STATION6: 'AGV→6号站',
-        SCANNING: '28点位扫描中',
-        AGV_TO_STATION3: '扫描完成→AGV→3号站',
-        COMPLETED: '已完成',
-        ERROR: '异常'
-      };
-      return map[this.workflowState] || this.workflowState;
-    },
-    workflowTagType() {
-      const map = {
-        IDLE: 'info',
-        AGV_TO_STATION6: '',
-        SCANNING: 'warning',
-        AGV_TO_STATION3: '',
-        COMPLETED: 'success',
-        ERROR: 'danger'
-      };
-      return map[this.workflowState] || 'info';
     },
     view() {
       const s = this.status;
@@ -268,8 +185,6 @@ export default {
   },
   beforeDestroy() {
     this.stopStatusPolling();
-    this.stopWorkflowPolling();
-    this.stopScanPolling();
     this.disposeAgv();
   },
   methods: {
@@ -290,7 +205,7 @@ export default {
       return '停止';
     },
     canClick(i) {
-      return true;
+      return !((i === 0 || i === 1) && !this.canControl);
     },
 
     async loadPorts() {
@@ -390,31 +305,6 @@ export default {
       if (ok) this.$message.success(`已发送目标站点 ${station}`);
     },
 
-    /** AGV 急停 */
-    async agvEmergencyStop() {
-      try {
-        const res = await axios.post('api/agv/command', { sub: 0x9D, p1: 0, p2: 0x00 });
-        // 急停：发送停止指令
-        this.$message.warning('AGV 急停指令已发送');
-      } catch (e) {
-        this.$message.error('急停指令发送失败');
-      }
-    },
-
-    /** AGV 复位（回 1 号站） */
-    async agvReset() {
-      try {
-        const res = await axios.post('api/agv/command', { sub: 0x9D, p1: 1, p2: 0x00 });
-        if (res.data.code === 200) {
-          this.$message.success('AGV 正在返回 1 号站');
-        } else {
-          this.$message.error(res.data.message);
-        }
-      } catch (e) {
-        this.$message.error('复位指令发送失败');
-      }
-    },
-
     clickStep(i) {
       if (!this.canClick(i)) return;
       for (let j = 0; j < i; j++) {
@@ -459,8 +349,13 @@ export default {
       }
 
       if (i === 0 || i === 1) {
-        // 到达上料区 / 到达检测区：仅更新流程状态
+        // 到达上料区 / 到达检测区：向 AGV 下发对应站点
+        const station = i === 0 ? this.stationLoading : this.stationDetect;
+        this.sendCmd(0x9D, station, 0x00);
         step.state = 'active';
+        this.pendingStep = i;
+        this.pendingStation = station;
+        this.$message.success(`已发送目标站点 ${station}`);
       } else if (i === 2) {
         // "检测中"：启动机械臂检测动作(左右俯身 + 相机左右移动拍照)
         step.state = 'active';
@@ -482,9 +377,11 @@ export default {
 
     /**
      * "检测中"扫描控制器 - 可随时重触发。
-     * 流程(每次转到站位只下压一次):
-     *   转台转到 左/中/右 站位 → 肘部向前下压(elbowPitch) + 头部低头(headPitch)
-     *   + 相机伸出(cameraOut) → 拍照 → 抬起复位 → 转下一站位
+     * 轨迹(每轮只执行一次下压):
+     *   复位 → 转台转到左侧起点 → 下压一次(elbowPitch + headPitch + cameraOut)
+     *   → 保持下压, 从左往右停靠 7 次(含第 1 次)并拍照
+     *   → 到右端后返回, 右端第 1 次已算一次, 再停靠 6 次并拍照
+     *   → 抬起复位, 准备下一轮
      * @param {boolean} loop
      */
     runInfiniteInspectionAnimation(loop = false) {
@@ -492,43 +389,66 @@ export default {
       this.stopInspection();
       this._scanning = true;
       this._scanLoop = !!loop;
+
+      // 左右扫描停靠点: 共 7 次(含左端第 1 次), 从最左到最右均匀分布
+      const photoCount = 7;
+      const stops = [];
+      for (let i = 0; i < photoCount; i++) {
+        const t = photoCount === 1 ? 0 : i / (photoCount - 1);
+        stops.push({
+          yaw: 28 - t * 56,        // 转台角度: 28°(最左) → -28°(最右)
+          camX: -0.15 + t * 0.30,  // 相机平移: -0.15(最左) → 0.15(最右)
+          side: 'p' + (i + 1)
+        });
+      }
+      // 从当前站位连续扫到下一站位, 到位后停留拍照
+      const sweep = (tl, next) => {
+        tl.to(this.robotAngles, {
+          turntableYaw: next.yaw,
+          cameraX: next.camX,
+          duration: 0.8,
+          ease: 'power1.inOut'
+        })
+        .add(() => this.onPhoto(next.side))
+        .to({}, { duration: 0.45 });
+      };
       const run = () => {
         if (!this._scanning) return;
         const tl = gsap.timeline({
           onComplete: () => { if (this._scanLoop && this._scanning) run(); }
         });
         this._scanTl = tl;
-    
+
         // 0) 复位到初始姿态
         tl.to(this.robotAngles, {
           turntableYaw: 0, elbowPitch: 0, elbowYaw: 0, elbowRoll: 0,
           headPitch: 0, headYaw: 0, cameraX: 0, cameraOut: 0,
           duration: 0.4, ease: 'power2.out'
         })
-        // 1) 转台转到左侧站位
-        .to(this.robotAngles, { turntableYaw: 28, cameraX: -0.15, duration: 0.8, ease: 'power1.inOut' })
-        // 2) 下压一次 → 左侧拍照
-        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
-        .add(() => this.onPhoto('left'))
-        .to({}, { duration: 0.5 })
-        // 3) 抬起复位
-        .to(this.robotAngles, { elbowPitch: 0, headPitch: 0, cameraOut: 0, duration: 0.7, ease: 'power2.inOut' })
-        // 4) 转台回中间
-        .to(this.robotAngles, { turntableYaw: 0, cameraX: 0, duration: 0.7, ease: 'power1.inOut' })
-        // 5) 下压一次 → 中间拍照
-        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
-        .add(() => this.onPhoto('mid'))
-        .to({}, { duration: 0.5 })
-        // 6) 抬起复位
-        .to(this.robotAngles, { elbowPitch: 0, headPitch: 0, cameraOut: 0, duration: 0.7, ease: 'power2.inOut' })
-        // 7) 转台转到右侧站位
-        .to(this.robotAngles, { turntableYaw: -28, cameraX: 0.15, duration: 0.7, ease: 'power1.inOut' })
-        // 8) 下压一次 → 右侧拍照
-        .to(this.robotAngles, { elbowPitch: 10, headPitch: 10, cameraOut: 0.22, duration: 0.9, ease: 'power2.out' })
-        .add(() => this.onPhoto('right'))
-        .to({}, { duration: 0.5 })
-        // 9) 抬起复位并回中, 准备下一轮
+        // 1) 转台转到左侧站位（扫描起点）
         .to(this.robotAngles, {
+          turntableYaw: stops[0].yaw,
+          cameraX: stops[0].camX,
+          duration: 0.8,
+          ease: 'power1.inOut'
+        })
+        // 2) 执行一次下压; 下压后保持到两次往返扫描完成再抬起
+        .to(this.robotAngles, {
+          elbowPitch: 10, headPitch: 10, cameraOut: 0.22,
+          duration: 0.9, ease: 'power2.out'
+        })
+        .add(() => this.onPhoto(stops[0].side))
+        .to({}, { duration: 0.4 });
+        // 3) 保持下压, 从左往右停靠并拍照: p1(已拍) → p2 ... → p7(右端)
+        for (let i = 1; i < stops.length; i++) {
+          sweep(tl, stops[i]);
+        }
+        // 4) 到右端后返回: p7 第 1 次已算一次, 再停靠 6 次: p6 → ... → p1
+        for (let i = stops.length - 2; i >= 0; i--) {
+          sweep(tl, stops[i]);
+        }
+        // 5) 抬起复位并回中, 准备下一轮
+        tl.to(this.robotAngles, {
           turntableYaw: 0, elbowPitch: 0, headPitch: 0, cameraX: 0, cameraOut: 0,
           duration: 1.0, ease: 'power2.inOut'
         });
@@ -538,7 +458,15 @@ export default {
 
     onPhoto(side) {
       // 在这里接你的真实拍照逻辑：后端拍照指令 / 前端截图 / 事件通知
-      const sideText = { left: '左侧', mid: '中间', right: '右侧' }[side] || side;
+      const sideText = {
+        p1: '第1次停靠(最左)',
+        p2: '第2次停靠',
+        p3: '第3次停靠',
+        p4: '第4次停靠',
+        p5: '第5次停靠',
+        p6: '第6次停靠',
+        p7: '第7次停靠(最右)'
+      }[side] || side;
       console.log(`拍照：${sideText}`);
       this.$emit('photo', side);
     },
@@ -560,158 +488,6 @@ export default {
       if (i >= 0 && i < this.steps.length) this.steps[i].state = 'done';
       this.pendingStep = -1;
       this.pendingStation = null;
-    },
-
-    // ==================== 机械臂控制 ====================
-    async connectRobot() {
-      this.robotConnecting = true;
-      try {
-        const res = await axios.post('api/aubo/connect');
-        if (res.data.code === 200) {
-          this.robotConnected = true;
-          this.$message.success('机械臂已连接');
-        } else {
-          this.$message.error(res.data.message || '连接失败');
-        }
-      } catch (e) {
-        this.$message.error('机械臂连接失败：请确认控制器IP(192.168.1.6)可达');
-      } finally {
-        this.robotConnecting = false;
-      }
-    },
-    async disconnectRobot() {
-      try {
-        await axios.post('api/aubo/disconnect');
-      } catch (e) { /* ignore */ }
-      this.robotConnected = false;
-    },
-    async setDO(index, value) {
-      try {
-        const res = await axios.post('api/aubo/setDO', { index, value });
-        if (res.data.code === 200) {
-          this.$message.success(`DO${index} = ${value ? '开' : '关'}`);
-        } else {
-          this.$message.error(res.data.message);
-        }
-      } catch (e) {
-        this.$message.error('DO 设置失败');
-      }
-    },
-    async robotMoveHome() {
-      try {
-        const res = await axios.post('api/aubo/photo/moveToHome');
-        res.data.code === 200 ? this.$message.success('已回原位') : this.$message.error(res.data.message);
-      } catch (e) { this.$message.error('移动失败'); }
-    },
-    async robotMovePhoto() {
-      try {
-        const res = await axios.post('api/aubo/photo/moveToPosition');
-        res.data.code === 200 ? this.$message.success('已到拍照位') : this.$message.error(res.data.message);
-      } catch (e) { this.$message.error('移动失败'); }
-    },
-    async robotStop() {
-      try {
-        const res = await axios.post('api/aubo/stop');
-        res.data.code === 200 ? this.$message.success('已发送急停') : this.$message.error(res.data.message);
-      } catch (e) { this.$message.error('急停失败'); }
-    },
-
-    // ==================== 工作流控制 ====================
-    async startWorkflow() {
-      try {
-        const res = await axios.post('api/workflow/start');
-        if (res.data.code === 200) {
-          this.$message.success('工作流已启动');
-          this.startWorkflowPolling();
-        } else {
-          this.$message.error(res.data.message);
-        }
-      } catch (e) { this.$message.error('启动失败'); }
-    },
-    async stopWorkflow() {
-      try {
-        await axios.post('api/workflow/stop');
-        this.$message.success('工作流已停止');
-        this.stopWorkflowPolling();
-      } catch (e) { /* ignore */ }
-    },
-    async resetWorkflow() {
-      try {
-        await axios.post('api/workflow/reset');
-        this.workflowState = 'IDLE';
-        this.$message.success('工作流已重置');
-      } catch (e) { /* ignore */ }
-    },
-    startWorkflowPolling() {
-      this.stopWorkflowPolling();
-      this.workflowPollTimer = setInterval(() => this.fetchWorkflowStatus(), 1000);
-    },
-    stopWorkflowPolling() {
-      if (this.workflowPollTimer) {
-        clearInterval(this.workflowPollTimer);
-        this.workflowPollTimer = null;
-      }
-    },
-    async fetchWorkflowStatus() {
-      try {
-        const res = await axios.get('api/workflow/status');
-        if (res.data.code === 200 && res.data.data) {
-          this.workflowState = res.data.data.state;
-          if (this.workflowState === 'COMPLETED' || this.workflowState === 'ERROR') {
-            this.stopWorkflowPolling();
-          }
-        }
-      } catch (e) { /* ignore */ }
-    },
-
-    // ==================== 扫描控制 ====================
-    async startScan() {
-      try {
-        const res = await axios.post('api/aubo/scan/start', {
-          settleMs: this.scanSettleMs,
-          cameraWait: this.scanCameraWait
-        });
-        if (res.data.code === 200) {
-          this.$message.success(res.data.message);
-          this.scanning = true;
-          this.scanLog = '';
-          this.startScanPolling();
-        } else {
-          this.$message.error(res.data.message);
-        }
-      } catch (e) {
-        this.$message.error('启动扫描失败');
-      }
-    },
-    async stopScan() {
-      try {
-        await axios.post('api/aubo/scan/stop');
-        this.$message.success('已发送停止信号');
-      } catch (e) { /* ignore */ }
-    },
-    startScanPolling() {
-      this.stopScanPolling();
-      this.scanPollTimer = setInterval(async () => {
-        try {
-          const res = await axios.get('api/aubo/scan/status');
-          if (res.data.code === 200 && res.data.data) {
-            this.scanning = res.data.data.scanning;
-            if (res.data.data.lastLog) {
-              this.scanLog = res.data.data.lastLog;
-            }
-            if (!this.scanning) {
-              this.stopScanPolling();
-              this.$message.success('扫描已完成');
-            }
-          }
-        } catch (e) { /* ignore */ }
-      }, 2000);
-    },
-    stopScanPolling() {
-      if (this.scanPollTimer) {
-        clearInterval(this.scanPollTimer);
-        this.scanPollTimer = null;
-      }
     },
     resetFlow() {
       this.steps.forEach(s => { s.state = 'pending'; });
@@ -919,6 +695,36 @@ export default {
         // 将机械臂放置在场景原点
         robotArm.position.set(0, 0, 0);
         robotArm.scale.set(1.5, 1.5, 1);
+
+        // 父子结构修复: 转台旋转只应带动上方的机械臂本体,
+        // 转台下方直接挂着的立柱/外壳盒子(root00 / Part_Turntable_Column 等)
+        // 属于固定底座, 不应跟着转, 统一改挂到 ROOT / Arm_Root 固定节点下
+        let armRoot = robotArm;
+        robotArm.traverse((obj) => {
+          if (obj.name === 'ROOT' || obj.name === 'Arm_Root') armRoot = obj;
+        });
+        robotArm.updateMatrixWorld(true);
+        const staticParts = [];
+        const turntable = this._jointNodes.j1;
+        if (turntable) {
+          turntable.children.forEach((child) => {
+            if (!child.isMesh) return;
+            child.geometry.computeBoundingBox();
+            const worldBox = child.geometry.boundingBox
+              .clone()
+              .applyMatrix4(child.matrixWorld);
+            const isStaticHousing =
+              child.name === 'root00' ||
+              child.name === 'Part_Turntable_Column' ||
+              worldBox.min.y < 1.0;
+            if (isStaticHousing) staticParts.push(child);
+          });
+        }
+        staticParts.forEach((part) => {
+          armRoot.attach(part); // 保持世界位姿不变, 从转台改挂到固定底座
+          console.log('机械臂父子结构修复：', part.name, '已从 J_Turntable 移到固定底座');
+        });
+
         scene.add(robotArm);
       }, undefined, (error) => {
         console.error('Error loading robot arm model:', error);
@@ -1207,39 +1013,9 @@ export default {
 .station-cfg { display: flex; align-items: center; gap: 6px; font-weight: normal; }
 .station-cfg .el-input-number { width: 78px; }
 
-/* AGV 控制 */
+/* 运动控制 */
 .card-move ::v-deep .el-card__header { padding: 8px 12px; }
 .card-move ::v-deep .el-card__body { padding: 10px 12px 12px; }
 .station-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .station-btns .el-button { min-width: 80px; font-weight: 600; }
-.agv-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.agv-btns .el-button { min-width: 120px; font-weight: 600; }
-
-/* 机械臂 + 工作流合并卡片 */
-.card-robot ::v-deep .el-card__header { padding: 6px 12px; }
-.card-robot ::v-deep .el-card__body { padding: 8px 12px 10px; }
-.robot-row { display: flex; flex-direction: column; gap: 6px; }
-.robot-section { display: flex; flex-direction: column; gap: 4px; }
-.section-title { font-size: 13px; font-weight: 600; color: #aeb9c7; }
-.robot-btns { display: flex; gap: 4px; flex-wrap: wrap; }
-.robot-btns .el-button { font-size: 12px; padding: 5px 8px; }
-
-/* 工作流控制 */
-.card-workflow ::v-deep .el-card__header { padding: 8px 12px; }
-.card-workflow ::v-deep .el-card__body { padding: 10px 12px 12px; }
-.workflow-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.workflow-btns .el-button { font-size: 12px; padding: 5px 10px; }
-
-/* 7 点位扫描 */
-.card-scan ::v-deep .el-card__header { padding: 6px 12px; }
-.card-scan ::v-deep .el-card__body { padding: 6px 12px 8px; }
-.scan-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.scan-btns .el-button { font-size: 12px; padding: 5px 10px; }
-.scan-log { max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px; }
-.scan-log-text { margin: 0; font-size: 11px; color: #aeb9c7; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.4; }
-
-/* 左侧滚动条 */
-.area-left::-webkit-scrollbar { width: 4px; }
-.area-left::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, .2); border-radius: 2px; }
-.area-left::-webkit-scrollbar-track { background: transparent; }
 </style>

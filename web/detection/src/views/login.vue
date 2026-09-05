@@ -14,7 +14,7 @@
           <div class="logo-box">
             <i class="el-icon-s-platform"></i>
           </div>
-          <span class="brand-name">云擎智检</span>
+          <span class="brand-name">灵眸巡诊</span>
         </div>
         
         <div class="visual-center">

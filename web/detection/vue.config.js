@@ -126,7 +126,7 @@ module.exports = {
               <div class="report-wrapper">
                 <!-- 头部 -->
                 <div class="report-header">
-                  <div class="brand-badge">云擎智检 · 工业质检报告中枢</div>
+                  <div class="brand-badge">灵眸巡诊 · 工业质检报告中枢</div>
                   <h1 class="report-title">半轴表面缺陷检测与工艺处置单</h1>
                   <div class="meta-bar">
                     <span class="meta-tag">流水号：<b>#${rData.id || '86'}</b></span>
@@ -224,7 +224,7 @@ module.exports = {
                       <span>车间工段长：__________________</span>
                     </div>
                     <div class="notice-foot">
-                      * 本报告由云擎智检视觉大模型自动分析生成并邮件归档。
+                      * 本报告由灵眸巡诊视觉大模型自动分析生成并邮件归档。
                     </div>
                   </div>
                 </div>
@@ -234,9 +234,9 @@ module.exports = {
           `;
 
           const info = await transporter.sendMail({
-            from: '"云擎智检·工业质检中枢" <3767953802@qq.com>',
+            from: '"灵眸巡诊·工业质检中枢" <3767953802@qq.com>',
             to: to,
-            subject: subject || `【云擎智检·工业质检告警】半轴 ${rData.axleCode || '2403511-P301'} 缺陷分析报告`,
+            subject: subject || `【灵眸巡诊·工业质检告警】半轴 ${rData.axleCode || '2403511-P301'} 缺陷分析报告`,
             html: htmlContent
           });
 

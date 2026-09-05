@@ -150,8 +150,10 @@
                   <span>Port: {{ currentDev.port }}</span>
                   <span class="sep">|</span>
                   <span>协议: {{ currentDev.protocol }}</span>
-                  <span class="sep">|</span>
-                  <span>厂商: {{ currentDev.vendor }}</span>
+                  <template v-if="currentDev.vendor">
+                    <span class="sep">|</span>
+                    <span>厂商: {{ currentDev.vendor }}</span>
+                  </template>
                 </div>
               </div>
             </div>
@@ -619,7 +621,7 @@ export default {
         },
         {
           id: 'dev_cam_01',
-          name: '高精度工业视觉相机',
+          name: '工业相机 YG-CO100100-W',
           type: 'camera',
           typeName: '视觉传感器',
           icon: 'el-icon-camera',
@@ -627,14 +629,14 @@ export default {
           port: 3956,
           protocol: 'GigE Vision',
           sn: 'CAM-CIM-C10C-01',
-          vendor: 'Hikrobot (海康机器人)',
+          vendor: '',
           primaryMetricName: '采集帧率',
           primaryMetricVal: '30.4 FPS',
           params: { exposure: 3500, gain: 4.0, trigger: 'line1' }
         },
         {
           id: 'dev_arm_01',
-          name: '6 轴高精度协作机械臂',
+          name: '机械臂 DUX-1A3M',
           type: 'arm',
           typeName: '协作机械臂',
           icon: 'el-icon-connection',
@@ -642,14 +644,14 @@ export default {
           port: 30003,
           protocol: 'UR-RT / TCP',
           sn: 'ARM-CNC-6DOF-001',
-          vendor: 'Universal Robots / UR10e',
+          vendor: '',
           primaryMetricName: '电机温升',
           primaryMetricVal: '37.6 °C',
           params: { speed: 60, force: 25, collision: 'medium' }
         },
         {
           id: 'dev_agv_01',
-          name: '智能物流搬运 AGV 小车',
+          name: 'AGV小车 SLAM-500',
           type: 'agv',
           typeName: '自主底盘',
           icon: 'el-icon-truck',
@@ -657,7 +659,7 @@ export default {
           port: 502,
           protocol: 'Modbus-TCP',
           sn: 'AGV-SLAM-500K-01',
-          vendor: 'Geek+ / SLAM 导航',
+          vendor: '',
           primaryMetricName: '动力电池',
           primaryMetricVal: '88 %',
           params: { maxSpeed: 1.2, safeDist: 0.8, turnSpeed: 45 }
@@ -695,30 +697,22 @@ export default {
           { label: '连续无故障运行', value: '128 小时 42 分', sub: '系统运行平稳' }
         ];
       } else if (dev.type === 'camera') {
-        const lastVal = this.chartHistory.camera[this.chartHistory.camera.length - 1] || 30.4;
         return [
-          { label: '当前采集帧率', value: lastVal + ' FPS', highlight: true, percent: 98, tag: '满帧' },
-          { label: '传感器物理分辨率', value: '4024 × 3036 px', sub: '1200万像素全局快门' },
-          { label: '曝光时长设定', value: dev.params.exposure + ' μs', highlight: true, sub: '微秒级频闪同步' },
-          { label: '模拟硬件增益', value: dev.params.gain + ' dB', sub: '动态范围自适应' },
-          { label: '网络丢包率', value: '0.00 % (极佳)', highlight: true, percent: 100 },
-          { label: '驱动服务状态', value: 'MvLogServer 活跃', sub: 'GigE Vision 通信握手正常' }
+          { label: '相机类型', value: '工业面阵相机', highlight: true, sub: '高分辨率工业成像' },
+          { label: '传感器类型', value: 'CMOS 卷帘快门', highlight: true, sub: '高灵敏度感光元件' },
+          { label: '分辨率 / 像素', value: '1200 万像素', highlight: true, sub: '4024 × 3036 标称输出' }
         ];
       } else if (dev.type === 'arm') {
-        const lastVal = this.chartHistory.arm[this.chartHistory.arm.length - 1] || 37.6;
         return [
-          { label: '电机运行温升', value: lastVal + ' °C', highlight: true, percent: (lastVal / 60) * 100, tag: '标称' },
-          { label: '末端空间位姿', value: 'X420 Y120 Z370', sub: '重复定位精度 ±0.02mm' },
-          { label: '气动夹爪状态', value: '夹持就绪 (OK)', highlight: true, sub: `力控设定 ${dev.params.force} N` },
-          { label: '伺服运行倍率', value: dev.params.speed + ' %', percent: dev.params.speed },
-          { label: '生产工步节拍', value: '3.2 s / 循环', sub: '流水线平稳同步' },
-          { label: '实时通信端口', value: '30003 (UR-RT)', sub: '125Hz 周期闭环' }
+          { label: '工作半径', value: '1000 mm', highlight: true, sub: '最大作业包络范围' },
+          { label: '重复定位精度', value: '±0.02 mm', highlight: true, sub: '高精度伺服闭环' },
+          { label: '防护等级', value: 'IP54', highlight: true, sub: '工业级防尘防溅水' }
         ];
       } else if (dev.type === 'agv') {
         return [
-          { label: '避障雷达视场', value: '通畅 (0 障碍)', highlight: true, sub: `安全裕量 ${dev.params.safeDist || 0.8} m` },
-          { label: '累计运行里程', value: '142.6 km', highlight: true, sub: '底盘机械无故障' },
-          { label: 'PLC 交互协议', value: 'Modbus-TCP (502)', highlight: true, sub: '保持寄存器周期同步' }
+          { label: '导航方式', value: 'SLAM 激光导航', highlight: true, sub: '高精自主建图与定位' },
+          { label: '最大载重', value: '100 kg', highlight: true, sub: '工业级重载搬运底盘' },
+          { label: '最大速度', value: '1.5 m/s', highlight: true, sub: '全向平稳巡航行驶' }
         ];
       }
       return [];

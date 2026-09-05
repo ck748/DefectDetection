@@ -10,10 +10,10 @@
         <div class="logo-container" :class="{ 'collapse': isCollapse }">
           <transition name="sidebarLogoFade">
             <router-link v-if="isCollapse" key="collapse" class="sidebar-logo-link" to="/">
-              <img src="../assets/软件学院院徽.png" class="sidebar-logo">
+              <img src="../assets/logo.png" class="sidebar-logo">
             </router-link>
             <router-link v-else key="expand" class="sidebar-logo-link" to="/">
-              <img src="../assets/软件学院院徽.png" class="sidebar-logo">
+              <img src="../assets/logo.png" class="sidebar-logo">
               <h1 class="sidebar-title">{{ title }}</h1>
             </router-link>
           </transition>
@@ -37,10 +37,10 @@
               <span slot="title">设备管理</span>
             </el-menu-item>
 
-            <!-- AGV控制与车间检测 -->
+            <!-- 车间检测 -->
             <el-menu-item index="/agv">
               <i class="el-icon-truck"></i>
-              <span slot="title">AGV控制与车间检测</span>
+              <span slot="title">车间检测</span>
             </el-menu-item>
 
             <!-- 新增：数据标注子菜单 -->
@@ -116,10 +116,6 @@
               <el-menu-item index="/six-s-manager">
                 <i class="el-icon-s-custom"></i>
                 <span slot="title">6S管家</span>
-              </el-menu-item>
-              <el-menu-item index="/omni-inspection">
-                <i class="el-icon-odometer"></i>
-                <span slot="title">质检工作台</span>
               </el-menu-item>
             </el-submenu>
           </el-menu>
@@ -232,7 +228,7 @@ export default {
     }
   },
   mounted() {
-    this.title = '云擎智检';
+    this.title = '灵眸巡诊';
     if (this.$route.path === '/') {
       this.$router.replace('/daping');
     }
@@ -314,9 +310,9 @@ export default {
 
 /* ================= 侧边栏 (Sidebar) ================= */
 .sidebar-container {
-  /* 调整色温至 11200K（高冷蓝调科技色温：hue-rotate(-12deg)），饱和度已恢复原始 100% */
-  background: #001529 url('../assets/1.png') no-repeat bottom center;
-  background-size: 100% 100%;
+  /* 调整色温至 11200K（高冷蓝调科技色温：hue-rotate(-12deg)），仅展示右侧区域，隐藏机械臂 */
+  background: #001529 url('../assets/1.png') no-repeat right bottom;
+  background-size: auto 135%;
   filter: hue-rotate(-12deg);
   height: 100%;
   font-size: 0px;
@@ -336,13 +332,16 @@ export default {
 .logo-container {
   position: relative;
   width: 100%;
-  height: 64px;
-  line-height: 64px;
-  background: rgba(0, 21, 41, 0.85);
-  backdrop-filter: blur(4px);
+  height: 96px;
+  line-height: 96px;
+  background: transparent;
   text-align: center;
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .sidebar-logo-link {
@@ -352,14 +351,18 @@ export default {
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .sidebar-logo {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   vertical-align: middle;
-  margin-right: 12px;
+  margin-right: 14px;
+  object-fit: contain;
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .logo-container.collapse .sidebar-logo-link {
@@ -372,8 +375,8 @@ export default {
 
 .logo-container.collapse .sidebar-logo {
   margin: 0 !important;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   display: block;
 }
 
@@ -381,12 +384,13 @@ export default {
   display: inline-block;
   margin: 0;
   color: #fff;
-  font-weight: 600;
-  line-height: 50px;
-  font-size: 18px;
-  letter-spacing: 1px;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 1.5px;
+  line-height: 96px;
   vertical-align: middle;
   white-space: nowrap;
+  text-shadow: 0 0 12px rgba(64, 169, 255, 0.7);
 }
 
 /* 滚动条区域 */
@@ -417,9 +421,9 @@ export default {
 ::v-deep .el-submenu__title {
   height: 50px;
   line-height: 50px;
-  margin: 4px 8px !important;
-  border-radius: 4px;
-  width: auto;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  width: 100% !important;
   box-sizing: border-box !important;
   transition: all 0.3s;
 }

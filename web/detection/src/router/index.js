@@ -40,7 +40,6 @@ const routes = [
             { path: '/password', name: 'Password', meta: { name: '修改密码' }, component: () => import('../components/password.vue') },
 
             // 国赛2.0 升级核心页面
-            { path: '/omni-inspection', name: 'OmniInspection', meta: { name: '360°全周质检', isFullLayout: true }, component: () => import('../components/OmniInspection.vue') },
             { path: '/feature-checklist', name: 'FeatureChecklist', meta: { name: '功能核对' }, component: () => import('../components/featureChecklist.vue') },
             { path: '/six-s-manager', name: 'SixSManager', meta: { name: '6S管家' }, component: () => import('../components/SixSManager.vue') },
 

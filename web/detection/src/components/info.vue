@@ -302,7 +302,7 @@
           <div class="report-header">
             <div class="header-main">
               <div class="brand-badge">
-                <i class="el-icon-office-building"></i> 云擎智检 · 工业质检报告
+                <i class="el-icon-office-building"></i> 灵眸巡诊 · 工业质检报告
               </div>
               <h2 class="report-title">半轴表面缺陷检测与工艺处置单</h2>
               <div class="report-meta">
@@ -370,7 +370,7 @@
                   alt="缺陷检测图谱"
                 />
                 <div v-else class="no-img-text">未获取到原始图像</div>
-                <div class="image-watermark">云擎智检·缺陷切片图谱</div>
+                <div class="image-watermark">灵眸巡诊·缺陷切片图谱</div>
               </div>
             </div>
 
@@ -468,7 +468,7 @@
               <span>车间工段长：__________________</span>
             </div>
             <div class="footer-note">
-              * 本报告由云擎智检深度视觉大模型自动分析生成，仅供生产线质检与工艺处置复核参考。
+              * 本报告由灵眸巡诊深度视觉大模型自动分析生成，仅供生产线质检与工艺处置复核参考。
             </div>
           </div>
         </div>

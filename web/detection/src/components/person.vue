@@ -5,7 +5,7 @@
         <div class="logo-section">
           <img src="../assets/软件学院院徽.png" alt="软件学院院徽" class="logo"/>
         </div>
-        <div class="title">云擎智检系统个人中心</div>
+        <div class="title">灵眸巡诊系统个人中心</div>
       </div>
       
       <el-form ref="formRef" :model="user" label-width="100px" class="person-form">
