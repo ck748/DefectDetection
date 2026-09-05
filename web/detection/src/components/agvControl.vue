@@ -26,14 +26,6 @@
             <el-form-item label="波特率">
               <span class="muted">9600，8 数据位，1 停止位，无校验（后端托管串口）</span>
             </el-form-item>
-            <el-form-item label="站号配置">
-              <div class="station-cfg">
-                <span class="muted">上料区</span>
-                <el-input-number v-model="stationLoading" :min="1" :max="255" size="mini"></el-input-number>
-                <span class="muted">检测区</span>
-                <el-input-number v-model="stationDetect" :min="1" :max="255" size="mini"></el-input-number>
-              </div>
-            </el-form-item>
           </el-form>
         </el-card>
 
@@ -298,7 +290,7 @@ export default {
       return '停止';
     },
     canClick(i) {
-      return !((i === 0 || i === 1) && !this.canControl);
+      return true;
     },
 
     async loadPorts() {
@@ -467,13 +459,8 @@ export default {
       }
 
       if (i === 0 || i === 1) {
-        // 到达上料区 / 到达检测区：向 AGV 下发对应站点
-        const station = i === 0 ? this.stationLoading : this.stationDetect;
-        this.sendCmd(0x9D, station, 0x00);
+        // 到达上料区 / 到达检测区：仅更新流程状态
         step.state = 'active';
-        this.pendingStep = i;
-        this.pendingStation = station;
-        this.$message.success(`已发送目标站点 ${station}`);
       } else if (i === 2) {
         // "检测中"：启动机械臂检测动作(左右俯身 + 相机左右移动拍照)
         step.state = 'active';
@@ -1076,9 +1063,9 @@ export default {
 <style scoped>
 .agv-page {
   padding: 10px;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 120px);
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   background-color: #0c1017;
   background-image:
     radial-gradient(ellipse at 50% -10%, rgba(0, 114, 179, .28) 0%, transparent 60%),
@@ -1096,16 +1083,16 @@ export default {
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "left flow";
 }
-.area-left { grid-area: left; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+.area-left { grid-area: left; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .card-flow { grid-area: flow; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .card-flow ::v-deep .el-card__body { flex: 1; min-height: 0; overflow: hidden; }
 .card-status { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .card-status ::v-deep .el-card__body { flex: 1; overflow: auto; }
 
-.area-left ::v-deep .el-card__header { padding: 5px 12px; }
-.area-left ::v-deep .el-card__body { padding: 5px 12px 6px; }
-.area-left .card-header { font-size: 14px; }
-.area-left .card-header > span::before { height: 12px; }
+.area-left ::v-deep .el-card__header { padding: 8px 12px; }
+.area-left ::v-deep .el-card__body { padding: 8px 12px 10px; }
+.area-left .card-header { font-size: 15px; }
+.area-left .card-header > span::before { height: 13px; }
 
 .agv-page ::v-deep .el-card {
   background: linear-gradient(180deg, rgba(23, 30, 40, .95), rgba(15, 20, 28, .95));
@@ -1129,9 +1116,9 @@ export default {
 }
 .muted { color: #8fa0b3; font-size: 12px; }
 .hint { margin-top: 2px; font-size: 11px; line-height: 14px; color: #75879c; }
-.agv-page ::v-deep .el-form-item { margin-bottom: 3px; }
-.agv-page ::v-deep .el-form-item__label { font-size: 13px; line-height: 26px; color: #aeb9c7; }
-.agv-page ::v-deep .el-form-item__content { line-height: 26px; }
+.agv-page ::v-deep .el-form-item { margin-bottom: 5px; }
+.agv-page ::v-deep .el-form-item__label { font-size: 13px; line-height: 30px; color: #aeb9c7; }
+.agv-page ::v-deep .el-form-item__content { line-height: 30px; }
 .agv-page ::v-deep .el-input__inner {
   font-size: 13px;
   background: #0c121b;
@@ -1204,12 +1191,12 @@ export default {
 }
 
 /* 实时状态 */
-.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; align-content: start; gap: 4px; }
+.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; align-content: start; gap: 6px; }
 .status-item {
-  display: flex; flex-direction: column; justify-content: center; gap: 1px;
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
   background: rgba(0, 229, 255, .05);
   border: 1px solid rgba(0, 229, 255, .10);
-  border-radius: 6px; padding: 3px 6px;
+  border-radius: 6px; padding: 5px 7px;
 }
 .status-item .k { font-size: 12px; color: #8fa0b3; }
 .status-item .v { font-size: 13px; font-weight: 600; color: #eaf3fc; }
@@ -1223,6 +1210,8 @@ export default {
 /* AGV 控制 */
 .card-move ::v-deep .el-card__header { padding: 8px 12px; }
 .card-move ::v-deep .el-card__body { padding: 10px 12px 12px; }
+.station-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.station-btns .el-button { min-width: 80px; font-weight: 600; }
 .agv-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .agv-btns .el-button { min-width: 120px; font-weight: 600; }
 

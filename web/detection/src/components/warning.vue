@@ -950,7 +950,7 @@ export default {
       },
       chartInstance: null,
       currentPage: 1,
-      pageSize: 10,
+      pageSize: 9,
       isInitLoading: true, // 初次加载防抖标记，防止watch自动触发多条保存弹窗
       // 专家报告弹窗数据
       expertReportVisible: false,
@@ -1741,69 +1741,66 @@ export default {
   flex-direction: column;
 }
 
-/* 页面顶部标题与操作栏 (Header Section) */
+/* 页面顶部标题与操作栏 (Header Section) - 与日志管理/密钥管理放大规范一致 */
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 6px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 18px 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #ebeef5;
   margin-bottom: 8px;
-  border-bottom: 1px solid #e8edf5;
   flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .title-icon {
+  width: 40px;
+  height: 40px;
+  background: #e6f7ff;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  background: linear-gradient(135deg, #e6f7ff 0%, #d4edff 100%);
-  border: 1px solid #91d5ff;
-  border-radius: 6px;
   color: #1890ff;
-  font-size: 15px;
-  box-shadow: 0 2px 5px rgba(24, 144, 255, 0.12);
+  font-size: 22px;
 }
 
 .page-title {
   margin: 0;
-  font-size: 16.5px;
+  font-size: 22px;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: 0.3px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1f2d3d;
+  letter-spacing: -0.3px;
 }
 
 .title-tag {
-  font-size: 11px;
-  font-weight: 600;
-  color: #096dd9;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1890ff;
   background: #e6f7ff;
   border: 1px solid #91d5ff;
   border-radius: 4px;
-  padding: 1px 7px;
-  letter-spacing: 0.2px;
+  padding: 3px 10px;
 }
 
 .page-desc {
-  margin: 0;
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 400;
-  letter-spacing: 0.2px;
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: #606266;
 }
 
 .header-right {
@@ -2298,7 +2295,7 @@ export default {
 }
 
 .panel-body {
-  padding: 14px 16px;
+  padding: 10px 14px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2306,7 +2303,7 @@ export default {
 }
 
 .chart-panel-body {
-  padding: 16px 18px;
+  padding: 10px 14px;
   flex: 1;
   display: flex;
   align-items: center;
@@ -2319,12 +2316,12 @@ export default {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 16px;
+  gap: 12px;
 }
 
 .chart-container {
-  width: 190px;
-  height: 190px;
+  width: 165px;
+  height: 165px;
   flex-shrink: 0;
 }
 
@@ -2333,8 +2330,8 @@ export default {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px 12px;
   background: #f8fafc;
   border-radius: 8px;
   border: 1px solid #eef2f6;
