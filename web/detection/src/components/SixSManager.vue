@@ -1,92 +1,49 @@
 <template>
   <div class="sixs-dashboard-hub">
-    <!-- 1. 顶部：企业级极简工控 KPI 概览条 (4 核心指标卡) -->
-    <div class="top-kpi-bar">
-      <div class="kpi-card">
-        <div class="kpi-icon-box bg-blue">
-          <i class="el-icon-medal"></i>
+    <!-- 1. 顶部全局统一标准卡片 Header（与系统日志、API、密钥管理高度样式完全对齐） -->
+    <div class="header-section">
+      <div class="header-left">
+        <div class="title-wrap">
+          <span class="title-icon"><i class="el-icon-cpu"></i></span>
+          <h2 class="page-title">6S 精益管理执行阶段与工位标准</h2>
+          <span class="title-tag">精益管控</span>
         </div>
-        <div class="kpi-info">
-          <div class="kpi-label">6S 综合健康度</div>
-          <div class="kpi-val-row">
-            <span class="kpi-number text-blue font-mono">98.5</span>
-            <span class="kpi-unit">分</span>
-            <span class="kpi-custom-badge badge-blue">A+ 卓越</span>
-          </div>
-        </div>
+        <p class="page-desc">全维度规范车间整理、整顿、清扫、清洁、素养与安全标准化巡检与工位联锁调度</p>
       </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon-box bg-green">
-          <i class="el-icon-connection"></i>
-        </div>
-        <div class="kpi-info">
-          <div class="kpi-label">工控总线与联锁</div>
-          <div class="kpi-val-row">
-            <span class="kpi-status-text text-green">PROFINET 在线</span>
-            <span class="kpi-custom-badge badge-green">正常</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon-box bg-amber">
-          <i class="el-icon-document-checked"></i>
-        </div>
-        <div class="kpi-info">
-          <div class="kpi-label">今日点检闭环率</div>
-          <div class="kpi-val-row">
-            <span class="kpi-number text-amber font-mono">100</span>
-            <span class="kpi-unit">%</span>
-            <span class="kpi-custom-badge badge-amber">6/6 工位</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="kpi-card action-kpi-card">
-        <div class="kpi-action-btns">
-          <el-button
-            type="primary"
-            size="small"
-            icon="el-icon-refresh-right"
-            :loading="checking"
-            @click="runAutoCheck"
-            class="action-btn-primary"
-          >
-            {{ checking ? '全车间巡检中...' : '智能巡诊实时信息' }}
-          </el-button>
-          <el-button
-            size="small"
-            icon="el-icon-download"
-            @click="exportReport"
-            class="action-btn-outline"
-            plain
-          >
-            导出巡检合规简报
-          </el-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. 中部：6S 精益管理执行阶段与工位标准 -->
-    <div class="sixs-step-flow-card">
-      <div class="flow-header">
-        <div class="flow-title">
-          <div class="flow-title-icon-badge">
-            <i class="el-icon-cpu"></i>
-          </div>
-          <span class="flow-title-text">6S 精益管理执行阶段与工位标准</span>
-        </div>
+      <div class="header-right">
+        <el-button
+          type="primary"
+          size="small"
+          icon="el-icon-refresh-right"
+          :loading="checking"
+          @click="runAutoCheck"
+          class="header-act-btn-primary"
+        >
+          {{ checking ? '巡检中...' : '智能巡诊实时信息' }}
+        </el-button>
+        <el-button
+          size="small"
+          icon="el-icon-download"
+          @click="exportReport"
+          class="header-act-btn-outline"
+          plain
+        >
+          导出巡检合规简报
+        </el-button>
         <div class="flow-detail-link" @click="viewDetailAction">
           <span>查看详情</span>
           <i class="el-icon-arrow-right"></i>
         </div>
       </div>
-      <div class="flow-steps-grid">
+    </div>
+
+    <!-- 2. 6S 执行阶段与工位标准 6 阶段微卡片网格 -->
+    <div class="flow-steps-grid">
         <div
           v-for="(item, idx) in sixSItems"
           :key="idx"
           class="step-item-card"
+          :class="'step-card-' + item.type"
           @click="selectCard(item)"
         >
           <!-- 顶部行：左侧序号钢蓝方块 + 阶段名称，右侧蓝色分数 -->
@@ -107,7 +64,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- 3. 底部：左右工作区 (左侧 62% AI 核心工作台，右侧 38% 雷达 + 点检表) -->
     <div class="bottom-dual-layout">
@@ -118,11 +74,13 @@
           <div class="ai-wb-header">
             <div class="ai-wb-title-box">
               <div class="ai-wb-icon-badge">
-                <i class="el-icon-service"></i>
+                <i class="el-icon-cpu"></i>
               </div>
               <div class="ai-wb-title-info">
                 <span class="ai-wb-title-text">6S 智能巡检专家工作台</span>
-                <span class="ai-wb-status-badge">AI 联锁就绪</span>
+                <span class="ai-wb-status-badge font-mono">
+                  <span class="badge-dot"></span>AI 联锁就绪
+                </span>
               </div>
             </div>
             <div class="ai-wb-actions">
@@ -1273,66 +1231,121 @@ export default {
   box-shadow: 0 4px 10px rgba(35, 136, 232, 0.08);
 }
 
-/* ================= 4. 中部 6S 流程步骤连贯卡片 ================= */
-.sixs-step-flow-card {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-}
-
-.flow-header {
+/* ================= 3. 顶部全局统一标准卡片 Header（与系统日志、API、密钥管理高度样式完全对齐） ================= */
+.header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-}
-
-.flow-title {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: #1c3047;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.flow-title-icon-badge {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: #eaf4ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #ffffff;
+  border-radius: 8px !important;
+  padding: 18px 24px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #ebeef5 !important;
+  box-sizing: border-box !important;
   flex-shrink: 0;
 }
 
-.flow-title-icon-badge i {
-  color: #2388e8;
-  font-size: 14px;
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.flow-title-text {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: #1c3047;
-}
-
-.flow-detail-link {
-  font-size: 13px;
-  color: #2388e8;
-  font-weight: 600;
+.title-wrap {
   display: flex;
   align-items: center;
-  gap: 2px;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  gap: 12px;
 }
 
-.flow-detail-link:hover {
-  opacity: 0.8;
+.title-icon {
+  width: 40px;
+  height: 40px;
+  background: #e6f7ff;
+  border-radius: 8px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1890ff;
+  font-size: 22px;
+  flex-shrink: 0;
 }
 
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2d3d;
+  letter-spacing: -0.3px;
+}
+
+.title-tag {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1890ff;
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px !important;
+  padding: 3px 10px;
+  line-height: 1.3;
+}
+
+.page-desc {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.4;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-act-btn-primary {
+  height: 32px !important;
+  padding: 0 15px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: linear-gradient(135deg, #2588ea 0%, #1577d7 100%) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(34, 132, 225, 0.2) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: all 0.2s ease !important;
+}
+
+.header-act-btn-primary:hover {
+  background: linear-gradient(135deg, #3b9bff 0%, #1985ee 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(34, 132, 225, 0.3) !important;
+}
+
+.header-act-btn-outline {
+  height: 32px !important;
+  padding: 0 15px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(180, 210, 238, 0.8) !important;
+  border-radius: 8px !important;
+  color: #4e647a !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: all 0.2s ease !important;
+}
+
+.header-act-btn-outline:hover {
+  border-color: #2388e8 !important;
+  color: #2388e8 !important;
+  box-shadow: 0 2px 6px rgba(35, 136, 232, 0.1) !important;
+}
+
+/* ================= 4. 中部 6S 流程步骤连贯卡片 ================= */
 .flow-steps-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -1340,25 +1353,101 @@ export default {
 }
 
 .step-item-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(246, 250, 255, 0.92));
-  border: 1px solid rgba(180, 210, 238, 0.35);
-  border-radius: 14px !important;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px !important;
   padding: 12px 14px 10px 14px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 108px;
+  height: 110px;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 12px rgba(50, 110, 165, 0.03);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-item-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.85;
+  transition: opacity 0.25s ease;
 }
 
 .step-item-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(35, 136, 232, 0.4);
-  box-shadow: 0 8px 20px rgba(50, 110, 165, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
+
+.step-item-card:hover::before {
+  opacity: 1;
+}
+
+/* 1. 整理 (Seiri) - 科技深蓝 */
+.step-card-seiri {
+  background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
+  border-color: #dbeafe;
+}
+.step-card-seiri::before { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+.step-card-seiri:hover { border-color: #93c5fd; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12); }
+.step-card-seiri .step-num-badge { background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3); }
+.step-card-seiri .card-score-text { color: #1d4ed8; }
+
+/* 2. 整顿 (Seiton) - 精益翠绿 */
+.step-card-seiton {
+  background: linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%);
+  border-color: #dcfce7;
+}
+.step-card-seiton::before { background: linear-gradient(90deg, #10b981, #059669); }
+.step-card-seiton:hover { border-color: #86efac; box-shadow: 0 8px 20px rgba(5, 150, 105, 0.12); }
+.step-card-seiton .step-num-badge { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3); }
+.step-card-seiton .card-score-text { color: #059669; }
+
+/* 3. 清扫 (Seiso) - 琥珀明金 */
+.step-card-seiso {
+  background: linear-gradient(145deg, #ffffff 0%, #fffbeb 100%);
+  border-color: #fef3c7;
+}
+.step-card-seiso::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.step-card-seiso:hover { border-color: #fde68a; box-shadow: 0 8px 20px rgba(217, 119, 6, 0.12); }
+.step-card-seiso .step-num-badge { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3); }
+.step-card-seiso .card-score-text { color: #d97706; }
+
+/* 4. 清洁 (Seiketsu) - 碧波海青 */
+.step-card-seiketsu {
+  background: linear-gradient(145deg, #ffffff 0%, #ecfeff 100%);
+  border-color: #cffafe;
+}
+.step-card-seiketsu::before { background: linear-gradient(90deg, #06b6d4, #0891b2); }
+.step-card-seiketsu:hover { border-color: #67e8f9; box-shadow: 0 8px 20px rgba(8, 145, 178, 0.12); }
+.step-card-seiketsu .step-num-badge { background: linear-gradient(135deg, #06b6d4, #0891b2); box-shadow: 0 2px 6px rgba(8, 145, 178, 0.3); }
+.step-card-seiketsu .card-score-text { color: #0891b2; }
+
+/* 5. 素养 (Shitsuke) - 质感靛紫 */
+.step-card-shitsuke {
+  background: linear-gradient(145deg, #ffffff 0%, #f5f3ff 100%);
+  border-color: #ede9fe;
+}
+.step-card-shitsuke::before { background: linear-gradient(90deg, #6366f1, #4f46e5); }
+.step-card-shitsuke:hover { border-color: #c4b5fd; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.12); }
+.step-card-shitsuke .step-num-badge { background: linear-gradient(135deg, #6366f1, #4f46e5); box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3); }
+.step-card-shitsuke .card-score-text { color: #4f46e5; }
+
+/* 6. 安全 (Safety) - 警戒红盾 */
+.step-card-safety {
+  background: linear-gradient(145deg, #ffffff 0%, #fef2f2 100%);
+  border-color: #fee2e2;
+}
+.step-card-safety::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.step-card-safety:hover { border-color: #fca5a5; box-shadow: 0 8px 20px rgba(220, 38, 38, 0.12); }
+.step-card-safety .step-num-badge { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3); }
+.step-card-safety .card-score-text { color: #dc2626; }
 
 .card-top-row {
   display: flex;
@@ -1379,7 +1468,6 @@ export default {
   width: 22px;
   height: 22px;
   border-radius: 6px !important;
-  background: #64748b;
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 800;
@@ -1465,15 +1553,24 @@ export default {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
   gap: 16px;
+  align-items: stretch;
+}
+
+.left-ai-column {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ================= 左翼：AI 工作台 (全页视觉中心) ================= */
 .ai-workbench-card {
-  height: 610px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 255, 0.96));
-  border: 1px solid rgba(180, 215, 245, 0.45);
-  border-radius: 22px !important;
-  box-shadow: 0 12px 36px rgba(50, 110, 165, 0.07);
+  flex: 1;
+  height: 100%;
+  min-height: 610px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   padding: 18px 20px;
@@ -1815,24 +1912,37 @@ export default {
 }
 
 /* ================= 6. 右翼：数据分析区 (雷达与点检流水) ================= */
+.right-data-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+}
+
 .analysis-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.94));
-  border-radius: 20px !important;
-  border: 1px solid rgba(180, 210, 238, 0.35);
-  box-shadow: 0 10px 28px rgba(50, 110, 165, 0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: 18px !important;
+  border: 1px solid #e1ebf5;
+  box-shadow: 0 6px 20px rgba(28, 48, 71, 0.04);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+.analysis-card:hover {
+  border-color: #cbdbe8;
+  box-shadow: 0 10px 24px rgba(35, 136, 232, 0.07);
 }
 
 .card-header-clean {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(226, 238, 250, 0.7);
-  background: transparent;
+  padding: 11px 16px;
+  border-bottom: 1px solid #edf3f9;
+  background: #fbfdff;
   flex-shrink: 0;
 }
 
@@ -1884,8 +1994,9 @@ export default {
 }
 
 .radar-card {
-  height: 240px;
-  margin-bottom: 14px;
+  flex: 0 0 260px;
+  height: 260px;
+  margin-bottom: 0;
 }
 
 .radar-chart-stage {
@@ -1895,13 +2006,15 @@ export default {
 }
 
 .table-card {
-  height: 266px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .table-container {
   flex: 1;
   min-height: 0;
-  padding: 8px 12px;
+  padding: 6px 12px 10px;
   overflow-y: auto;
 }
 
@@ -1914,18 +2027,19 @@ export default {
 }
 
 .styled-sixs-table ::v-deep th.el-table__cell {
-  background-color: rgba(244, 249, 255, 0.8) !important;
-  color: #4e647a !important;
+  background-color: #f6f9fc !important;
+  color: #334155 !important;
   font-weight: 700;
   font-size: 12px;
-  padding: 6px 0 !important;
-  border-bottom: 1px solid rgba(226, 238, 250, 0.8) !important;
+  padding: 7px 0 !important;
+  border-bottom: 1px solid #e8eff5 !important;
 }
 
 .styled-sixs-table ::v-deep td.el-table__cell {
   padding: 6px 0 !important;
   font-size: 12px;
-  border-bottom: 1px solid rgba(235, 243, 250, 0.6) !important;
+  border-bottom: 1px solid #f0f4f8 !important;
+  color: #334155;
 }
 
 .station-cell-text {
