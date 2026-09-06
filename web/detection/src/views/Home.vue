@@ -124,11 +124,8 @@
 
       <!-- 主内容区域 -->
       <el-container class="main-container" :class="{ 'is-collapse': isCollapse }">
-        <!-- 头部 (高度由 120px 适度缩短为 96px，上下边距更加紧凑精致) -->
-        <el-header class="navbar" height="96px">
-          <!-- 导航栏背景图独立层：精准应用 11200K 色温 (hue-rotate(-12deg)) 与 66% 饱和度 (saturate(0.66)) -->
-          <div class="navbar-bg-layer"></div>
-
+        <!-- 头部 (高 64px 清爽极简现代工业风，白底无背景图) -->
+        <el-header class="navbar" height="64px">
           <div class="navbar-left">
             <!-- 顶部折叠按钮 -->
             <div class="hamburger-container" @click="handleCollapse">
@@ -137,10 +134,7 @@
 
             <!-- 固定的工业标题与标语区域 -->
             <div class="header-title-zone">
-              <div class="header-main-title-row">
-                <span class="header-main-title">工业设备智能管控中心</span>
-                <span class="header-tag-badge">工业总线集成</span>
-              </div>
+              <div class="header-main-title">工业设备智能管控中心</div>
               <div class="header-sub-slogan">全生命周期监测 · AGV 智能运维 · 数据驱动高效生产</div>
             </div>
           </div>
@@ -159,14 +153,20 @@
 
             <!-- 实时时间 -->
             <div class="header-time-display">
-              {{ currentTimeStr }}
+              <i class="el-icon-date time-cal-icon"></i>
+              <span>{{ currentTimeStr }}</span>
             </div>
 
-            <!-- 报警消息铃铛 (保留1个带气泡角标) -->
+            <!-- 报警消息铃铛 -->
             <div class="header-notice-btn" @click="$router.push('/warning')">
               <el-badge :value="3" class="notice-badge">
                 <i class="el-icon-bell notice-icon"></i>
               </el-badge>
+            </div>
+
+            <!-- 帮助图标 -->
+            <div class="header-help-btn" title="系统帮助与操作指引">
+              <i class="el-icon-question help-icon"></i>
             </div>
 
             <!-- 分割线 -->
@@ -179,7 +179,7 @@
                   <i class="el-icon-user-solid"></i>
                 </div>
                 <span class="user-name">{{ user.name || 'admin1' }}</span>
-                <i class="el-icon-arrow-down" />
+                <i class="el-icon-caret-bottom user-caret" />
               </div>
               <el-dropdown-menu slot="dropdown" class="user-dropdown">
                 <router-link to="/person">
@@ -293,7 +293,7 @@ export default {
 .home-container {
   height: 100vh;
   width: 100vw;
-  background-color: #f0f2f5;
+  background-color: #ffffff;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   box-sizing: border-box;
@@ -520,39 +520,24 @@ export default {
   margin-left: 0 !important;
 }
 
-/* ================= 头部导航 (Navbar) ================= */
+/* ================= 头部导航 (Navbar) - 权威管控中心大顶栏 ================= */
 .navbar {
-  height: 96px !important;
+  height: 78px !important;
   width: 100%;
-  background-color: #07152b;
-  box-shadow: 0 4px 16px rgba(0, 15, 30, 0.45);
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 32px;
+  padding: 0 26px;
   z-index: 99;
   position: relative;
   top: auto;
-  border-bottom: 1px solid rgba(24, 144, 255, 0.35);
+  border-bottom: 1px solid #f1f5f9;
   overflow: visible;
   flex-shrink: 0;
   box-sizing: border-box;
   min-width: max-content;
-}
-
-/* 顶部导航背景图独立滤镜层：色温 11200K (hue-rotate(-12deg))，饱和度已恢复原始 100% */
-.navbar-bg-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('../assets/2.png') no-repeat right -40px;
-  background-size: 100% 333%;
-  background-position: right -40px;
-  filter: hue-rotate(-12deg);
-  pointer-events: none;
-  z-index: 1;
 }
 
 .navbar-left {
@@ -565,34 +550,37 @@ export default {
   white-space: nowrap;
 }
 
-/* 汉堡折叠按钮（已缩小尺寸） */
+/* 汉堡折叠按钮 - 适配大顶栏 */
 .hamburger-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 38px;
-  width: 38px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
+  height: 40px;
+  width: 40px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   cursor: pointer;
   margin-right: 18px;
-  transition: all 0.3s;
-  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
 .hamburger-container:hover {
-  background: rgba(24, 144, 255, 0.35);
-  border-color: #40a9ff;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .hamburger-container i {
-  font-size: 18px;
-  color: #ffffff;
+  font-size: 20px;
+  color: #334155;
 }
 
-/* 标题与标语区域 */
+.hamburger-container:hover i {
+  color: #0284c7;
+}
+
+/* 标题与标语区域 - 大字号权威排版 */
 .header-title-zone {
   display: flex;
   flex-direction: column;
@@ -601,52 +589,27 @@ export default {
   white-space: nowrap;
 }
 
-.header-main-title-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .header-main-title {
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 28px;
-  letter-spacing: 1.2px;
-  line-height: 38px;
-  text-shadow: 0 0 16px rgba(64, 169, 255, 0.9);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.header-tag-badge {
-  display: inline-block;
-  padding: 4px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  border: 1px solid rgba(145, 213, 255, 0.6);
-  border-radius: 6px;
-  box-shadow: 0 3px 10px rgba(24, 144, 255, 0.5);
-  letter-spacing: 0.8px;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .header-sub-slogan {
-  font-size: 15px;
-  color: #ffffff;
+  font-size: 13.5px;
+  color: #64748b;
   font-weight: 500;
-  margin-top: 12px;
-  letter-spacing: 1.5px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9), 0 0 10px rgba(24, 144, 255, 0.6);
+  margin-top: 5px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* 右侧区域容器 (1:1 还原参考图) */
+/* 右侧区域容器 */
 .navbar-right {
   display: flex;
   align-items: center;
@@ -657,30 +620,33 @@ export default {
   white-space: nowrap;
 }
 
-/* 胶囊搜索框 */
+/* 胶囊搜索框 - 宽适大气 */
 .header-search-box {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: #ffffff;
   border-radius: 8px;
-  padding: 0 16px;
-  height: 42px;
-  width: 270px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  transition: all 0.3s ease;
+  padding: 0 14px;
+  height: 38px;
+  width: 260px;
+  border: 1px solid #d1d5db;
+  transition: all 0.2s ease;
+}
+
+.header-search-box:hover {
+  border-color: #9ca3af;
 }
 
 .header-search-box:focus-within {
   background: #ffffff;
-  border-color: #40a9ff;
-  box-shadow: 0 0 12px rgba(64, 169, 255, 0.6);
-  width: 290px;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.15);
+  width: 280px;
 }
 
 .search-icon {
-  font-size: 17px;
-  color: #595959;
+  font-size: 15px;
+  color: #9ca3af;
   margin-right: 8px;
 }
 
@@ -688,23 +654,30 @@ export default {
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13.5px;
-  color: #333333;
+  font-size: 13px;
+  color: #6b7280;
   width: 100%;
 }
 
 .search-input::placeholder {
-  color: #8c8c8c;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 /* 实时时间显示 */
 .header-time-display {
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: #ffffff;
-  letter-spacing: 0.8px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(24, 144, 255, 0.4);
-  font-family: 'Roboto Mono', Consolas, Monaco, monospace;
+  color: #6b7280;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.time-cal-icon {
+  font-size: 16px;
+  color: #9ca3af;
 }
 
 /* 单铃铛通知按钮 */
@@ -713,86 +686,109 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 6px;
-  transition: all 0.3s;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.header-notice-btn:hover {
+  background: #f1f5f9;
 }
 
 .notice-icon {
-  font-size: 24px;
-  color: #ffffff;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
-  transition: transform 0.3s ease;
+  font-size: 20px;
+  color: #475569;
+  transition: color 0.2s;
 }
 
 .header-notice-btn:hover .notice-icon {
-  transform: scale(1.15) rotate(15deg);
-  color: #40a9ff;
+  color: #0284c7;
 }
 
 ::v-deep .notice-badge .el-badge__content {
-  background-color: #ff4d4f;
+  background-color: #ef4444;
   border: 1.5px solid #ffffff;
   font-weight: 700;
   font-size: 11px;
-  height: 18px;
-  line-height: 16px;
+  height: 16px;
+  line-height: 14px;
   padding: 0 5px;
   top: -2px;
   right: 2px;
 }
 
+/* 帮助问号按钮 */
+.header-help-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.header-help-btn:hover {
+  background: #f1f5f9;
+}
+
+.help-icon {
+  font-size: 20px;
+  color: #475569;
+}
+
+.header-help-btn:hover .help-icon {
+  color: #0284c7;
+}
+
 /* 分割线 */
 .header-divider {
   width: 1px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.25);
-  margin: 0 2px;
+  height: 22px;
+  background: #e2e8f0;
+  margin: 0 4px;
 }
 
-/* 用户胶囊下拉栏 */
+/* 用户信息区 */
 .avatar-wrapper {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 4px 14px 4px 6px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s;
+  padding: 4px 8px 4px 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .avatar-wrapper:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(64, 169, 255, 0.7);
-  box-shadow: 0 0 10px rgba(64, 169, 255, 0.4);
+  background: #f1f5f9;
 }
 
 .user-avatar-circle {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: #1890ff;
+  background: #0284c7;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 19px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: 16px;
 }
 
 .user-name {
-  margin: 0 10px 0 8px;
-  font-size: 14.5px;
-  font-weight: 500;
-  color: #ffffff;
-  letter-spacing: 0.5px;
+  margin: 0 8px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.2px;
 }
 
-.avatar-wrapper .el-icon-arrow-down {
-  color: rgba(255, 255, 255, 0.85);
+.user-caret {
+  color: #94a3b8;
   font-size: 13px;
-  font-weight: bold;
 }
 
 /* ================= 内容区 (Content) - 零间隙无缝全平铺 ================= */
@@ -805,9 +801,9 @@ export default {
   flex: 1; /* 自动撑满剩余视口高度 */
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 96px);
-  max-height: calc(100vh - 96px);
-  background-color: #f0f2f5;
+  height: calc(100vh - 78px);
+  max-height: calc(100vh - 78px);
+  background-color: #ffffff;
 }
 
 .app-main.is-fullscreen-view {
@@ -816,7 +812,7 @@ export default {
 }
 
 .main-content-view {
-  background: #f0f2f5;
+  background: #ffffff;
   padding: 0;
   border-radius: 0 !important;
   height: 100%;

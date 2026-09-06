@@ -4,11 +4,10 @@
     <div class="header-section">
       <div class="header-left">
         <div class="title-wrap">
-          <span class="title-icon"><i class="el-icon-warning-outline"></i></span>
           <h2 class="page-title">预警与监控告警</h2>
           <span class="title-tag">工业告警中枢</span>
         </div>
-        <p class="page-desc">实时监控边缘质检设备与系统异常告警，提供告警事件分级追溯、紧急度分布统计及自动化通知触达配置</p>
+        <p class="page-desc">实时监控边缘质检设备与系统异常告警，提供告警事件分级追溯、紧急度分布统计及自动化通知触达配置。</p>
       </div>
       <div class="header-right">
         <el-tooltip content="刷新告警数据" placement="top">
@@ -1739,18 +1738,20 @@ export default {
   color: #303133;
   display: flex;
   flex-direction: column;
+  padding: 14px 24px 16px 24px;
+  background-color: #ffffff;
 }
 
-/* 页面顶部标题与操作栏 (Header Section) - 与日志管理/密钥管理放大规范一致 */
+/* 页面顶部标题与操作栏 (Header Section) - 无外框平铺，标准大字号与舒适行距 */
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 18px 24px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #ebeef5;
+  background: transparent !important;
+  border-radius: 0;
+  padding: 2px 0 12px 0;
+  box-shadow: none !important;
+  border: none !important;
   margin-bottom: 8px;
   flex-shrink: 0;
 }
@@ -1758,7 +1759,7 @@ export default {
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .title-wrap {
@@ -1767,24 +1768,13 @@ export default {
   gap: 12px;
 }
 
-.title-icon {
-  width: 40px;
-  height: 40px;
-  background: #e6f7ff;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #1890ff;
-  font-size: 22px;
-}
-
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 700;
   color: #1f2d3d;
   letter-spacing: -0.3px;
+  line-height: 1.2;
 }
 
 .title-tag {
@@ -1794,13 +1784,15 @@ export default {
   background: #e6f7ff;
   border: 1px solid #91d5ff;
   border-radius: 4px;
-  padding: 3px 10px;
+  padding: 2px 9px;
+  display: inline-block;
 }
 
 .page-desc {
-  margin: 8px 0 0 0;
+  margin: 0;
   font-size: 14px;
   color: #606266;
+  line-height: 1.5;
 }
 
 .header-right {
@@ -2122,12 +2114,12 @@ export default {
 }
 
 ::v-deep .el-table th.el-table__cell {
-  background-color: #fafafa !important;
+  background-color: #f1f5f9 !important;
   color: #1f2d3d !important;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
   padding: 14.5px 0 !important;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 ::v-deep .el-table td.el-table__cell {
