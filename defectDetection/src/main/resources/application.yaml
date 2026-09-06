@@ -1,7 +1,7 @@
 spring:
   datasource:
     username: root
-    password: "password"
+    password: "123456"
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/defect_detection?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=UTC
   servlet:
@@ -35,6 +35,12 @@ logging:
   level:
     org:
       springframework: INFO
+
+# VM 相机触发 TCP 配置
+vm:
+  tcp:
+    port: 8888                  # Java TCP Server 监听端口（VM 连接此端口）
+    capture-timeout: 10         # 等待 VM 拍照完成的超时时间（秒）
 
 # AI模型配置
 ai:

@@ -1,6 +1,7 @@
 package com.ggbond.defectdetection.controller;
 
 import com.ggbond.defectdetection.common.Result;
+import com.ggbond.defectdetection.service.AuboRealtimeService;
 import com.ggbond.defectdetection.service.AuboRobotService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class AuboController {
 
     @Autowired
     private AuboRobotService auboRobotService;
+
+    @Autowired(required = false)
+    private AuboRealtimeService auboRealtimeService;
 
     /** 扫描任务线程池 */
     private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor(r -> {
@@ -200,5 +204,35 @@ public class AuboController {
                 "scanning", auboRobotService.isScanning(),
                 "lastLog", lastScanLog != null ? lastScanLog : ""
         ));
+    }
+
+    /** 实时关节角度（弧度 + 角度） */
+    @GetMapping("/realtime")
+    public Result realtime() {
+        if (auboRealtimeService == null || !auboRealtimeService.getConnected().get()) {
+            return Result.success("实时数据未连接", Map.of(
+                    "connected", false,
+                    "joints_rad", new double[]{0, 0, 0, 0, 0, 0},
+                    "joints_deg", new double[]{0, 0, 0, 0, 0, 0}
+            ));
+        }
+        double[] rad = auboRealtimeService.getJointAngles();
+        double[] deg = auboRealtimeService.getJointAnglesDeg();
+        return Result.success("查询成功", Map.of(
+                "connected", true,
+                "joints_rad", rad,
+                "joints_deg", deg,
+                "lastUpdate", auboRealtimeService.getLastUpdateTime()
+        ));
+    }
+
+    /** 启动实时数据监听 */
+    @PostMapping("/realtime/start")
+    public Result startRealtime() {
+        if (auboRealtimeService == null) {
+            return Result.fail("实时数据服务未启用");
+        }
+        auboRealtimeService.start();
+        return Result.success("实时数据监听已启动");
     }
 }
