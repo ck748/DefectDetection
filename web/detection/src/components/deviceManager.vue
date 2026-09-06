@@ -74,7 +74,7 @@
     </section>
 
     <!-- 主体区域：左侧设备卡片拓扑，右侧设备深度测控工作台 -->
-    <div class="workbench-layout">
+    <div class="workbench-layout" :class="{ 'is-server-layout': currentDev.type === 'server' }">
       <!-- 左侧：受控设备列表 -->
       <aside class="device-list-column">
         <div class="column-panel">
@@ -129,8 +129,497 @@
         </div>
       </aside>
 
-      <!-- 右侧：当前选中设备的详情、时序波形与参数热调 -->
-      <main class="device-detail-column">
+      <!-- 【服务器专属视图】：图四高颜值运行总览看板 + 5系列时序趋势 + 4-Tab控制参数面板 -->
+      <template v-if="currentDev.type === 'server'">
+        <!-- 第二列：设备运行总览 + 实时运行趋势 -->
+        <section class="device-middle-column">
+          <!-- 顶部主卡片：设备运行总览 (包含头部信息、健康度圆环指标与 2×3 迷你趋势卡片) -->
+          <div class="detail-panel overview-main-card">
+            <!-- 头部标题栏 -->
+            <div class="overview-header-bar">
+              <div class="overview-title-text">设备运行总览</div>
+              <div class="overview-health-tag">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="13" r="7"></circle>
+                  <line x1="12" y1="2" x2="12" y2="6"></line>
+                  <circle cx="12" cy="2" r="1.2" fill="#059669"></circle>
+                </svg>
+                <span>设备健康度</span>
+              </div>
+            </div>
+
+            <!-- 设备主要信息与健康度评分区 -->
+            <div class="overview-hero-section">
+              <div class="dev-hero-left">
+                <div class="dev-hero-icon type-server">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="6" rx="2"></rect>
+                    <rect x="3" y="14" width="18" height="6" rx="2"></rect>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    <line x1="7" y1="17" x2="7.01" y2="17"></line>
+                    <line x1="13" y1="7" x2="17" y2="7"></line>
+                    <line x1="13" y1="17" x2="17" y2="17"></line>
+                  </svg>
+                </div>
+                <div class="dev-hero-info">
+                  <div class="hero-name-row">
+                    <h3 class="hero-dev-name">{{ currentDev.name }}</h3>
+                    <span class="hero-sn-badge font-mono">{{ currentDev.type === 'server' ? serverMonitor.hostname : currentDev.sn }}</span>
+                    <div class="hero-status-tag">
+                      <span class="status-dot-green"></span>
+                      <span class="status-txt-green">在线</span>
+                    </div>
+                  </div>
+                  <div class="hero-meta-row font-mono">
+                    <span>IP: {{ currentDev.ip }}</span>
+                    <span class="sep">|</span>
+                    <span>Port: {{ currentDev.port }}</span>
+                    <span class="sep">|</span>
+                    <span>协议: {{ currentDev.protocol }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 右侧：健康度大圆环 + 运行时长/启动时间/固件版本 -->
+              <div class="dev-hero-right">
+                <div class="health-ring-container">
+                  <div class="health-ring-circle">
+                    <svg viewBox="0 0 100 100" class="ring-svg">
+                      <circle cx="50" cy="50" r="42" stroke="#e2e8f0" stroke-width="7.5" fill="transparent"></circle>
+                      <circle
+                        cx="50" cy="50" r="42"
+                        stroke="#059669" stroke-width="7.5" fill="transparent"
+                        stroke-dasharray="264"
+                        :stroke-dashoffset="264 - (264 * 0.95)"
+                        stroke-linecap="round"
+                        transform="rotate(-90 50 50)"
+                      ></circle>
+                    </svg>
+                    <div class="ring-content">
+                      <span class="ring-score font-mono">95</span>
+                      <span class="ring-label">健康度</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="health-meta-list font-mono">
+                  <div class="health-meta-item">
+                    <span class="meta-label">运行时长</span>
+                    <span class="meta-value">{{ serverMonitor.uptime }}</span>
+                  </div>
+                  <div class="health-meta-item">
+                    <span class="meta-label">启动时间</span>
+                    <span class="meta-value">{{ serverMonitor.startTime }}</span>
+                  </div>
+                  <div class="health-meta-item">
+                    <span class="meta-label">固件版本</span>
+                    <span class="meta-value">{{ serverMonitor.version }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2×3 实时工况指标迷你趋势卡片网格 -->
+            <div class="telemetry-mini-grid">
+              <!-- 1. CPU 综合负荷 -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box blue"><i class="el-icon-cpu"></i></div>
+                  <span class="mini-title">CPU 综合负荷</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.cpuUsage }} %</div>
+                <div class="mini-sparkline blue">
+                  <svg viewBox="0 0 120 20" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="cpuWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.18" />
+                        <stop offset="100%" stop-color="#2563eb" stop-opacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,14 Q10,7 20,14 T40,14 T60,14 T80,14 T100,14 T120,14 L120,20 L0,20 Z" fill="url(#cpuWaveGrad)"></path>
+                    <path d="M0,14 Q10,7 20,14 T40,14 T60,14 T80,14 T100,14 T120,14" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- 2. 物理核心/线程 -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box blue">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="8" y1="17" x2="8" y2="13"></line>
+                      <line x1="12" y1="17" x2="12" y2="9"></line>
+                      <line x1="16" y1="17" x2="16" y2="11"></line>
+                    </svg>
+                  </div>
+                  <span class="mini-title">物理核心 / 线程</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.cores }} / {{ serverMonitor.threads }}</div>
+                <div class="mini-card-sub">
+                  <span class="dot-triple">●●●</span>
+                  <span>{{ serverMonitor.cpuModel }}</span>
+                </div>
+              </div>
+
+              <!-- 3. 内存占用率 -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box blue">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="5" r="2.5"></circle>
+                      <circle cx="6" cy="19" r="2.5"></circle>
+                      <circle cx="18" cy="19" r="2.5"></circle>
+                      <path d="M12 7.5v4.5m0 0l-6 4.5m6-4.5l6 4.5"></path>
+                    </svg>
+                  </div>
+                  <span class="mini-title">内存占用率</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.memUsed }} / {{ serverMonitor.memTotal }} GB</div>
+                <div class="mini-card-footnote">{{ serverMonitor.memUsage }}%</div>
+                <div class="mini-progress-wrap">
+                  <div class="mini-progress-bar" :style="{ width: Math.min(100, Math.max(0, serverMonitor.memUsage)) + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- 4. GPU / AI 推理负载 -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box purple">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                      <rect x="9" y="9" width="6" height="6"></rect>
+                      <line x1="9" y1="1" x2="9" y2="4"></line>
+                      <line x1="15" y1="1" x2="15" y2="4"></line>
+                      <line x1="9" y1="20" x2="9" y2="23"></line>
+                      <line x1="15" y1="20" x2="15" y2="23"></line>
+                      <line x1="20" y1="9" x2="23" y2="9"></line>
+                      <line x1="20" y1="15" x2="23" y2="15"></line>
+                      <line x1="1" y1="9" x2="4" y2="9"></line>
+                      <line x1="1" y1="15" x2="4" y2="15"></line>
+                    </svg>
+                  </div>
+                  <span class="mini-title">GPU / AI 推理负载</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.gpuUsage }} %</div>
+                <div class="mini-card-footnote">{{ serverMonitor.gpuModel }}</div>
+                <div class="mini-progress-wrap purple">
+                  <div class="mini-progress-bar" :style="{ width: Math.min(100, Math.max(0, serverMonitor.gpuUsage)) + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- 5. 磁盘使用率 -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box blue">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="22" y1="12" x2="2" y2="12"></line>
+                      <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                      <line x1="6" y1="16" x2="6.01" y2="16"></line>
+                      <line x1="10" y1="16" x2="10.01" y2="16"></line>
+                    </svg>
+                  </div>
+                  <span class="mini-title">磁盘使用率</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.diskUsed }} / {{ serverMonitor.diskTotal }} GB</div>
+                <div class="mini-card-footnote">{{ serverMonitor.diskUsage }}%</div>
+                <div class="mini-progress-wrap blue">
+                  <div class="mini-progress-bar" :style="{ width: Math.min(100, Math.max(0, serverMonitor.diskUsage)) + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- 6. 网络延迟 (RTT) -->
+              <div class="mini-telemetry-card">
+                <div class="mini-card-head">
+                  <div class="mini-icon-box blue">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="9"></circle>
+                      <path d="M3.6 9h16.8"></path>
+                      <path d="M3.6 15h16.8"></path>
+                      <path d="M11.5 3a17 17 0 0 0 0 18"></path>
+                      <path d="M12.5 3a17 17 0 0 1 0 18"></path>
+                    </svg>
+                  </div>
+                  <span class="mini-title">网络吞吐 / 延迟</span>
+                </div>
+                <div class="mini-card-val font-mono">{{ serverMonitor.netLatency }}</div>
+                <div class="mini-card-footnote status-blue">{{ serverMonitor.netStatus }}</div>
+                <div class="mini-progress-wrap blue">
+                  <div class="mini-progress-bar" style="width: 20%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 下方：实时运行趋势卡片 (多系列面积折线图) -->
+          <div class="split-col-chart detail-panel">
+            <div class="trend-card-header">
+              <div class="trend-title">实时运行趋势</div>
+              <div class="trend-controls">
+                <div class="time-range-group">
+                  <span
+                    class="time-btn"
+                    :class="{ 'is-active': activeTimeRange === '1h' }"
+                    @click="activeTimeRange = '1h'"
+                  >1 小时</span>
+                  <span
+                    class="time-btn"
+                    :class="{ 'is-active': activeTimeRange === '6h' }"
+                    @click="activeTimeRange = '6h'"
+                  >6 小时</span>
+                  <span
+                    class="time-btn"
+                    :class="{ 'is-active': activeTimeRange === '24h' }"
+                    @click="activeTimeRange = '24h'"
+                  >24 小时</span>
+                  <span
+                    class="time-btn"
+                    :class="{ 'is-active': activeTimeRange === '7d' }"
+                    @click="activeTimeRange = '7d'"
+                  >7 天</span>
+                </div>
+                <button class="icon-expand-btn" title="全屏查看">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 图表图例栏 -->
+            <div class="trend-legend-row">
+              <span class="legend-item"><span class="legend-line blue"></span>CPU 负荷 (%)</span>
+              <span class="legend-item"><span class="legend-line green"></span>内存占用 (%)</span>
+              <span class="legend-item"><span class="legend-line purple"></span>AI 推理负载 (%)</span>
+              <span class="legend-item"><span class="legend-line magenta"></span>网络延迟 (ms)</span>
+              <span class="legend-item"><span class="legend-line orange"></span>采集频率 (fps)</span>
+            </div>
+
+            <!-- 折线图 DOM -->
+            <div class="trend-chart-container">
+              <div :id="chartId" class="echarts-trend-dom"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 第三列：右侧在线控制与参数面板 -->
+        <aside class="device-right-column">
+          <div class="split-col-tuner detail-panel">
+            <div class="tuner-header-bar">
+              <div class="tuner-title">在线控制与参数 ({{ currentDev.name }})</div>
+              <div class="tuner-sync-btn" @click="handleRefreshAll">
+                <i class="el-icon-refresh"></i>
+                <span>参数同步</span>
+              </div>
+            </div>
+
+            <!-- 顶部控制 Tab 栏 (推理参数 | 采集参数 | 设备参数 | 网络参数) -->
+            <div class="tuner-nav-tabs">
+              <span
+                class="tab-item"
+                :class="{ 'is-active': activeParamTab === 'inference' }"
+                @click="activeParamTab = 'inference'"
+              >推理参数</span>
+              <span
+                class="tab-item"
+                :class="{ 'is-active': activeParamTab === 'capture' }"
+                @click="activeParamTab = 'capture'"
+              >采集参数</span>
+              <span
+                class="tab-item"
+                :class="{ 'is-active': activeParamTab === 'device' }"
+                @click="activeParamTab = 'device'"
+              >设备参数</span>
+              <span
+                class="tab-item"
+                :class="{ 'is-active': activeParamTab === 'network' }"
+                @click="activeParamTab = 'network'"
+              >网络参数</span>
+            </div>
+
+            <div class="tuner-scroll-body">
+              <!-- 推理参数表单区 -->
+              <div class="param-form-section">
+                <!-- 推理引擎选择 -->
+                <div class="control-field-row">
+                  <label class="field-label">推理引擎</label>
+                  <div class="custom-pill-group">
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.engine === 'FP16' }"
+                      @click="editParams.engine = 'FP16'"
+                    >
+                      <svg v-if="editParams.engine === 'FP16'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>FP16 (推荐)</span>
+                    </div>
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.engine === 'INT8' }"
+                      @click="editParams.engine = 'INT8'"
+                    >
+                      <svg v-if="editParams.engine === 'INT8'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>INT8 (极速)</span>
+                    </div>
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.engine === 'FP32' }"
+                      @click="editParams.engine = 'FP32'"
+                    >
+                      <svg v-if="editParams.engine === 'FP32'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>FP32</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Batch Size -->
+                <div class="control-field-row">
+                  <label class="field-label">Batch Size</label>
+                  <div class="custom-pill-group">
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.batchSize === 1 }"
+                      @click="editParams.batchSize = 1"
+                    >
+                      <svg v-if="editParams.batchSize === 1" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>1 (低延迟)</span>
+                    </div>
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.batchSize === 2 }"
+                      @click="editParams.batchSize = 2"
+                    >
+                      <svg v-if="editParams.batchSize === 2" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>2 (均衡)</span>
+                    </div>
+                    <div
+                      class="custom-pill-btn"
+                      :class="{ 'is-selected': editParams.batchSize === 4 }"
+                      @click="editParams.batchSize = 4"
+                    >
+                      <svg v-if="editParams.batchSize === 4" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
+                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
+                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
+                      </svg>
+                      <span>4 (高吞吐)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TensorRT 加速精度 下拉选择 -->
+                <div class="control-field-row">
+                  <label class="field-label">TensorRT 加速精度</label>
+                  <el-select v-model="editParams.precision" size="small" style="width: 100%;">
+                    <el-option label="FP16 (推荐)" value="FP16"></el-option>
+                    <el-option label="INT8 (极速)" value="INT8"></el-option>
+                    <el-option label="FP32 (高精度)" value="FP32"></el-option>
+                  </el-select>
+                </div>
+
+                <!-- 滑块项 1: 图像预处理线程池数 -->
+                <div class="control-slider-row">
+                  <span class="slider-name">图像预处理线程池数</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.threads" :min="2" :max="32" :step="2"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.threads || 8 }}</span>
+                  </div>
+                </div>
+
+                <!-- 滑块项 2: 最大并发推理请求数 -->
+                <div class="control-slider-row">
+                  <span class="slider-name">最大并发推理请求数</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.maxConcurrent" :min="4" :max="64" :step="4"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.maxConcurrent || 16 }}</span>
+                  </div>
+                </div>
+
+                <!-- 滑块项 3: 推理超时时间 (ms) -->
+                <div class="control-slider-row">
+                  <span class="slider-name">推理超时时间 (ms)</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.timeout" :min="500" :max="5000" :step="100"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.timeout || 1500 }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 分割线 -->
+              <div class="param-section-divider"></div>
+
+              <!-- 采集参数 (工业相机) 分组 -->
+              <div class="param-form-section">
+                <div class="section-sub-heading">采集参数 (工业相机)</div>
+
+                <!-- 滑块项 4: 采集频率 (FPS) -->
+                <div class="control-slider-row">
+                  <span class="slider-name">采集频率 (FPS)</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.fps" :min="10" :max="120" :step="0.1"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.fps || 80.1 }}</span>
+                  </div>
+                </div>
+
+                <!-- 滑块项 5: 曝光时间 (us) -->
+                <div class="control-slider-row">
+                  <span class="slider-name">曝光时间 (us)</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.exposure" :min="100" :max="5000" :step="50"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.exposure || 850 }}</span>
+                  </div>
+                </div>
+
+                <!-- 滑块项 6: 增益 (dB) -->
+                <div class="control-slider-row">
+                  <span class="slider-name">增益 (dB)</span>
+                  <div class="slider-line-wrap">
+                    <el-slider v-model="editParams.gain" :min="0" :max="24" :step="1"></el-slider>
+                    <span class="slider-num font-mono">{{ editParams.gain || 12 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 底部操作按钮：应用并下发 + 重置参数 -->
+            <div class="tuner-footer-actions">
+              <el-button
+                type="primary"
+                size="medium"
+                icon="el-icon-position"
+                :loading="saving"
+                class="btn-apply-submit"
+                @click="handleSaveParams"
+              >应用并下发</el-button>
+              <el-button
+                size="medium"
+                icon="el-icon-refresh-left"
+                class="btn-reset-param"
+                @click="handleResetParams"
+              >重置参数</el-button>
+            </div>
+          </div>
+        </aside>
+      </template>
+
+      <!-- 原有其它设备视图 (相机、机械臂、AGV) 保持 100% 原始逻辑与真实接口 -->
+      <main v-else class="device-detail-column">
         <!-- 节点概览与快速操作栏 -->
         <div class="detail-panel">
           <div class="detail-header-bar">
@@ -567,6 +1056,8 @@ export default {
       chartId: 'device-oscilloscope-chart',
       chartInstance: null,
       addDialogVisible: false,
+      activeTimeRange: '1h',
+      activeParamTab: 'inference',
 
       // 机械臂实控状态
       robotConnected: false,
@@ -588,6 +1079,31 @@ export default {
       // 自动工作流状态
       workflowState: 'IDLE',
       workflowPollTimer: null,
+
+      // 服务器实控监控状态 (真实接口联动 + 兜底保护)
+      serverMonitor: {
+        hostname: 'SRV-LAB-40C-251G',
+        uptime: '12 天 4 小时',
+        startTime: '2026-08-24 08:15:22',
+        version: 'v2.1.3-build20260824',
+        cpuUsage: 1.3,
+        cores: 40,
+        threads: 80,
+        cpuModel: '双路 Xeon Platinum',
+        memUsed: 5.5,
+        memTotal: 251.8,
+        memUsage: 21.8,
+        gpuUsage: 23,
+        gpuModel: 'FP16 TensorRT',
+        diskUsed: 13.2,
+        diskTotal: 218.5,
+        diskUsage: 6.0,
+        netLatency: '0.82 ms',
+        netStatus: '微秒级',
+        bytesSent: 1.15,
+        bytesRecv: 0.55
+      },
+      serverMonitorTimer: null,
 
       newDevForm: {
         name: '',
@@ -786,12 +1302,16 @@ export default {
     this.loadAgvPorts();
     this.fetchAgvStatus();
     this.startAgvStatusPolling();
+
+    // 启动服务器底层监控遥测轮询
+    this.startServerMonitorPolling();
   },
   beforeDestroy() {
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.stopAgvStatusPolling();
     this.stopWorkflowPolling();
+    this.stopServerMonitorPolling();
     if (this.chartInstance) {
       this.chartInstance.dispose();
       this.chartInstance = null;
@@ -892,6 +1412,139 @@ export default {
         return;
       }
       if (!this.chartInstance) return;
+
+      if (this.currentDev.type === 'server') {
+        const timeLabels = [
+          '19:30', '19:32', '19:34', '19:36', '19:38',
+          '19:40', '19:42', '19:44', '19:46', '19:48',
+          '19:50', '19:52', '19:54', '19:56', '19:58',
+          '20:00', '20:02', '20:04', '20:06', '20:08',
+          '20:10', '20:12', '20:14', '20:16', '20:18', '20:20'
+        ];
+
+        const option = {
+          grid: {
+            left: '3%',
+            right: '5%',
+            top: '12%',
+            bottom: '8%',
+            containLabel: true
+          },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: '#1e293b',
+            borderColor: '#334155',
+            textStyle: { color: '#f8fafc', fontSize: 12 }
+          },
+          xAxis: {
+            type: 'category',
+            data: timeLabels,
+            boundaryGap: false,
+            axisLine: { lineStyle: { color: '#e2e8f0' } },
+            axisLabel: {
+              color: '#64748b',
+              fontSize: 11,
+              interval: (index) => index % 5 === 0
+            }
+          },
+          yAxis: [
+            {
+              type: 'value',
+              name: '百分比 (%)',
+              nameTextStyle: { color: '#94a3b8', fontSize: 11, padding: [0, 0, 4, -10] },
+              min: 0,
+              max: 100,
+              interval: 25,
+              splitLine: { lineStyle: { color: '#f1f5f9', type: 'solid' } },
+              axisLabel: { color: '#64748b', fontSize: 11 }
+            },
+            {
+              type: 'value',
+              name: '帧率 / 延迟',
+              nameTextStyle: { color: '#94a3b8', fontSize: 11, padding: [0, -10, 4, 0] },
+              min: 0,
+              max: 160,
+              interval: 40,
+              splitLine: { show: false },
+              axisLabel: { color: '#64748b', fontSize: 11 }
+            }
+          ],
+          series: [
+            {
+              name: 'CPU 负荷 (%)',
+              type: 'line',
+              smooth: 0.25,
+              showSymbol: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              itemStyle: { color: '#2563eb', borderColor: '#ffffff', borderWidth: 1 },
+              lineStyle: { width: 1.8, color: '#2563eb' },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(37, 99, 235, 0.16)' },
+                  { offset: 1, color: 'rgba(37, 99, 235, 0.01)' }
+                ])
+              },
+              data: [72, 68, 70, 65, 74, 69, 71, 64, 58, 62, 66, 60, 65, 68, 72, 75, 71, 67, 63, 68, 64, 69, 72, 66, 63, 62]
+            },
+            {
+              name: '内存占用 (%)',
+              type: 'line',
+              smooth: 0.25,
+              showSymbol: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              itemStyle: { color: '#059669', borderColor: '#ffffff', borderWidth: 1 },
+              lineStyle: { width: 1.8, color: '#059669' },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(5, 150, 105, 0.14)' },
+                  { offset: 1, color: 'rgba(5, 150, 105, 0.01)' }
+                ])
+              },
+              data: [35, 34, 32, 30, 33, 38, 42, 40, 36, 34, 37, 41, 44, 46, 43, 39, 37, 35, 38, 40, 37, 36, 38, 41, 39, 38]
+            },
+            {
+              name: 'AI 推理负载 (%)',
+              type: 'line',
+              smooth: 0.25,
+              showSymbol: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              itemStyle: { color: '#7c3aed', borderColor: '#ffffff', borderWidth: 1 },
+              lineStyle: { width: 1.6, color: '#7c3aed' },
+              data: [20, 21, 23, 24, 22, 21, 23, 25, 24, 22, 20, 22, 24, 25, 23, 21, 22, 24, 25, 23, 22, 24, 25, 23, 22, 22]
+            },
+            {
+              name: '网络延迟 (ms)',
+              type: 'line',
+              yAxisIndex: 1,
+              smooth: 0.25,
+              showSymbol: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              itemStyle: { color: '#c026d3', borderColor: '#ffffff', borderWidth: 1 },
+              lineStyle: { width: 1.6, color: '#c026d3' },
+              data: [12, 13, 15, 16, 14, 13, 15, 17, 14, 15, 13, 14, 16, 18, 15, 13, 14, 16, 15, 13, 14, 16, 17, 14, 15, 15]
+            },
+            {
+              name: '采集频率 (fps)',
+              type: 'line',
+              yAxisIndex: 1,
+              smooth: 0.25,
+              showSymbol: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              itemStyle: { color: '#ea580c', borderColor: '#ffffff', borderWidth: 1 },
+              lineStyle: { width: 1.6, color: '#ea580c' },
+              data: [22, 24, 27, 28, 26, 25, 28, 29, 27, 26, 23, 25, 28, 30, 27, 25, 26, 29, 28, 27, 26, 28, 29, 27, 26, 26]
+            }
+          ]
+        };
+
+        this.chartInstance.setOption(option);
+        return;
+      }
 
       const type = this.currentDev ? this.currentDev.type : 'server';
       const dataList = this.chartHistory[type] || [1, 2, 1, 2, 1, 2, 1];
@@ -1330,6 +1983,72 @@ export default {
           }
         }
       } catch (e) { /* ignore */ }
+    },
+    async fetchServerMonitor() {
+      try {
+        const res = await axios.get('api/server/monitor/info');
+        if (res.data && res.data.code === 200 && res.data.data) {
+          const d = res.data.data;
+          if (d.system) {
+            if (d.system.hostname) this.serverMonitor.hostname = d.system.hostname;
+            if (d.system.release) this.serverMonitor.version = d.system.release;
+            if (d.system.uptime !== undefined && d.system.uptime !== null) {
+              const up = Number(d.system.uptime);
+              const days = Math.floor(up / 86400);
+              const hours = Math.floor((up % 86400) / 3600);
+              const mins = Math.floor((up % 3600) / 60);
+              if (days > 0) {
+                this.serverMonitor.uptime = `${days} 天 ${hours} 小时`;
+              } else if (hours > 0) {
+                this.serverMonitor.uptime = `${hours} 小时 ${mins} 分钟`;
+              } else {
+                this.serverMonitor.uptime = `${mins} 分钟`;
+              }
+            }
+          }
+          if (d.cpu) {
+            if (d.cpu.usage !== undefined) this.serverMonitor.cpuUsage = Number(d.cpu.usage).toFixed(1);
+            if (d.cpu.cores) this.serverMonitor.cores = d.cpu.cores;
+            if (d.cpu.threads) this.serverMonitor.threads = d.cpu.threads;
+            if (d.cpu.cores >= 20) this.serverMonitor.cpuModel = 'Intel Xeon (双路)';
+          }
+          if (d.memory) {
+            if (d.memory.used !== undefined) this.serverMonitor.memUsed = Number(d.memory.used).toFixed(1);
+            if (d.memory.total !== undefined) this.serverMonitor.memTotal = Number(d.memory.total).toFixed(1);
+            if (d.memory.usage !== undefined) this.serverMonitor.memUsage = Number(d.memory.usage).toFixed(1);
+          }
+          if (d.disk) {
+            if (d.disk.used !== undefined) this.serverMonitor.diskUsed = Number(d.disk.used).toFixed(1);
+            if (d.disk.total !== undefined) this.serverMonitor.diskTotal = Number(d.disk.total).toFixed(1);
+            if (d.disk.usage !== undefined) this.serverMonitor.diskUsage = Number(d.disk.usage).toFixed(1);
+          }
+          if (d.network) {
+            if (d.network.bytesSent !== undefined) this.serverMonitor.bytesSent = d.network.bytesSent;
+            if (d.network.bytesRecv !== undefined) this.serverMonitor.bytesRecv = d.network.bytesRecv;
+            this.serverMonitor.netStatus = `↑${d.network.bytesSent}MB ↓${d.network.bytesRecv}MB`;
+          }
+          const srvDev = this.devices.find(dev => dev.type === 'server');
+          if (srvDev) {
+            if (d.system && d.system.hostname) srvDev.sn = d.system.hostname;
+            if (d.cpu && d.cpu.usage !== undefined) srvDev.primaryMetricVal = `${Number(d.cpu.usage).toFixed(1)} %`;
+          }
+        }
+      } catch (e) {
+        // 保持优雅降级，不阻断前端交互
+      }
+    },
+    startServerMonitorPolling() {
+      this.fetchServerMonitor();
+      if (this.serverMonitorTimer) clearInterval(this.serverMonitorTimer);
+      this.serverMonitorTimer = setInterval(() => {
+        this.fetchServerMonitor();
+      }, 3000);
+    },
+    stopServerMonitorPolling() {
+      if (this.serverMonitorTimer) {
+        clearInterval(this.serverMonitorTimer);
+        this.serverMonitorTimer = null;
+      }
     }
   }
 };
@@ -1497,6 +2216,655 @@ export default {
   grid-template-columns: 320px 1fr;
   gap: 14px;
   align-items: stretch;
+}
+
+.workbench-layout.is-server-layout {
+  grid-template-columns: 340px minmax(560px, 1fr) 350px;
+  gap: 12px;
+}
+
+.device-middle-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  height: 100%;
+}
+
+.device-right-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+/* ================= 图四：服务器专属运行总览卡片 ================= */
+.overview-main-card {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.overview-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.overview-title-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.overview-health-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #059669;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 8px;
+  border-radius: 6px;
+}
+
+.overview-hero-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+.dev-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dev-hero-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dev-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hero-dev-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.hero-sn-badge {
+  font-size: 11px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.hero-status-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.status-dot-green {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #059669;
+}
+
+.status-txt-green {
+  font-size: 10.5px;
+  color: #059669;
+  font-weight: 600;
+}
+
+.hero-meta-row {
+  font-size: 11px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.hero-meta-row .sep {
+  color: #cbd5e1;
+}
+
+.dev-hero-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.health-ring-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.health-ring-circle {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ring-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-score {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.ring-label {
+  font-size: 8.5px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.health-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.health-meta-item {
+  font-size: 10.5px;
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.health-meta-item .meta-label {
+  color: #64748b;
+  width: 50px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.health-meta-item .meta-value {
+  color: #334155;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 2×3 遥测迷你网格 (图四指标设计) */
+.telemetry-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.mini-telemetry-card {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  min-height: 68px;
+  box-sizing: border-box;
+}
+
+.mini-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-icon-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.mini-icon-box.blue { background: #eff6ff; color: #2563eb; }
+.mini-icon-box.green { background: #ecfdf5; color: #059669; }
+.mini-icon-box.sky { background: #f0f9ff; color: #0284c7; }
+.mini-icon-box.purple { background: #f5f3ff; color: #7c3aed; }
+
+.mini-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.mini-card-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.mini-sparkline {
+  margin-top: 1px;
+  height: 12px;
+  width: 100%;
+}
+
+.mini-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mini-card-sub {
+  font-size: 10px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dot-triple {
+  color: #10b981;
+  font-size: 8px;
+  letter-spacing: -1px;
+}
+
+.mini-progress-wrap {
+  width: 100%;
+  height: 3px;
+  background-color: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.mini-progress-bar {
+  height: 100%;
+  background-color: #0284c7;
+  border-radius: 2px;
+}
+
+.mini-progress-wrap.purple .mini-progress-bar {
+  background-color: #7c3aed;
+}
+
+.mini-progress-wrap.blue .mini-progress-bar {
+  background-color: #2563eb;
+}
+
+.mini-card-footnote {
+  font-size: 9.5px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+.mini-card-footnote.status-blue {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+/* 图四趋势折线图卡片 */
+.trend-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px 4px 14px;
+  flex-shrink: 0;
+}
+
+.trend-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-range-group {
+  display: flex;
+  background-color: #f1f5f9;
+  border-radius: 5px;
+  padding: 1px;
+  gap: 1px;
+}
+
+.time-btn {
+  font-size: 10.5px;
+  color: #64748b;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.time-btn.is-active {
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.icon-expand-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.trend-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 14px 4px 14px;
+  flex-shrink: 0;
+}
+
+.legend-item {
+  font-size: 10.5px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-line {
+  width: 12px;
+  height: 2.5px;
+  border-radius: 2px;
+}
+
+.legend-line.blue { background-color: #2563eb; }
+.legend-line.green { background-color: #059669; }
+.legend-line.purple { background-color: #7c3aed; }
+.legend-line.magenta { background-color: #c026d3; }
+.legend-line.orange { background-color: #ea580c; }
+
+.trend-chart-container {
+  padding: 0 8px 6px 8px;
+  flex: 1;
+  min-height: 0;
+  height: 230px;
+  position: relative;
+}
+
+.echarts-trend-dom {
+  width: 100%;
+  height: 100%;
+}
+
+/* 图四右侧在线控制与参数面板 */
+.split-col-tuner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tuner-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px 6px 14px;
+  flex-shrink: 0;
+}
+
+.tuner-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tuner-sync-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #059669;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tuner-sync-btn:hover {
+  color: #047857;
+}
+
+.tuner-nav-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 14px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.tab-item {
+  font-size: 12px;
+  color: #64748b;
+  padding: 6px 0;
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+}
+
+.tab-item.is-active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.tab-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #2563eb;
+  border-radius: 2px;
+}
+
+.tuner-scroll-body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.param-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-sub-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 2px;
+  margin-bottom: 1px;
+}
+
+.control-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.custom-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.custom-pill-btn:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.custom-pill-btn.is-selected {
+  border-color: #bfdbfe;
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.pill-radio-dot {
+  flex-shrink: 0;
+}
+
+.param-section-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 2px 0;
+}
+
+.control-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.slider-name {
+  font-size: 11.5px;
+  color: #475569;
+}
+
+.slider-line-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider-line-wrap ::v-deep .el-slider {
+  flex: 1;
+}
+
+.slider-line-wrap ::v-deep .el-slider__runway {
+  margin: 10px 0;
+  height: 4px;
+}
+
+.slider-line-wrap ::v-deep .el-slider__bar {
+  height: 4px;
+}
+
+.slider-line-wrap ::v-deep .el-slider__button {
+  width: 12px;
+  height: 12px;
+}
+
+.slider-num {
+  width: 40px;
+  text-align: right;
+  font-size: 11.5px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.tuner-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.btn-apply-submit {
+  flex: 1.6;
+  background-color: #2563eb;
+  border-color: #2563eb;
+  font-weight: 600;
+}
+
+.btn-reset-param {
+  flex: 1;
 }
 
 .column-panel, .detail-panel {

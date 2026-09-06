@@ -53,7 +53,7 @@
             @click="runAutoCheck"
             class="action-btn-primary"
           >
-            {{ checking ? '全车间巡检中...' : '一键 6S 智能巡检' }}
+            {{ checking ? '全车间巡检中...' : '智能巡诊实时信息' }}
           </el-button>
           <el-button
             size="small"
@@ -298,6 +298,133 @@
         </div>
       </div>
     </div>
+
+    <!-- 智能巡诊实时分析报告弹窗卡片 -->
+    <el-dialog
+      title="车间智能巡诊实时现场分析报告"
+      :visible.sync="reportDialogVisible"
+      width="780px"
+      custom-class="sixs-report-dialog"
+      :close-on-click-modal="true"
+      append-to-body
+    >
+      <div class="report-modal-content">
+        <!-- 头部巡检状态摘要 -->
+        <div class="report-summary-bar">
+          <div class="summary-left">
+            <div class="report-badge danger">
+              <i class="el-icon-warning"></i>
+              <span>现场待整改隐患 (4项)</span>
+            </div>
+            <span class="report-time font-mono">巡检时间: {{ reportTime }}</span>
+          </div>
+          <div class="summary-score">
+            <span class="score-label">当前现场合规评分:</span>
+            <span class="score-val font-mono">78.5</span>
+            <span class="score-unit">分 (未达标)</span>
+          </div>
+        </div>
+
+        <!-- 警示说明提示框 -->
+        <div class="report-alert-box">
+          <i class="el-icon-warning-outline alert-icon"></i>
+          <span>系统感知总线与视觉节点联动巡检完毕，现场多项工位未按照生产结束规范复位断电，存在安全及精益作业风险，详细分析如下：</span>
+        </div>
+
+        <!-- 详细异常报告项目列表 -->
+        <div class="report-issues-list">
+          <!-- 1. 机械臂未复位 -->
+          <div class="issue-item danger-level">
+            <div class="issue-tag-col">
+              <span class="issue-tag red">机械臂未复位</span>
+              <span class="issue-station">1号全周质检工位</span>
+            </div>
+            <div class="issue-content-col">
+              <div class="issue-title">机械臂六轴未回安全原点，伺服未释放就绪</div>
+              <div class="issue-desc">视觉传感器及 PLC 状态反馈显示：AUBO 协作机械臂当前停留在半轴上方 [X:420, Y:120, Z:370]，未归位至安全原点，存在工件碰撞与伺服电机持续受载隐患。</div>
+              <div class="issue-action"><strong>整改建议：</strong>下发一键原点复位指令或在控制面板点动复位，确认抱闸锁定。</div>
+            </div>
+            <div class="issue-status">
+              <el-tag type="danger" size="mini">未完成</el-tag>
+            </div>
+          </div>
+
+          <!-- 2. AGV小车未复位 -->
+          <div class="issue-item danger-level">
+            <div class="issue-tag-col">
+              <span class="issue-tag red">AGV小车未复位</span>
+              <span class="issue-station">分拣物流通道</span>
+            </div>
+            <div class="issue-content-col">
+              <div class="issue-title">AGV 小车未返回充电桩/原点站点，停留在主通道</div>
+              <div class="issue-desc">SLAM 底盘遥测显示：AGV 当前停滞在 3 号主干道附近（非指定充电/待机工位），未执行停车复位流程，占用车间消防与物流转运通道。</div>
+              <div class="issue-action"><strong>整改建议：</strong>下发调度返航指令，引导小车自动寻迹回充并归位至 1 号待命工位。</div>
+            </div>
+            <div class="issue-status">
+              <el-tag type="danger" size="mini">未完成</el-tag>
+            </div>
+          </div>
+
+          <!-- 3. 设备未断电 -->
+          <div class="issue-item warning-level">
+            <div class="issue-tag-col">
+              <span class="issue-tag amber">设备未断电</span>
+              <span class="issue-station">光学检测箱与转台</span>
+            </div>
+            <div class="issue-content-col">
+              <div class="issue-title">工业相机补光灯及转台驱动电源处于常通状态</div>
+              <div class="issue-desc">非工作周期内检测到大功率工业环形光源与旋转步进驱动器供电持续激活，未按规程关闭辅机总电，存在光衰加速及空耗用电风险。</div>
+              <div class="issue-action"><strong>整改建议：</strong>切断测量辅机低压断路器或在系统管理中切换至待机节电模式。</div>
+            </div>
+            <div class="issue-status">
+              <el-tag type="warning" size="mini">待确认</el-tag>
+            </div>
+          </div>
+
+          <!-- 4. 检查桌面是否整洁 -->
+          <div class="issue-item warning-level">
+            <div class="issue-tag-col">
+              <span class="issue-tag amber">检查桌面是否整洁</span>
+              <span class="issue-station">2号标定工作台</span>
+            </div>
+            <div class="issue-content-col">
+              <div class="issue-title">检测台面杂物未清理，标定工具未放入定置卡槽</div>
+              <div class="issue-desc">现场 AI 视觉识别发现：标定台表面遗留擦拭废纸、散落内六角扳手及未归档半轴外观记录单，未执行 6S 三定管理与台面清扫标准。</div>
+              <div class="issue-action"><strong>整改建议：</strong>清理非必需品入垃圾桶，标定块放入专用防震盒，量具归入 EVA 槽。</div>
+            </div>
+            <div class="issue-status">
+              <el-tag type="warning" size="mini">待整改</el-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- 巡检综合评价及统计 -->
+        <div class="report-footer-stats">
+          <div class="stat-col">
+            <span class="stat-k">本次核查工位</span>
+            <span class="stat-v font-mono">6 个工位</span>
+          </div>
+          <div class="stat-col">
+            <span class="stat-k">合格项</span>
+            <span class="stat-v text-green font-mono">14 项</span>
+          </div>
+          <div class="stat-col">
+            <span class="stat-k">不合格/异常项</span>
+            <span class="stat-v text-red font-mono">4 项 (严重2, 警告2)</span>
+          </div>
+          <div class="stat-col">
+            <span class="stat-k">综合合规率</span>
+            <span class="stat-v text-amber font-mono">77.8%</span>
+          </div>
+        </div>
+      </div>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button size="small" @click="reportDialogVisible = false">关闭报告</el-button>
+        <el-button size="small" type="primary" icon="el-icon-refresh" :loading="checking" @click="handleRecheck">重新复检</el-button>
+        <el-button size="small" type="danger" icon="el-icon-s-tools" @click="handleAutoFixAll">一键下发整改联动</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -311,6 +438,8 @@ export default {
       logoImg: require('@/assets/logo.png'),
       defaultAvatar: require('@/assets/头像.jpg'),
       checking: false,
+      reportDialogVisible: false,
+      reportTime: '',
       activeCard: 'seiri',
       inputQuestion: '',
       isThinking: false,
@@ -614,11 +743,30 @@ export default {
     },
     runAutoCheck() {
       this.checking = true;
-      this.$message.info('正在联动车间各传感器，开始全自动 6S 智能巡检...');
+      this.$message.info('正在联动车间各传感器，执行全车间智能巡诊实时探测...');
       setTimeout(() => {
         this.checking = false;
-        this.$message.success('全车间 6S 智能巡检完成！6大工位点检无异常，综合评级 A+ 级 (98.5分)。');
-      }, 1200);
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        this.reportTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        this.reportDialogVisible = true;
+        this.$message.warning('智能巡诊巡检完成：现场发现 4 项工况及 6S 异常隐患，已生成分析报告！');
+      }, 800);
+    },
+    handleRecheck() {
+      this.runAutoCheck();
+    },
+    handleAutoFixAll() {
+      this.$confirm('是否立即联动工控总线执行一键整改（机械臂原点复位、AGV返航寻充、关闭闲置辅机电源）？', '工控协同整改', {
+        confirmButtonText: '立即执行',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.$message.success('整改指令已下发至 PLC 及 AGV 调度系统！机械臂正在复位，AGV正在归位。');
+        setTimeout(() => {
+          this.reportDialogVisible = false;
+        }, 1200);
+      });
     },
     exportReport() {
       this.$message.success('已生成《车间6S数字化精益合规巡检诊断简报》并导出！');
@@ -1563,5 +1711,247 @@ export default {
 .guide-action-link:hover {
   color: #1577d7;
   text-decoration: underline;
+}
+
+/* ================= 7. 智能巡诊实时现场分析报告弹窗 ================= */
+::v-deep .sixs-report-dialog {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18) !important;
+}
+
+::v-deep .sixs-report-dialog .el-dialog__header {
+  padding: 16px 20px !important;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+::v-deep .sixs-report-dialog .el-dialog__title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+::v-deep .sixs-report-dialog .el-dialog__body {
+  padding: 18px 22px !important;
+}
+
+::v-deep .sixs-report-dialog .el-dialog__footer {
+  padding: 12px 20px !important;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.report-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-summary-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-badge.danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ef4444;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-time {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.summary-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.summary-score .score-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.summary-score .score-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #dc2626;
+}
+
+.summary-score .score-unit {
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.report-alert-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.report-alert-box .alert-icon {
+  font-size: 16px;
+  color: #d97706;
+  margin-top: 1px;
+}
+
+.report-issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.issue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.issue-item:hover {
+  background: #f8fafc;
+}
+
+.issue-item.danger-level {
+  border-left: 4px solid #ef4444;
+}
+
+.issue-item.warning-level {
+  border-left: 4px solid #f59e0b;
+}
+
+.issue-tag-col {
+  width: 120px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.issue-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.issue-tag.red {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.issue-tag.amber {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+.issue-station {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.issue-content-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.issue-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.issue-desc {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.issue-action {
+  font-size: 11.5px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.issue-status {
+  flex-shrink: 0;
+}
+
+.report-footer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-k {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.stat-v {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.text-red {
+  color: #dc2626 !important;
 }
 </style>

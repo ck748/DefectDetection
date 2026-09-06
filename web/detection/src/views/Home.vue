@@ -43,21 +43,6 @@
               <span slot="title">车间检测</span>
             </el-menu-item>
 
-            <!-- 新增：数据标注子菜单 -->
-            <el-submenu index="annotation-manager">
-              <template slot="title">
-                <i class="el-icon-edit-outline"></i>
-                <span slot="title">标注系统</span>
-              </template>
-              <el-menu-item index="/annotation">
-                <i class="el-icon-edit"></i>
-                <span slot="title">数据标注</span>
-              </el-menu-item>
-              <el-menu-item index="/history-annotation">
-                <i class="el-icon-time"></i>
-                <span slot="title">历史标注</span>
-              </el-menu-item>
-            </el-submenu>
             <!-- 监测信息 -->
             <el-submenu index="info">
               <template slot="title">
@@ -79,6 +64,42 @@
               </el-menu-item>
             </el-submenu>
 
+            <!-- 数据标注子菜单 -->
+            <el-submenu index="annotation-manager">
+              <template slot="title">
+                <i class="el-icon-edit-outline"></i>
+                <span slot="title">标注系统</span>
+              </template>
+              <el-menu-item index="/annotation">
+                <i class="el-icon-edit"></i>
+                <span slot="title">数据标注</span>
+              </el-menu-item>
+              <el-menu-item index="/history-annotation">
+                <i class="el-icon-time"></i>
+                <span slot="title">历史标注</span>
+              </el-menu-item>
+            </el-submenu>
+
+            <!-- 【国赛2.0】AGV运检一体化升级系统 -->
+            <el-submenu index="national-2026">
+              <template slot="title">
+                <i class="el-icon-medal"></i>
+                <span slot="title">智能管家</span>
+              </template>
+              <el-menu-item index="/camera-watch">
+                <i class="el-icon-video-camera"></i>
+                <span slot="title">摄像头目录监听</span>
+              </el-menu-item>
+              <el-menu-item index="/feature-checklist">
+                <i class="el-icon-circle-check"></i>
+                <span slot="title">功能核对</span>
+              </el-menu-item>
+              <el-menu-item index="/six-s-manager">
+                <i class="el-icon-s-custom"></i>
+                <span slot="title">6S管家</span>
+              </el-menu-item>
+            </el-submenu>
+
             <!-- 系统管理 -->
             <el-submenu index="sysmanager">
               <template slot="title">
@@ -96,26 +117,6 @@
               <el-menu-item index="/pwdmanager">
                 <i class="el-icon-lock"></i>
                 <span slot="title">密钥管理</span>
-              </el-menu-item>
-            </el-submenu>
-
-                        <!-- 【国赛2.0】AGV运检一体化升级系统 -->
-            <el-submenu index="national-2026">
-              <template slot="title">
-                <i class="el-icon-medal"></i>
-                <span slot="title">运检系统</span>
-              </template>
-              <el-menu-item index="/camera-watch">
-                <i class="el-icon-video-camera"></i>
-                <span slot="title">摄像头目录监听</span>
-              </el-menu-item>
-              <el-menu-item index="/feature-checklist">
-                <i class="el-icon-circle-check"></i>
-                <span slot="title">功能核对</span>
-              </el-menu-item>
-              <el-menu-item index="/six-s-manager">
-                <i class="el-icon-s-custom"></i>
-                <span slot="title">6S管家</span>
               </el-menu-item>
             </el-submenu>
           </el-menu>
