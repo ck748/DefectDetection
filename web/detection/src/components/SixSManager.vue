@@ -299,131 +299,400 @@
       </div>
     </div>
 
-    <!-- 智能巡诊实时分析报告弹窗卡片 -->
+    <!-- 智能巡诊实时分析报告弹窗卡片 (现代工业浅色高精风 + 简洁白话工况报告) -->
     <el-dialog
-      title="车间智能巡诊实时现场分析报告"
       :visible.sync="reportDialogVisible"
-      width="780px"
-      custom-class="sixs-report-dialog"
+      width="920px"
+      custom-class="sixs-report-dialog light-precision-modal"
       :close-on-click-modal="true"
+      :show-close="false"
+      :lock-scroll="true"
       append-to-body
     >
-      <div class="report-modal-content">
-        <!-- 头部巡检状态摘要 -->
-        <div class="report-summary-bar">
-          <div class="summary-left">
-            <div class="report-badge danger">
+      <!-- 浅色工业标题栏 -->
+      <div slot="title" class="report-light-header">
+        <div class="light-header-left">
+          <div class="light-shield-badge">
+            <i class="el-icon-warning-outline"></i>
+          </div>
+          <div class="light-title-wrap">
+            <div class="light-title-row">
+              <h3 class="light-title-text">车间 6S 智能巡检现场诊断报告</h3>
+              <span class="light-live-tag font-mono">
+                <span class="live-dot-red"></span>实时检测
+              </span>
+              <span class="light-sec-code font-mono">6S-REPORT-0906</span>
+            </div>
+            <div class="light-subtitle-row">
+              <span>车间工位设备复位、断电及桌面整洁实时巡查结果</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="light-header-right">
+          <div class="light-clock-pill font-mono">
+            <i class="el-icon-time"></i>
+            <span>{{ reportTime }}</span>
+          </div>
+          <button class="light-close-btn" @click="reportDialogVisible = false" title="关闭报告">
+            <i class="el-icon-close"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="report-light-content">
+        <!-- 1. 顶部三联状态卡片 -->
+        <div class="light-bento-row">
+          <!-- Bento 1: 综合评分 -->
+          <div class="bento-light-card kpi-score-card">
+            <div class="bento-light-header">
+              <span class="bento-light-label"><i class="el-icon-pie-chart"></i> 6S 现场合规评分</span>
+              <span class="bento-light-tag danger font-mono">需整改</span>
+            </div>
+            <div class="score-main-flex">
+              <div class="score-number-box">
+                <span class="score-num font-mono">78.5</span>
+                <span class="score-unit font-mono">/ 100分</span>
+              </div>
+              <div class="score-delta-wrap">
+                <div class="delta-bar-shell">
+                  <div class="delta-bar-fill" style="width: 78.5%;"></div>
+                </div>
+                <div class="delta-meta font-mono">
+                  <span>合格基准 ≥ 95.0分</span>
+                  <span class="text-danger">差距 16.5 分</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 2: 问题统计 -->
+          <div class="bento-light-card kpi-hazard-card">
+            <div class="bento-light-header">
+              <span class="bento-light-label"><i class="el-icon-warning"></i> 现场问题统计</span>
+              <span class="bento-light-tag warn font-mono">共 5 项待处理</span>
+            </div>
+            <div class="hazard-stat-row font-mono">
+              <div class="hazard-block danger">
+                <span class="hz-count">2</span>
+                <span class="hz-label">设备未复位</span>
+              </div>
+              <div class="hazard-block amber">
+                <span class="hz-count">1</span>
+                <span class="hz-label">辅机未断电</span>
+              </div>
+              <div class="hazard-block blue">
+                <span class="hz-count">2</span>
+                <span class="hz-label">现场未清扫</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 3: 远程总线状态 -->
+          <div class="bento-light-card kpi-bus-card">
+            <div class="bento-light-header">
+              <span class="bento-light-label"><i class="el-icon-connection"></i> 远程总线控制</span>
+              <span class="bento-light-tag success font-mono">PROFINET 在线</span>
+            </div>
+            <div class="bus-status-body">
+              <div class="interlock-pill font-mono">
+                <span class="pulse-cyan"></span>
+                <span>工控总线正常 · 支持一键远程整改</span>
+              </div>
+              <div class="bus-meta-sub font-mono">
+                <span>响应延迟 0.8ms</span>
+                <span class="dot-sep">•</span>
+                <span>支持机械臂、AGV 小车快速复位</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 分类筛选栏 -->
+        <div class="light-filter-bar">
+          <div class="filter-pills-group">
+            <button
+              class="filter-pill-btn"
+              :class="{ 'is-active': reportFilterTab === 'all' }"
+              @click="reportFilterTab = 'all'"
+            >
+              <i class="el-icon-menu"></i>
+              <span>全部现场问题</span>
+              <span class="pill-badge">5</span>
+            </button>
+            <button
+              class="filter-pill-btn danger"
+              :class="{ 'is-active': reportFilterTab === 'reset' }"
+              @click="reportFilterTab = 'reset'"
+            >
               <i class="el-icon-warning"></i>
-              <span>现场待整改隐患 (4项)</span>
-            </div>
-            <span class="report-time font-mono">巡检时间: {{ reportTime }}</span>
+              <span>设备未复位</span>
+              <span class="pill-badge danger">2</span>
+            </button>
+            <button
+              class="filter-pill-btn amber"
+              :class="{ 'is-active': reportFilterTab === 'power' }"
+              @click="reportFilterTab = 'power'"
+            >
+              <i class="el-icon-switch-button"></i>
+              <span>辅机未断电</span>
+              <span class="pill-badge amber">1</span>
+            </button>
+            <button
+              class="filter-pill-btn cyan"
+              :class="{ 'is-active': reportFilterTab === 'clean' }"
+              @click="reportFilterTab = 'clean'"
+            >
+              <i class="el-icon-brush"></i>
+              <span>台面与清扫</span>
+              <span class="pill-badge cyan">2</span>
+            </button>
           </div>
-          <div class="summary-score">
-            <span class="score-label">当前现场合规评分:</span>
-            <span class="score-val font-mono">78.5</span>
-            <span class="score-unit">分 (未达标)</span>
+
+          <div class="filter-tip-right">
+            <i class="el-icon-info"></i>
+            <span>提示：可点击卡片按钮单项调度处置</span>
           </div>
         </div>
 
-        <!-- 警示说明提示框 -->
-        <div class="report-alert-box">
-          <i class="el-icon-warning-outline alert-icon"></i>
-          <span>系统感知总线与视觉节点联动巡检完毕，现场多项工位未按照生产结束规范复位断电，存在安全及精益作业风险，详细分析如下：</span>
-        </div>
-
-        <!-- 详细异常报告项目列表 -->
-        <div class="report-issues-list">
+        <!-- 3. 详细现场问题列表 (工业精简风、客观清晰、自适应排版) -->
+        <div class="light-issues-stream custom-light-scroll">
           <!-- 1. 机械臂未复位 -->
-          <div class="issue-item danger-level">
-            <div class="issue-tag-col">
-              <span class="issue-tag red">机械臂未复位</span>
-              <span class="issue-station">1号全周质检工位</span>
-            </div>
-            <div class="issue-content-col">
-              <div class="issue-title">机械臂六轴未回安全原点，伺服未释放就绪</div>
-              <div class="issue-desc">视觉传感器及 PLC 状态反馈显示：AUBO 协作机械臂当前停留在半轴上方 [X:420, Y:120, Z:370]，未归位至安全原点，存在工件碰撞与伺服电机持续受载隐患。</div>
-              <div class="issue-action"><strong>整改建议：</strong>下发一键原点复位指令或在控制面板点动复位，确认抱闸锁定。</div>
-            </div>
-            <div class="issue-status">
-              <el-tag type="danger" size="mini">未完成</el-tag>
+          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'reset'" class="light-issue-card border-danger">
+            <div class="card-glow-edge red"></div>
+            <div class="card-inner-shell">
+              <div class="issue-meta-row">
+                <div class="meta-left-tags">
+                  <span class="light-tag-pill red font-mono"><i class="el-icon-error"></i> 机械臂未归位</span>
+                  <span class="light-station-tag"><i class="el-icon-location"></i> 1号全周检测站</span>
+                  <span class="light-dev-code font-mono">AUBO 协作机械臂</span>
+                </div>
+                <div class="meta-right-state">
+                  <span class="status-dot red"></span>
+                  <span class="state-txt red">未回安全原点</span>
+                </div>
+              </div>
+
+              <div class="issue-title-block">
+                <h4 class="issue-heading">AUBO 协作机械臂未归位</h4>
+              </div>
+
+              <div class="issue-detail-narrative">
+                <strong>现场情况：</strong>检测结束 未回到原位 且通电发热。夹爪悬停于半轴工件上方，存在误碰风险。
+              </div>
+
+              <div class="issue-action-dock">
+                <div class="dock-left-guide">
+                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
+                  <span>调度机械臂平稳复位至待命原点，锁定抱闸。</span>
+                </div>
+                <el-button size="mini" type="danger" plain class="dock-act-btn" @click="sendQuickQuestion('请你将机械臂复位')">
+                  调度机械臂复位
+                </el-button>
+              </div>
             </div>
           </div>
 
           <!-- 2. AGV小车未复位 -->
-          <div class="issue-item danger-level">
-            <div class="issue-tag-col">
-              <span class="issue-tag red">AGV小车未复位</span>
-              <span class="issue-station">分拣物流通道</span>
-            </div>
-            <div class="issue-content-col">
-              <div class="issue-title">AGV 小车未返回充电桩/原点站点，停留在主通道</div>
-              <div class="issue-desc">SLAM 底盘遥测显示：AGV 当前停滞在 3 号主干道附近（非指定充电/待机工位），未执行停车复位流程，占用车间消防与物流转运通道。</div>
-              <div class="issue-action"><strong>整改建议：</strong>下发调度返航指令，引导小车自动寻迹回充并归位至 1 号待命工位。</div>
-            </div>
-            <div class="issue-status">
-              <el-tag type="danger" size="mini">未完成</el-tag>
+          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'reset'" class="light-issue-card border-danger">
+            <div class="card-glow-edge red"></div>
+            <div class="card-inner-shell">
+              <div class="issue-meta-row">
+                <div class="meta-left-tags">
+                  <span class="light-tag-pill red font-mono"><i class="el-icon-error"></i> 小车未归位</span>
+                  <span class="light-station-tag"><i class="el-icon-location"></i> 成品分拣主干道 (3号路口)</span>
+                  <span class="light-dev-code font-mono">AGV 搬运小车</span>
+                </div>
+                <div class="meta-right-state">
+                  <span class="status-dot red"></span>
+                  <span class="state-txt red">未回充电桩</span>
+                </div>
+              </div>
+
+              <div class="issue-title-block">
+                <h4 class="issue-heading">AGV 搬运小车未归位</h4>
+              </div>
+
+              <div class="issue-detail-narrative">
+                <strong>现场情况：</strong>检测结束 AGV小车未归位 电量剩余23%，停留在主干通道中间。
+              </div>
+
+              <div class="issue-action-dock">
+                <div class="dock-left-guide">
+                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
+                  <span>下发返航指令，调度 AGV 小车驶回 1 号充电桩进行充电。</span>
+                </div>
+                <el-button size="mini" type="danger" plain class="dock-act-btn" @click="sendQuickQuestion('请将分拣小车归位')">
+                  调度 AGV 小车归位
+                </el-button>
+              </div>
             </div>
           </div>
 
           <!-- 3. 设备未断电 -->
-          <div class="issue-item warning-level">
-            <div class="issue-tag-col">
-              <span class="issue-tag amber">设备未断电</span>
-              <span class="issue-station">光学检测箱与转台</span>
-            </div>
-            <div class="issue-content-col">
-              <div class="issue-title">工业相机补光灯及转台驱动电源处于常通状态</div>
-              <div class="issue-desc">非工作周期内检测到大功率工业环形光源与旋转步进驱动器供电持续激活，未按规程关闭辅机总电，存在光衰加速及空耗用电风险。</div>
-              <div class="issue-action"><strong>整改建议：</strong>切断测量辅机低压断路器或在系统管理中切换至待机节电模式。</div>
-            </div>
-            <div class="issue-status">
-              <el-tag type="warning" size="mini">待确认</el-tag>
+          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'power'" class="light-issue-card border-amber">
+            <div class="card-glow-edge amber"></div>
+            <div class="card-inner-shell">
+              <div class="issue-meta-row">
+                <div class="meta-left-tags">
+                  <span class="light-tag-pill amber font-mono"><i class="el-icon-warning"></i> 辅机未断电</span>
+                  <span class="light-station-tag"><i class="el-icon-location"></i> 智能光学检测暗箱</span>
+                  <span class="light-dev-code font-mono">相机补光灯与旋转台</span>
+                </div>
+                <div class="meta-right-state">
+                  <span class="status-dot amber"></span>
+                  <span class="state-txt amber">电源常通未断</span>
+                </div>
+              </div>
+
+              <div class="issue-title-block">
+                <h4 class="issue-heading">相机辅机照明与旋转台电源未关闭</h4>
+              </div>
+
+              <div class="issue-detail-narrative">
+                <strong>现场情况：</strong>检测结束 补光灯及转台驱动电源未断开，长时间空载通电发热。
+              </div>
+
+              <div class="issue-action-dock">
+                <div class="dock-left-guide">
+                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
+                  <span>切断暗箱补光灯及旋转台电机驱动电源，进入节能休眠状态。</span>
+                </div>
+                <el-button size="mini" type="warning" plain class="dock-act-btn" @click="sendQuickQuestion('检测相机镜头清洁保养与辅机冷休眠规程')">
+                  切断闲置电源
+                </el-button>
+              </div>
             </div>
           </div>
 
-          <!-- 4. 检查桌面是否整洁 -->
-          <div class="issue-item warning-level">
-            <div class="issue-tag-col">
-              <span class="issue-tag amber">检查桌面是否整洁</span>
-              <span class="issue-station">2号标定工作台</span>
+          <!-- 4. 标定台桌面整洁与量具定置 -->
+          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'clean'" class="light-issue-card border-blue">
+            <div class="card-glow-edge cyan"></div>
+            <div class="card-inner-shell">
+              <div class="issue-meta-row">
+                <div class="meta-left-tags">
+                  <span class="light-tag-pill cyan font-mono"><i class="el-icon-info"></i> 台面不整洁</span>
+                  <span class="light-station-tag"><i class="el-icon-location"></i> 2号样本标定工作台</span>
+                  <span class="light-dev-code font-mono">标定工具台面</span>
+                </div>
+                <div class="meta-right-state">
+                  <span class="status-dot cyan"></span>
+                  <span class="state-txt cyan">量具未定置归位</span>
+                </div>
+              </div>
+
+              <div class="issue-title-block">
+                <h4 class="issue-heading">标定台面未清理 量具未定置</h4>
+              </div>
+
+              <div class="issue-detail-narrative">
+                <strong>现场情况：</strong>标定结束 台面遗留废纸杂物，数显千分尺及卡尺未收纳回专用防震槽。
+              </div>
+
+              <div class="issue-action-dock">
+                <div class="dock-left-guide">
+                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
+                  <span>清理桌面杂物，量具擦拭后规整放入专用防震卡槽。</span>
+                </div>
+                <el-button size="mini" type="primary" plain class="dock-act-btn" @click="sendQuickQuestion('半轴缺陷标定区与合格品库房的整顿三定管理要求')">
+                  查看整顿规范
+                </el-button>
+              </div>
             </div>
-            <div class="issue-content-col">
-              <div class="issue-title">检测台面杂物未清理，标定工具未放入定置卡槽</div>
-              <div class="issue-desc">现场 AI 视觉识别发现：标定台表面遗留擦拭废纸、散落内六角扳手及未归档半轴外观记录单，未执行 6S 三定管理与台面清扫标准。</div>
-              <div class="issue-action"><strong>整改建议：</strong>清理非必需品入垃圾桶，标定块放入专用防震盒，量具归入 EVA 槽。</div>
-            </div>
-            <div class="issue-status">
-              <el-tag type="warning" size="mini">待整改</el-tag>
+          </div>
+
+          <!-- 5. 现场清扫与铁屑桶满溢 -->
+          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'clean'" class="light-issue-card border-blue">
+            <div class="card-glow-edge cyan"></div>
+            <div class="card-inner-shell">
+              <div class="issue-meta-row">
+                <div class="meta-left-tags">
+                  <span class="light-tag-pill cyan font-mono"><i class="el-icon-info"></i> 现场未清扫</span>
+                  <span class="light-station-tag"><i class="el-icon-location"></i> 半轴精磨除锈工区</span>
+                  <span class="light-dev-code font-mono">铁屑收集桶与走道</span>
+                </div>
+                <div class="meta-right-state">
+                  <span class="status-dot cyan"></span>
+                  <span class="state-txt cyan">铁屑满溢散落</span>
+                </div>
+              </div>
+
+              <div class="issue-title-block">
+                <h4 class="issue-heading">铁屑收集箱满溢 走道散落金属屑</h4>
+              </div>
+
+              <div class="issue-detail-narrative">
+                <strong>现场情况：</strong>除锈工位铁屑桶满溢未倒，周围走道地面散落金属铁屑未及时清扫。
+              </div>
+
+              <div class="issue-action-dock">
+                <div class="dock-left-guide">
+                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
+                  <span>清空铁屑收集桶，使用工业吸尘器清理走道散落铁屑。</span>
+                </div>
+                <el-button size="mini" type="primary" plain class="dock-act-btn" @click="sendQuickQuestion('光学检测相机镜头与半轴转台的每日清扫防尘标准')">
+                  查看清扫规范
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 巡检综合评价及统计 -->
-        <div class="report-footer-stats">
-          <div class="stat-col">
-            <span class="stat-k">本次核查工位</span>
-            <span class="stat-v font-mono">6 个工位</span>
+        <!-- 4. 底部数据汇总 -->
+        <div class="light-bottom-audit-grid font-mono">
+          <div class="audit-col">
+            <span class="audit-k"><i class="el-icon-odometer"></i> 受检工位</span>
+            <div class="audit-v-row">
+              <span class="audit-v">12 / 12</span>
+              <span class="audit-sub">全部在线接入</span>
+            </div>
           </div>
-          <div class="stat-col">
-            <span class="stat-k">合格项</span>
-            <span class="stat-v text-green font-mono">14 项</span>
+
+          <div class="audit-col">
+            <span class="audit-k"><i class="el-icon-circle-check"></i> 6S 达标项</span>
+            <div class="audit-v-row">
+              <span class="audit-v text-emerald">18 项</span>
+              <span class="audit-sub">点检符合标准</span>
+            </div>
           </div>
-          <div class="stat-col">
-            <span class="stat-k">不合格/异常项</span>
-            <span class="stat-v text-red font-mono">4 项 (严重2, 警告2)</span>
+
+          <div class="audit-col">
+            <span class="audit-k"><i class="el-icon-warning"></i> 待整改项</span>
+            <div class="audit-v-row">
+              <span class="audit-v text-crimson">5 项</span>
+              <span class="audit-sub">2项复位 / 3项清扫断电</span>
+            </div>
           </div>
-          <div class="stat-col">
-            <span class="stat-k">综合合规率</span>
-            <span class="stat-v text-amber font-mono">77.8%</span>
+
+          <div class="audit-col">
+            <span class="audit-k"><i class="el-icon-timer"></i> 预计整改耗时</span>
+            <div class="audit-v-row">
+              <span class="audit-v text-cyan">约 1 分钟</span>
+              <span class="audit-sub">支持一键自动处理</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <span slot="footer" class="dialog-footer">
-        <el-button size="small" @click="reportDialogVisible = false">关闭报告</el-button>
-        <el-button size="small" type="primary" icon="el-icon-refresh" :loading="checking" @click="handleRecheck">重新复检</el-button>
-        <el-button size="small" type="danger" icon="el-icon-s-tools" @click="handleAutoFixAll">一键下发整改联动</el-button>
-      </span>
+      <!-- 5. 底部操作栏 -->
+      <div slot="footer" class="report-light-footer">
+        <div class="light-footer-left">
+          <span class="bus-beacon-dot"></span>
+          <span class="bus-status-txt">车间工控总线正常连接 (支持一键联动整改)</span>
+        </div>
+
+        <div class="light-footer-right">
+          <el-button size="medium" class="light-ghost-btn" @click="reportDialogVisible = false">
+            关闭报告
+          </el-button>
+          <el-button size="medium" type="primary" plain class="light-recheck-btn" :loading="checking" @click="handleRecheck">
+            <i class="el-icon-refresh-right"></i> 重新巡检
+          </el-button>
+          <el-button size="medium" type="danger" class="light-hero-exec-btn" @click="handleAutoFixAll">
+            <i class="el-icon-video-play"></i> 一键执行整改
+          </el-button>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -439,6 +708,7 @@ export default {
       defaultAvatar: require('@/assets/头像.jpg'),
       checking: false,
       reportDialogVisible: false,
+      reportFilterTab: 'all',
       reportTime: '',
       activeCard: 'seiri',
       inputQuestion: '',
@@ -1713,245 +1983,808 @@ export default {
   text-decoration: underline;
 }
 
-/* ================= 7. 智能巡诊实时现场分析报告弹窗 ================= */
-::v-deep .sixs-report-dialog {
-  border-radius: 12px !important;
-  overflow: hidden;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18) !important;
+/* ================= 7. 智能巡诊现场深度诊断报告弹窗 (现代高端浅色精工风格) ================= */
+::v-deep .el-dialog__wrapper {
+  overflow: hidden !important;
 }
 
-::v-deep .sixs-report-dialog .el-dialog__header {
-  padding: 16px 20px !important;
-  background: #f8fafc;
+::v-deep .sixs-report-dialog.light-precision-modal {
+  margin: 0 !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(180, 210, 238, 0.45) !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+}
+
+::v-deep .sixs-report-dialog.light-precision-modal .el-dialog__header {
+  padding: 0 !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+::v-deep .sixs-report-dialog.light-precision-modal .el-dialog__body {
+  padding: 18px 22px !important;
+  background: #ffffff !important;
+}
+
+::v-deep .sixs-report-dialog.light-precision-modal .el-dialog__footer {
+  padding: 12px 22px !important;
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+/* 顶部浅色标题栏 */
+.report-light-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 22px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid #e2e8f0;
 }
 
-::v-deep .sixs-report-dialog .el-dialog__title {
-  font-size: 16px !important;
-  font-weight: 700 !important;
-  color: #0f172a !important;
+.light-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-::v-deep .sixs-report-dialog .el-dialog__body {
-  padding: 18px 22px !important;
+.light-shield-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
 }
 
-::v-deep .sixs-report-dialog .el-dialog__footer {
-  padding: 12px 20px !important;
-  border-top: 1px solid #f1f5f9;
-  background: #f8fafc;
+.light-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.report-modal-content {
+.light-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.light-title-text {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+.light-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.live-dot-red {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: pulse-dot-red 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-dot-red {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.8); }
+}
+
+.light-sec-code {
+  font-size: 11px;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.light-subtitle-row {
+  font-size: 10.5px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.3px;
+}
+
+.sub-sep {
+  color: #cbd5e1;
+}
+
+.light-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.light-clock-pill {
+  font-size: 11.5px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
+
+.light-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.light-close-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+  transform: rotate(90deg);
+}
+
+/* 浅色内容区 */
+.report-light-content {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.report-summary-bar {
+/* 1. 顶部三联 Bento 卡片 (浅色微拟物) */
+.light-bento-row {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 12px;
+}
+
+.bento-light-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.bento-light-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
+  margin-bottom: 6px;
 }
 
-.summary-left {
+.bento-light-label {
+  font-size: 11.5px;
+  color: #475569;
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.report-badge.danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #ef4444;
-  color: #ffffff;
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  gap: 5px;
   font-weight: 700;
 }
 
-.report-time {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.summary-score {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.summary-score .score-label {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.summary-score .score-val {
-  font-size: 22px;
-  font-weight: 800;
-  color: #dc2626;
-}
-
-.summary-score .score-unit {
-  font-size: 12px;
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.report-alert-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-size: 12px;
-  color: #92400e;
-  line-height: 1.5;
-}
-
-.report-alert-box .alert-icon {
-  font-size: 16px;
-  color: #d97706;
-  margin-top: 1px;
-}
-
-.report-issues-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 380px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.issue-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  transition: all 0.2s ease;
-}
-
-.issue-item:hover {
-  background: #f8fafc;
-}
-
-.issue-item.danger-level {
-  border-left: 4px solid #ef4444;
-}
-
-.issue-item.warning-level {
-  border-left: 4px solid #f59e0b;
-}
-
-.issue-tag-col {
-  width: 120px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.issue-tag {
-  display: inline-block;
-  padding: 2px 6px;
+.bento-light-tag {
+  font-size: 10.5px;
+  padding: 2px 7px;
   border-radius: 4px;
-  font-size: 11px;
   font-weight: 700;
-  text-align: center;
 }
 
-.issue-tag.red {
+.bento-light-tag.danger {
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fca5a5;
 }
 
-.issue-tag.amber {
+.bento-light-tag.warn {
   background: #fef3c7;
   color: #d97706;
-  border: 1px solid #fcd34d;
+  border: 1px solid #fde68a;
 }
 
-.issue-station {
-  font-size: 11px;
-  color: #64748b;
-  line-height: 1.3;
+.bento-light-tag.success {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
 }
 
-.issue-content-col {
+.score-main-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-number-box {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.score-num {
+  font-size: 26px;
+  font-weight: 900;
+  color: #dc2626;
+  line-height: 1;
+}
+
+.score-unit {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.score-delta-wrap {
   flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.issue-title {
-  font-size: 13px;
-  font-weight: 700;
+.delta-bar-shell {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.delta-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
+  border-radius: 3px;
+}
+
+.delta-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.text-danger { color: #dc2626 !important; font-weight: 700; }
+
+.hazard-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.hazard-block {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hazard-block.danger .hz-count { color: #dc2626; }
+.hazard-block.amber .hz-count { color: #d97706; }
+.hazard-block.blue .hz-count { color: #0284c7; }
+
+.hz-count {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.hz-label {
+  font-size: 9.5px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.bus-status-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.interlock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.pulse-cyan {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+  animation: pulse-dot-blue 1.5s infinite;
+}
+
+@keyframes pulse-dot-blue {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.bus-meta-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.dot-sep { color: #cbd5e1; }
+
+/* 2. 分类筛选 Pills 交互栏 */
+.light-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.filter-pills-group {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-pill-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.filter-pill-btn:hover {
+  background: #e2e8f0;
   color: #0f172a;
 }
 
-.issue-desc {
-  font-size: 12px;
-  color: #475569;
-  line-height: 1.45;
+.filter-pill-btn.is-active {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0284c7;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.15);
 }
 
-.issue-action {
-  font-size: 11.5px;
-  color: #0369a1;
-  background: #f0f9ff;
+.filter-pill-btn.danger.is-active {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #dc2626;
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.15);
+}
+
+.filter-pill-btn.amber.is-active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #d97706;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.15);
+}
+
+.filter-pill-btn.cyan.is-active {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0284c7;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.15);
+}
+
+.pill-badge {
+  font-size: 10px;
+  padding: 1px 5px;
   border-radius: 4px;
-  padding: 4px 8px;
-  line-height: 1.4;
-  margin-top: 2px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
 }
 
-.issue-status {
-  flex-shrink: 0;
+.pill-badge.danger { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.pill-badge.amber { background: #fef3c7; color: #d97706; border-color: #fde68a; }
+.pill-badge.cyan { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+
+.filter-tip-right {
+  font-size: 11px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.report-footer-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* 3. 现场详细隐患卡片流 (浅色工控卡，白话通俗、高度自适应防止字被截断) */
+.light-issues-stream {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 10px 14px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 2px 6px 6px 2px;
+}
+
+.custom-light-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-light-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.custom-light-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-light-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.light-issue-card {
+  position: relative;
+  flex-shrink: 0 !important; /* 关键：彻底防止卡片被 flexbox 压扁挤压 */
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.light-issue-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.card-glow-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.card-glow-edge.red {
+  background: #ef4444;
+}
+
+.card-glow-edge.amber {
+  background: #f59e0b;
+}
+
+.card-glow-edge.cyan {
+  background: #0284c7;
+}
+
+.card-inner-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issue-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meta-left-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.light-tag-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.light-tag-pill.red {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.light-tag-pill.amber {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.light-tag-pill.cyan {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.light-tag-category {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.light-station-tag {
+  font-size: 11px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+}
+
+.light-dev-code {
+  font-size: 10px;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.meta-right-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-dot.red { background: #dc2626; }
+.status-dot.amber { background: #d97706; }
+.status-dot.cyan { background: #0284c7; }
+
+.state-txt.red { color: #dc2626; font-weight: 700; }
+.state-txt.amber { color: #d97706; font-weight: 700; }
+.state-txt.cyan { color: #0284c7; font-weight: 700; }
+
+.issue-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.issue-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.1px;
+}
+
+.telemetry-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  width: fit-content;
 }
 
-.stat-col {
+.cap-k { color: #64748b; }
+.cap-v { color: #0369a1; font-weight: 600; }
+
+.issue-detail-narrative {
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.issue-detail-narrative code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #f1f5f9;
+  color: #0369a1;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.issue-action-dock {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 2px;
+  gap: 12px;
+}
+
+.dock-left-guide {
+  font-size: 11px;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.guide-lead {
+  color: #15803d;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dock-act-btn {
+  font-size: 11px !important;
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+  font-weight: 600 !important;
+}
+
+/* 4. 底部数据审计四联指标栏 */
+.light-bottom-audit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.audit-col {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.stat-k {
+.audit-k {
+  font-size: 10.5px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.audit-v-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.audit-v {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.audit-sub {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.text-emerald { color: #16a34a !important; }
+.text-crimson { color: #dc2626 !important; }
+.text-cyan { color: #0284c7 !important; }
+
+/* 5. 底部浅色操作栏 */
+.report-light-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.light-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bus-beacon-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 6px #16a34a;
+}
+
+.bus-status-txt {
   font-size: 11px;
   color: #64748b;
 }
 
-.stat-v {
-  font-size: 13px;
-  font-weight: 700;
-  color: #0f172a;
+.light-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.text-red {
-  color: #dc2626 !important;
+.light-ghost-btn {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+.light-ghost-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.light-recheck-btn {
+  border-color: #93c5fd !important;
+  color: #0284c7 !important;
+  background: #f0f9ff !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+.light-recheck-btn:hover {
+  background: #e0f2fe !important;
+  border-color: #38bdf8 !important;
+}
+
+.light-hero-exec-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25) !important;
+  transition: all 0.2s ease;
+}
+
+.light-hero-exec-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.35) !important;
 }
 </style>
