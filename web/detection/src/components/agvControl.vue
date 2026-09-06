@@ -1,22 +1,22 @@
 <template>
   <div class="agv-page">
     <div class="agv-grid">
-      <!-- 左上：串口连接 + 运动控制 -->
+      <!-- 左上：串口连接 + AGV 控制（合并） + 运动控制 -->
       <div class="area-left">
         <el-card shadow="hover">
           <div slot="header" class="card-header">
-            <span>串口连接</span>
-            <el-tag :type="connected ? 'success' : 'info'" size="mini">{{ connected ? '已连接' : '未连接' }}</el-tag>
+            <span>串口连接 & AGV 控制</span>
+            <el-tag :type="connected ? 'success' : 'info'" size="small">{{ connected ? '已连接' : '未连接' }}</el-tag>
           </div>
-          <el-form label-width="70px" size="small">
+          <el-form label-width="70px">
             <el-form-item label="串口">
-              <el-select v-model="portName" placeholder="选择串口" size="small" style="width: 190px;" :disabled="connected">
+              <el-select v-model="portName" placeholder="选择串口" style="width: 190px;" :disabled="connected">
                 <el-option v-for="p in ports" :key="p.name" :label="p.name" :value="p.name">
                   <span>{{ p.name }}</span>
                   <span style="float: right; color: #909399; font-size: 12px;">{{ p.description }}</span>
                 </el-option>
               </el-select>
-              <el-button size="mini" icon="el-icon-refresh" circle style="margin-left: 6px;" :disabled="connected" @click="loadPorts"></el-button>
+              <el-button icon="el-icon-refresh" circle style="margin-left: 6px;" :disabled="connected" @click="loadPorts"></el-button>
             </el-form-item>
             <el-form-item label="操作">
               <el-button v-if="!connected" type="primary" icon="el-icon-link" :loading="connecting" @click="connect">连接</el-button>
@@ -27,17 +27,10 @@
               <span class="muted">9600，8 数据位，1 停止位，无校验（后端托管串口）</span>
             </el-form-item>
           </el-form>
-        </el-card>
-
-        <!-- AGV 控制 -->
-        <el-card shadow="hover" class="card-move">
-          <div slot="header" class="card-header">
-            <span>AGV 控制</span>
-            <el-tag :type="agvMode === 0 ? 'success' : agvMode === 2 ? 'warning' : 'info'" size="mini">{{ modeText(agvMode) }}</el-tag>
-          </div>
-          <div class="agv-btns">
-            <el-button type="danger" size="small" :disabled="!connected" @click="agvEmergencyStop">急停</el-button>
-            <el-button type="warning" size="small" :disabled="!connected" @click="agvReset">复位（回1号站）</el-button>
+          <!-- AGV 控制按钮 -->
+          <div class="agv-btns" style="margin-top: 8px;">
+            <el-button type="danger" :disabled="!connected" @click="agvEmergencyStop">急停</el-button>
+            <el-button type="warning" :disabled="!connected" @click="agvReset">复位（回1号站）</el-button>
           </div>
         </el-card>
 
@@ -45,27 +38,27 @@
         <el-card shadow="hover" class="card-robot">
           <div slot="header" class="card-header">
             <span>机械臂 & 工作流</span>
-            <el-tag :type="robotConnected ? 'success' : 'info'" size="mini">{{ robotConnected ? '已连接' : '未连接' }}</el-tag>
+            <el-tag :type="robotConnected ? 'success' : 'info'" size="small">{{ robotConnected ? '已连接' : '未连接' }}</el-tag>
           </div>
           <div class="robot-row">
             <div class="robot-section">
               <div class="section-title">机械臂</div>
               <div class="robot-btns">
-                <el-button v-if="!robotConnected" type="primary" size="mini" icon="el-icon-link" :loading="robotConnecting" @click="connectRobot">连接</el-button>
-                <el-button v-else type="danger" size="mini" icon="el-icon-switch-button" @click="disconnectRobot">断开</el-button>
-                <el-button size="mini" :disabled="!robotConnected" @click="robotMoveHome">回原位</el-button>
-                <el-button size="mini" :disabled="!robotConnected" @click="robotMovePhoto">拍照位</el-button>
-                <el-button size="mini" type="danger" :disabled="!robotConnected" @click="robotStop">急停</el-button>
+                <el-button v-if="!robotConnected" type="primary" icon="el-icon-link" :loading="robotConnecting" @click="connectRobot">连接</el-button>
+                <el-button v-else type="danger" icon="el-icon-switch-button" @click="disconnectRobot">断开</el-button>
+                <el-button :disabled="!robotConnected" @click="robotMoveHome">回原位</el-button>
+                <el-button :disabled="!robotConnected" @click="robotMovePhoto">拍照位</el-button>
+                <el-button type="danger" :disabled="!robotConnected" @click="robotStop">急停</el-button>
               </div>
             </div>
             <el-divider style="margin: 6px 0;"></el-divider>
             <div class="robot-section">
-              <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="mini" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
+              <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="small" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
               <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 28次扫描 → AGV→3号站</div>
               <div class="workflow-btns">
-                <el-button type="success" size="mini" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
-                <el-button type="warning" size="mini" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
-                <el-button size="mini" @click="resetWorkflow">重置</el-button>
+                <el-button type="success" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
+                <el-button type="warning" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
+                <el-button @click="resetWorkflow">重置</el-button>
               </div>
             </div>
           </div>
@@ -75,7 +68,7 @@
         <el-card shadow="hover" class="card-scan">
           <div slot="header" class="card-header">
             <span>7 点位扫描</span>
-            <el-tag :type="scanning ? 'warning' : 'info'" size="mini">{{ scanning ? '扫描中...' : '待命' }}</el-tag>
+            <el-tag :type="scanning ? 'warning' : 'info'" size="small">{{ scanning ? '扫描中...' : '待命' }}</el-tag>
           </div>
           <div class="scan-info muted hint" style="margin-bottom:6px;">
             左→右→左→右，4 轮共 28 次拍照
@@ -83,18 +76,18 @@
           <div class="scan-params" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
             <div style="flex:1;">
               <span class="muted" style="font-size:12px;">稳定等待(ms)</span>
-              <el-input-number v-model="scanSettleMs" :min="500" :max="5000" :step="100" size="mini" style="width:100%;"></el-input-number>
+              <el-input-number v-model="scanSettleMs" :min="500" :max="5000" :step="100" style="width:100%;"></el-input-number>
             </div>
             <div style="flex:1;">
               <span class="muted" style="font-size:12px;">相机等待(ms)</span>
-              <el-input-number v-model="scanCameraWait" :min="500" :max="10000" :step="500" size="mini" style="width:100%;"></el-input-number>
+              <el-input-number v-model="scanCameraWait" :min="500" :max="10000" :step="500" style="width:100%;"></el-input-number>
             </div>
           </div>
           <div class="scan-btns">
-            <el-button type="success" size="small" :disabled="!robotConnected || scanning" @click="startScan">
+            <el-button type="success" :disabled="!robotConnected || scanning" @click="startScan">
               <i class="el-icon-video-play"></i> 启动扫描
             </el-button>
-            <el-button type="danger" size="small" :disabled="!scanning" @click="stopScan">
+            <el-button type="danger" :disabled="!scanning" @click="stopScan">
               <i class="el-icon-video-pause"></i> 停止
             </el-button>
           </div>
@@ -110,7 +103,7 @@
       <el-card shadow="hover" class="card-flow">
         <div slot="header" class="card-header">
           <span>项目流程</span>
-          <el-button size="mini" icon="el-icon-refresh-left" @click="resetFlow">重置流程</el-button>
+          <el-button icon="el-icon-refresh-left" @click="resetFlow">重置流程</el-button>
         </div>
         <div class="flow-wrap">
           <div ref="agvViewer" class="agv-viewer" :class="steps[2].state">
@@ -1200,7 +1193,7 @@ export default {
 .flow-row { display: flex; align-items: flex-start; justify-content: center; padding: 0 10px; }
 .flow-node {
   display: flex; flex-direction: column; align-items: center;
-  width: 96px; flex-shrink: 0;
+  width: 120px; flex-shrink: 0;
   cursor: pointer; user-select: none;
 }
 .flow-node.disabled { cursor: not-allowed; opacity: .45; }
@@ -1209,20 +1202,20 @@ export default {
 .flow-node.done:hover .node-circle { border-color: #85ce61; box-shadow: 0 0 12px rgba(103, 194, 58, .8); }
 .flow-node.disabled:hover .node-circle { border-color: #3a4656; box-shadow: none; }
 .node-circle {
-  width: 50px; height: 50px; border-radius: 50%;
+  width: 64px; height: 64px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; border: 3px solid #3a4656; color: #8fa0b3; background: rgba(255, 255, 255, .04);
+  font-size: 26px; border: 4px solid #3a4656; color: #8fa0b3; background: rgba(255, 255, 255, .04);
   transition: all .3s;
 }
 .flow-node.active .node-circle { border-color: #409EFF; color: #409EFF; background: rgba(64, 158, 255, .12); animation: pulse 1.2s infinite; }
 .flow-node.done .node-circle { border-color: #67C23A; color: #fff; background: #67C23A; box-shadow: 0 0 14px rgba(103, 194, 58, .7); }
-.node-label { margin-top: 5px; font-weight: 600; color: #dbe4ee; font-size: 14px; }
+.node-label { margin-top: 8px; font-weight: 600; color: #dbe4ee; font-size: 16px; }
 .flow-node.pending .node-label { color: #8fa0b3; }
-.node-state { font-size: 12px; margin-top: 1px; color: #8fa0b3; }
+.node-state { font-size: 14px; margin-top: 2px; color: #8fa0b3; }
 .flow-node.active .node-state { color: #409EFF; }
 .flow-node.done .node-state { color: #67C23A; }
-.flow-arrow { flex: 1; min-width: 18px; height: 3px; background: #33404f; margin-top: 25px; position: relative; }
-.flow-arrow::after { content: ''; position: absolute; right: -2px; top: -5px; border: 6px solid transparent; border-left-color: #33404f; }
+.flow-arrow { flex: 1; min-width: 18px; height: 4px; background: #33404f; margin-top: 32px; position: relative; }
+.flow-arrow::after { content: ''; position: absolute; right: -2px; top: -6px; border: 8px solid transparent; border-left-color: #33404f; }
 .flow-arrow.lit { background: #67C23A; }
 .flow-arrow.lit::after { border-left-color: #67C23A; }
 
@@ -1252,10 +1245,10 @@ export default {
 /* AGV 控制 */
 .card-move ::v-deep .el-card__header { padding: 8px 12px; }
 .card-move ::v-deep .el-card__body { padding: 10px 12px 12px; }
-.station-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.station-btns .el-button { min-width: 80px; font-weight: 600; }
-.agv-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.agv-btns .el-button { min-width: 120px; font-weight: 600; }
+.station-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.station-btns .el-button { min-width: 100px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
+.agv-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.agv-btns .el-button { min-width: 140px; font-weight: 600; font-size: 15px; padding: 12px 20px; }
 
 /* 机械臂 + 工作流合并卡片 */
 .card-robot ::v-deep .el-card__header { padding: 6px 12px; }
@@ -1263,20 +1256,20 @@ export default {
 .robot-row { display: flex; flex-direction: column; gap: 6px; }
 .robot-section { display: flex; flex-direction: column; gap: 4px; }
 .section-title { font-size: 13px; font-weight: 600; color: #aeb9c7; }
-.robot-btns { display: flex; gap: 4px; flex-wrap: wrap; }
-.robot-btns .el-button { font-size: 12px; padding: 5px 8px; }
+.robot-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.robot-btns .el-button { min-width: 90px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
 
 /* 工作流控制 */
 .card-workflow ::v-deep .el-card__header { padding: 8px 12px; }
 .card-workflow ::v-deep .el-card__body { padding: 10px 12px 12px; }
-.workflow-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.workflow-btns .el-button { font-size: 12px; padding: 5px 10px; }
+.workflow-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.workflow-btns .el-button { min-width: 90px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
 
 /* 7 点位扫描 */
 .card-scan ::v-deep .el-card__header { padding: 6px 12px; }
 .card-scan ::v-deep .el-card__body { padding: 6px 12px 8px; }
-.scan-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.scan-btns .el-button { font-size: 12px; padding: 5px 10px; }
+.scan-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.scan-btns .el-button { min-width: 120px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
 .scan-log { max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px; }
 .scan-log-text { margin: 0; font-size: 11px; color: #aeb9c7; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.4; }
 

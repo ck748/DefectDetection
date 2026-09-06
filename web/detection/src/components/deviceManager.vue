@@ -705,7 +705,7 @@
                 <span>实时状态</span>
               </div>
               <el-button
-                size="mini"
+                size="small"
                 icon="el-icon-refresh"
                 :disabled="!agvConnected"
                 @click="queryAgvStatus"
@@ -731,18 +731,18 @@
               <div class="direct-control-block" style="margin-bottom: 0;">
                 <div class="block-title">
                   <span class="title-text">AGV 控制</span>
-                  <el-tag :type="agvModeTagType" size="mini">{{ agvModeText }}</el-tag>
+                  <el-tag :type="agvModeTagType" size="small">{{ agvModeText }}</el-tag>
                 </div>
                 <div class="btn-group-grid">
                   <el-button
                     type="danger"
-                    size="mini"
+                    size="small"
                     :disabled="!agvConnected"
                     @click="agvEmergencyStop"
                   >急停</el-button>
                   <el-button
                     type="warning"
-                    size="mini"
+                    size="small"
                     :disabled="!agvConnected"
                     @click="agvReset"
                   >复位（回1号站）</el-button>
@@ -820,7 +820,7 @@
                 <div class="direct-control-block">
                   <div class="block-title">
                     <span class="title-text"><i class="el-icon-video-play"></i> 机械臂实控动作</span>
-                    <el-tag :type="robotConnected ? 'success' : 'info'" size="mini">
+                    <el-tag :type="robotConnected ? 'success' : 'info'" size="small">
                       {{ robotConnected ? '已连接' : '未连接' }}
                     </el-tag>
                   </div>
@@ -828,7 +828,7 @@
                     <el-button
                       v-if="!robotConnected"
                       type="primary"
-                      size="mini"
+                      size="small"
                       icon="el-icon-link"
                       :loading="robotConnecting"
                       @click="connectRobot"
@@ -836,38 +836,51 @@
                     <el-button
                       v-else
                       type="danger"
-                      size="mini"
+                      size="small"
                       icon="el-icon-switch-button"
                       @click="disconnectRobot"
                     >断开</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       type="success"
                       :disabled="!robotConnected"
                       @click="setDO(0, true)"
                     >DO0开</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       type="warning"
                       :disabled="!robotConnected"
                       @click="setDO(0, false)"
                     >DO0关</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       :disabled="!robotConnected"
                       @click="robotMoveHome"
                     >回原位</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       :disabled="!robotConnected"
                       @click="robotMovePhoto"
                     >拍照位</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       type="danger"
                       :disabled="!robotConnected"
                       @click="robotStop"
                     >急停</el-button>
+                  </div>
+                  <div class="control-tip-line" style="margin-top: 8px;">
+                    <span class="tip-label">实时数据:</span>
+                    <el-tag :type="realtimeJoints.connected ? 'success' : 'info'" size="small">
+                      {{ realtimeJoints.connected ? '已连接' : '未连接' }}
+                    </el-tag>
+                    <el-button
+                      v-if="!realtimeJoints.connected"
+                      size="small"
+                      type="primary"
+                      style="margin-left: 8px;"
+                      @click="startRealtimeService"
+                    >启动实时数据</el-button>
                   </div>
                 </div>
 
@@ -891,11 +904,11 @@
 
               <!-- AGV 直接控制与实时状态 -->
               <div v-else-if="currentDev.type === 'agv'" class="form-body">
-                <!-- 串口连接 -->
+                <!-- 串口连接 & AGV 控制（合并） -->
                 <div class="direct-control-block">
                   <div class="block-title">
-                    <span class="title-text">串口连接</span>
-                    <el-tag :type="agvConnected ? 'success' : 'info'" size="mini">
+                    <span class="title-text">串口连接 & AGV 控制</span>
+                    <el-tag :type="agvConnected ? 'success' : 'info'" size="small">
                       {{ agvConnected ? '已连接' : '未连接' }}
                     </el-tag>
                   </div>
@@ -903,17 +916,17 @@
                     <el-select
                       v-model="agvPortName"
                       placeholder="选择串口"
-                      size="mini"
-                      style="width: 150px;"
+                      size="small"
+                      style="width: 160px;"
                       :disabled="agvConnected"
                     >
                       <el-option v-for="p in agvPorts" :key="p.name" :label="p.name" :value="p.name">
                         <span>{{ p.name }}</span>
-                        <span style="float: right; color: #909399; font-size: 11px;">{{ p.description }}</span>
+                        <span style="float: right; color: #909399; font-size: 12px;">{{ p.description }}</span>
                       </el-option>
                     </el-select>
                     <el-button
-                      size="mini"
+                      size="small"
                       icon="el-icon-refresh"
                       circle
                       :disabled="agvConnected"
@@ -922,7 +935,7 @@
                     <el-button
                       v-if="!agvConnected"
                       type="primary"
-                      size="mini"
+                      size="small"
                       icon="el-icon-link"
                       :loading="agvConnecting"
                       @click="connectAgv"
@@ -930,7 +943,7 @@
                     <el-button
                       v-else
                       type="danger"
-                      size="mini"
+                      size="small"
                       icon="el-icon-switch-button"
                       @click="disconnectAgv"
                     >断开</el-button>
@@ -939,21 +952,36 @@
                     <span class="tip-label">波特率:</span>
                     <span class="tip-value">9600，8 数据位，1 停止位，无校验（后端托管串口）</span>
                   </div>
-                  <div class="control-subrow" style="margin-top: 6px;">
+                  <!-- AGV 控制按钮 -->
+                  <div class="btn-group-grid" style="margin-top: 12px;">
+                    <el-button
+                      type="danger"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvEmergencyStop"
+                    >急停</el-button>
+                    <el-button
+                      type="warning"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvReset"
+                    >复位（回1号站）</el-button>
+                  </div>
+                  <div class="control-subrow" style="margin-top: 10px;">
                     <span class="tip-label" style="width: 58px;">检测结果:</span>
-                    <el-select v-model="inspectResult" size="mini" style="width: 150px;">
+                    <el-select v-model="inspectResult" size="small" style="width: 160px;">
                       <el-option label="合格（走合格线）" value="ok"></el-option>
                       <el-option label="划痕（走划痕线）" value="scratch"></el-option>
                       <el-option label="裂痕（走裂痕线）" value="crack"></el-option>
                     </el-select>
                     <span class="tip-desc">分拣时 AGV 按此结果行驶到对应路线（模拟）</span>
                   </div>
-                  <div class="control-subrow" style="margin-top: 6px;">
+                  <div class="control-subrow" style="margin-top: 8px;">
                     <span class="tip-label" style="width: 58px;">站号配置:</span>
                     <span class="cfg-text">上料区</span>
-                    <el-input-number v-model="stationLoading" :min="1" :max="255" size="mini" style="width: 80px;"></el-input-number>
+                    <el-input-number v-model="stationLoading" :min="1" :max="255" size="small" style="width: 90px;"></el-input-number>
                     <span class="cfg-text" style="margin-left: 8px;">检测区</span>
-                    <el-input-number v-model="stationDetect" :min="1" :max="255" size="mini" style="width: 80px;"></el-input-number>
+                    <el-input-number v-model="stationDetect" :min="1" :max="255" size="small" style="width: 90px;"></el-input-number>
                   </div>
                 </div>
 
@@ -961,26 +989,26 @@
                 <div class="direct-control-block">
                   <div class="block-title">
                     <span class="title-text">自动工作流</span>
-                    <el-tag :type="workflowTagType" size="mini">{{ workflowStateText }}</el-tag>
+                    <el-tag :type="workflowTagType" size="small">{{ workflowStateText }}</el-tag>
                   </div>
                   <div class="workflow-flow-desc">
                     AGV→6号站 → 发信号→机械臂 → 完成信号→AGV→3号站
                   </div>
-                  <div class="btn-group-grid" style="margin-top: 8px;">
+                  <div class="btn-group-grid" style="margin-top: 10px;">
                     <el-button
                       type="success"
-                      size="mini"
+                      size="small"
                       :disabled="!canStartWorkflow"
                       @click="startWorkflow"
                     >启动</el-button>
                     <el-button
                       type="warning"
-                      size="mini"
+                      size="small"
                       :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'"
                       @click="stopWorkflow"
                     >停止</el-button>
                     <el-button
-                      size="mini"
+                      size="small"
                       @click="resetWorkflow"
                     >重置</el-button>
                   </div>
@@ -1063,6 +1091,13 @@ export default {
       robotConnected: false,
       robotConnecting: false,
 
+      // 机械臂实时关节角度
+      realtimeJoints: { connected: false, joints_deg: [0,0,0,0,0,0], joints_rad: [0,0,0,0,0,0] },
+      realtimeTimer: null,
+
+      // 相机实时参数
+      cameraRealtime: { fps: 18.4, exposure: 3500, gain: 4.0, temperature: 42.5 },
+
       // AGV 实控状态
       agvConnected: false,
       agvConnecting: false,
@@ -1115,7 +1150,7 @@ export default {
       editParams: {},
       chartHistory: {
         server: [1.2, 1.5, 1.1, 1.8, 1.2, 1.4, 1.2],
-        camera: [30.2, 30.4, 30.1, 30.5, 30.3, 30.4, 30.4],
+        camera: [18.2, 18.4, 18.1, 18.5, 18.3, 18.4, 18.4],
         arm: [37.2, 37.4, 37.5, 37.6, 37.6, 37.7, 37.6],
         agv: [0.82, 0.84, 0.85, 0.83, 0.84, 0.86, 0.84]
       },
@@ -1137,29 +1172,29 @@ export default {
         },
         {
           id: 'dev_cam_01',
-          name: '工业相机 YG-CO100100-W',
+          name: '工业相机 MV-CU060-10GC',
           type: 'camera',
           typeName: '视觉传感器',
           icon: 'el-icon-camera',
-          ip: '192.168.1.103',
+          ip: '192.168.1.10',
           port: 3956,
           protocol: 'GigE Vision',
-          sn: 'CAM-CIM-C10C-01',
+          sn: 'DA8007347',
           vendor: '',
           primaryMetricName: '采集帧率',
-          primaryMetricVal: '30.4 FPS',
+          primaryMetricVal: '18.4 FPS',
           params: { exposure: 3500, gain: 4.0, trigger: 'line1' }
         },
         {
           id: 'dev_arm_01',
-          name: '机械臂 DUX-1A3M',
+          name: '机械臂 灵眸-CB-iS',
           type: 'arm',
           typeName: '协作机械臂',
           icon: 'el-icon-connection',
-          ip: '192.168.1.102',
-          port: 30003,
-          protocol: 'UR-RT / TCP',
-          sn: 'ARM-CNC-6DOF-001',
+          ip: '192.168.1.6',
+          port: 30002,
+          protocol: 'TCP / Lua',
+          sn: 'CB-iS-001',
           vendor: '',
           primaryMetricName: '电机温升',
           primaryMetricVal: '37.6 °C',
@@ -1167,7 +1202,7 @@ export default {
         },
         {
           id: 'dev_agv_01',
-          name: 'AGV小车 SLAM-500',
+          name: ' 灵巡SLAM-500',
           type: 'agv',
           typeName: '自主底盘',
           icon: 'el-icon-truck',
@@ -1183,8 +1218,8 @@ export default {
       ],
       busLogs: [
         { time: '16:42:01', source: 'SERVER', type: 'server', protocol: 'HTTP/REST', addr: '192.168.1.3:8088', msg: 'GET /api/status -> CPU 40 Cores online, TensorRT-FP16 ready' },
-        { time: '16:42:02', source: 'CAMERA', type: 'camera', protocol: 'GigE Vision', addr: '192.168.1.103:3956', msg: 'Stream packet recv: Frame #142857 (4024x3036, 12MB, 0 loss)' },
-        { time: '16:42:03', source: 'ROBOT', type: 'arm', protocol: 'UR-RT TCP', addr: '192.168.1.102:30003', msg: 'Feedback cycle 125Hz: Tool pose [X420, Y120, Z370, Rz0.01]' },
+        { time: '16:42:02', source: 'CAMERA', type: 'camera', protocol: 'GigE Vision', addr: '192.168.1.10:3956', msg: 'Stream packet recv: Frame #142857 (3072x2048, 6MP, 0 loss)' },
+        { time: '16:42:03', source: 'ROBOT', type: 'arm', protocol: 'TCP Lua', addr: '192.168.1.6:30002', msg: 'Script exec: moveJoint([0.0, -1.57, 0.0, 0.0, 1.57, 0.0]) -> OK' },
         { time: '16:42:04', source: 'AGV', type: 'agv', protocol: 'Modbus-TCP', addr: '192.168.1.101:502', msg: 'Read Holding Registers [0x0010-0x0018]: Battery=88%, Pose=Station_A3' },
         { time: '16:42:05', source: 'GATEWAY', type: 'sys', protocol: 'PROFINET', addr: '192.168.1.1:102', msg: 'Cyclic I/O data exchange acknowledged, Jitter < 0.05ms' }
       ]
@@ -1213,16 +1248,26 @@ export default {
           { label: '连续无故障运行', value: '128 小时 42 分', sub: '系统运行平稳' }
         ];
       } else if (dev.type === 'camera') {
+        const cr = this.cameraRealtime;
         return [
-          { label: '相机类型', value: '工业面阵相机', highlight: true, sub: '高分辨率工业成像' },
-          { label: '传感器类型', value: 'CMOS 卷帘快门', highlight: true, sub: '高灵敏度感光元件' },
-          { label: '分辨率 / 像素', value: '1200 万像素', highlight: true, sub: '4024 × 3036 标称输出' }
+          { label: '相机型号', value: 'MV-CU060-10GC', highlight: true, sub: 'GigE 千兆网口工业相机' },
+          { label: '分辨率 / 像素', value: '600 万像素', highlight: true, sub: '3072 × 2048 标称输出' },
+          { label: '实时帧率', value: cr.fps.toFixed(1) + ' FPS', highlight: true, sub: '千兆网口实时采集中', percent: (cr.fps / 20) * 100 },
+          { label: '曝光时间', value: cr.exposure + ' μs', sub: '当前曝光参数' },
+          { label: '模拟增益', value: cr.gain.toFixed(1) + ' dB', sub: '当前增益参数' },
+          { label: '传感器温度', value: cr.temperature.toFixed(1) + ' °C', sub: '相机内部温度' }
         ];
       } else if (dev.type === 'arm') {
+        const rt = this.realtimeJoints;
+        const jd = rt.joints_deg;
         return [
-          { label: '工作半径', value: '1000 mm', highlight: true, sub: '最大作业包络范围' },
-          { label: '重复定位精度', value: '±0.02 mm', highlight: true, sub: '高精度伺服闭环' },
-          { label: '防护等级', value: 'IP54', highlight: true, sub: '工业级防尘防溅水' }
+          { label: '机械臂型号', value: 'AUBO-CB-iS', highlight: true, sub: '6 轴协作型机械臂' },
+          { label: 'J1 关节角度', value: jd[0].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[0].toFixed(4) + ' rad' },
+          { label: 'J2 关节角度', value: jd[1].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[1].toFixed(4) + ' rad' },
+          { label: 'J3 关节角度', value: jd[2].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[2].toFixed(4) + ' rad' },
+          { label: 'J4 关节角度', value: jd[3].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[3].toFixed(4) + ' rad' },
+          { label: 'J5 关节角度', value: jd[4].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[4].toFixed(4) + ' rad' },
+          { label: 'J6 关节角度', value: jd[5].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[5].toFixed(4) + ' rad' }
         ];
       } else if (dev.type === 'agv') {
         return [
@@ -1305,6 +1350,9 @@ export default {
 
     // 启动服务器底层监控遥测轮询
     this.startServerMonitorPolling();
+
+    // 启动机械臂实时关节角度轮询
+    this.startRealtimePolling();
   },
   beforeDestroy() {
     if (this.clockTimer) clearInterval(this.clockTimer);
@@ -1312,6 +1360,7 @@ export default {
     this.stopAgvStatusPolling();
     this.stopWorkflowPolling();
     this.stopServerMonitorPolling();
+    this.stopRealtimePolling();
     if (this.chartInstance) {
       this.chartInstance.dispose();
       this.chartInstance = null;
@@ -2048,6 +2097,41 @@ export default {
       if (this.serverMonitorTimer) {
         clearInterval(this.serverMonitorTimer);
         this.serverMonitorTimer = null;
+      }
+    },
+
+    // 机械臂实时关节角度轮询
+    fetchRealtimeJoints() {
+      axios.get('api/aubo/realtime').then(res => {
+        if (res.data && res.data.code === 200 && res.data.data) {
+          this.realtimeJoints = {
+            connected: res.data.data.connected || false,
+            joints_deg: res.data.data.joints_deg || [0,0,0,0,0,0],
+            joints_rad: res.data.data.joints_rad || [0,0,0,0,0,0]
+          };
+        }
+      }).catch(err => {
+        console.error('[Realtime] Error:', err);
+      });
+    },
+    startRealtimeService() {
+      axios.post('api/aubo/realtime/start').then(res => {
+        this.startRealtimePolling();
+      }).catch(err => {
+        console.error('[Realtime] Start error:', err);
+      });
+    },
+    startRealtimePolling() {
+      this.fetchRealtimeJoints();
+      if (this.realtimeTimer) clearInterval(this.realtimeTimer);
+      this.realtimeTimer = setInterval(() => {
+        this.fetchRealtimeJoints();
+      }, 500); // 每 500ms 刷新一次
+    },
+    stopRealtimePolling() {
+      if (this.realtimeTimer) {
+        clearInterval(this.realtimeTimer);
+        this.realtimeTimer = null;
       }
     }
   }

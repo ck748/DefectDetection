@@ -1,8 +1,10 @@
 package com.ggbond.defectdetection.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +31,36 @@ public class AuboRobotService {
     private volatile Socket scriptSocket;
     private volatile OutputStream scriptOut;
     private final AtomicBoolean connected = new AtomicBoolean(false);
+
+    /** 最后发送的目标关节角度（弧度），6 轴 */
+    private volatile double[] lastTargetAngles = new double[6];
+
+    public double[] getLastTargetAngles() {
+        return lastTargetAngles.clone();
+    }
+
+    public double[] getLastTargetAnglesDeg() {
+        double[] deg = new double[6];
+        for (int i = 0; i < 6; i++) deg[i] = Math.toDegrees(lastTargetAngles[i]);
+        return deg;
+    }
+
+    /**
+     * Spring Boot 启动时自动连接机械臂
+     */
+    @PostConstruct
+    public void autoConnect() {
+        log.info("[AUBO] Spring Boot 启动，尝试自动连接机械臂 {}:{}", DEFAULT_HOST, SCRIPT_PORT);
+        // 延迟 3 秒启动，等待网络就绪
+        new Thread(() -> {
+            try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
+            if (connect()) {
+                log.info("[AUBO] 自动连接成功");
+            } else {
+                log.warn("[AUBO] 自动连接失败，请手动调用 POST /aubo/connect");
+            }
+        }, "aubo-auto-connect").start();
+    }
 
     /**
      * 连接到机械臂控制器的 SCRIPT 端口（30002）
@@ -96,6 +128,42 @@ public class AuboRobotService {
         }
     }
 
+    /**
+     * 发送 Lua 脚本并读取响应（用于查询类脚本）
+     * @return 响应内容，失败返回 null
+     */
+    public synchronized String sendScriptWithResponse(String luaScript, int timeoutMs) {
+        if (!isConnected()) return null;
+        try {
+            String payload = luaScript.endsWith("\r\n\r\n") ? luaScript : luaScript + "\r\n\r\n";
+            scriptOut.write(payload.getBytes(StandardCharsets.UTF_8));
+            scriptOut.flush();
+
+            // 读取响应
+            scriptSocket.setSoTimeout(timeoutMs);
+            InputStream in = scriptSocket.getInputStream();
+            byte[] buf = new byte[4096];
+            StringBuilder sb = new StringBuilder();
+            long start = System.currentTimeMillis();
+            while (System.currentTimeMillis() - start < timeoutMs) {
+                if (in.available() > 0) {
+                    int len = in.read(buf);
+                    if (len > 0) {
+                        sb.append(new String(buf, 0, len, StandardCharsets.UTF_8));
+                        // 如果收到完整 JSON 响应，提前返回
+                        String resp = sb.toString();
+                        if (resp.contains("\"event\"")) break;
+                    }
+                }
+                Thread.sleep(50);
+            }
+            return sb.length() > 0 ? sb.toString() : null;
+        } catch (Exception e) {
+            log.debug("AUBO 脚本查询失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
     // ==================== 7 个示教点位（单位：度） ====================
 
     /**
@@ -115,6 +183,12 @@ public class AuboRobotService {
     /** 扫描运行状态 */
     private volatile boolean scanning = false;
     private volatile boolean scanStopped = false;
+
+    @Autowired(required = false)
+    private VmCameraTriggerService vmCameraTriggerService;
+
+    /** 是否使用 VM 握手模式（VM 未连接时降级为固定等待） */
+    private boolean useVmHandshake = false;
 
     // ==================== 常用 Lua 脚本封装 ====================
 
@@ -156,6 +230,9 @@ public class AuboRobotService {
      * @param acceleration 关节加速度（rad/s²）
      */
     public boolean moveJoint(double[] jointAngles, double velocity, double acceleration) {
+        // 保存目标角度
+        System.arraycopy(jointAngles, 0, lastTargetAngles, 0, 6);
+
         StringBuilder sb = new StringBuilder();
         sb.append("return function(api)\n");
         sb.append("    local _ENV = require('aubo').sched.select_robot(1)\n");
@@ -292,7 +369,7 @@ public class AuboRobotService {
 
     /**
      * 执行 7 点位扫描（左→右→左→右，共 28 次拍照）
-     * 每到一个点位：移动 → 等待稳定 → 等待相机拍照 → 下一个点位
+     * 每到一个点位：移动 → 等待稳定 → 触发VM拍照 → 等待拍照完成 → 下一个点位
      *
      * 扫描顺序（4 轮）：
      *   第1轮: P1→P2→P3→P4→P5→P6→P7  (7次)
@@ -301,7 +378,7 @@ public class AuboRobotService {
      *   第4轮: P7→P6→P5→P4→P3→P2→P1  (7次)
      *
      * @param settleMs   每个点位稳定等待时间(ms)，默认 1500
-     * @param cameraWait 等待相机拍照时间(ms)，默认 2000
+     * @param cameraWait 降级模式下的相机等待时间(ms)，默认 2000（VM未连接时使用）
      * @return 扫描结果摘要
      */
     public String executeScanPattern(int settleMs, int cameraWait) {
@@ -310,6 +387,14 @@ public class AuboRobotService {
         }
         if (!isConnected()) {
             return "机械臂未连接";
+        }
+
+        // 检测 VM 是否已连接
+        useVmHandshake = vmCameraTriggerService != null && vmCameraTriggerService.isConnected();
+        if (useVmHandshake) {
+            log.info("[扫描] 使用 VM 握手模式（真实拍照确认）");
+        } else {
+            log.warn("[扫描] VM 未连接，降级为固定等待模式（{}ms）", cameraWait);
         }
 
         scanning = true;
@@ -351,15 +436,27 @@ public class AuboRobotService {
                     // 3. 设置 DO0=ON 通知外部"已到位，可以拍照"
                     setDO(0, true);
 
-                    // 4. 等待相机拍照完成
-                    try { Thread.sleep(cameraWait); } catch (InterruptedException e) { break; }
+                    // 4. 触发 VM 拍照并等待完成
+                    boolean captureOk;
+                    if (useVmHandshake) {
+                        // 真实握手：发送 TRIGGER 给 VM，等待 CAPTURE_DONE
+                        captureOk = vmCameraTriggerService.triggerCapture();
+                        if (!captureOk) {
+                            scanLog.add(String.format("[%d] %s 拍照超时，继续下一点位", totalPhotos + 1, posName));
+                            log.warn("[扫描] 第{}次拍照超时 -> {}", totalPhotos + 1, posName);
+                        }
+                    } else {
+                        // 降级模式：固定等待
+                        try { Thread.sleep(cameraWait); } catch (InterruptedException e) { break; }
+                        captureOk = true;
+                    }
 
                     // 5. 复位 DO0
                     setDO(0, false);
 
                     totalPhotos++;
-                    scanLog.add(String.format("[%d] %s 拍照完成 ✓", totalPhotos, posName));
-                    log.info("[扫描] 第{}次拍照完成 -> {}", totalPhotos, posName);
+                    scanLog.add(String.format("[%d] %s 拍照%s", totalPhotos, posName, captureOk ? "完成 ✓" : "超时 ⚠"));
+                    log.info("[扫描] 第{}次拍照{} -> {}", totalPhotos, captureOk ? "完成" : "超时", posName);
                 }
             }
 
