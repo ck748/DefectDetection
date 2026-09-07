@@ -22,8 +22,11 @@ import java.util.List;
 @Data
 public class DetectResDto extends DetectLog {
 
-    //base64的图像
+    //base64的图像（检测后带红框的标注图）
     private String imgBase64;
+
+    //原始上传图像base64（无红框）
+    private String originalImgBase64;
 
     public int totals =0;
 
