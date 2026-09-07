@@ -97,18 +97,43 @@ public class ImageModule {
 
         //判断是否为图片并转为jpeg格式
         String imgBase64 = ImgUtil.convertToJPGBase64(img);
+        log.info("[ImageModule] 图片转换完成，base64长度: {}", imgBase64.length());
+
+        // 【关键修复】先保存原始图片到临时路径，避免后续被覆盖
+        String tempOriginalPath = ConfigProperties.properties.getModelConfig().getResStoragePath() + "/temp_original_" + System.currentTimeMillis() + ".jpg";
+        try {
+            ImgUtil.saveImageToFile(imgBase64, tempOriginalPath);
+            log.info("[ImageModule] 原始图片已保存到临时路径: {}", tempOriginalPath);
+        } catch (Exception e) {
+            log.error("[ImageModule] 保存原始图片失败: {}", e.getMessage(), e);
+        }
 
         //模型分析
+        DetectResDto currentRes;
         try {
-            res = detectModel.detectOne(imgBase64);
+            currentRes = detectModel.detectOne(imgBase64);
+            log.info("[ImageModule] 模型检测完成，缺陷数: {}", 
+                currentRes.getDefections() != null ? currentRes.getDefections().size() : 0);
         } catch (Exception e) {
-            log.error("模型检测失败，可能是Python预测服务未启动(8090端口): {}", e.getMessage());
+            log.error("[ImageModule] 模型检测失败: {}", e.getMessage(), e);
             // 如果模型检测失败，返回原图和空的检测结果
-            res = new DetectResDto();
-            res.setImgBase64(imgBase64);
-            res.setDefections(new java.util.ArrayList<>());
-            res.setDefectionsSum(0);
+            currentRes = new DetectResDto();
+            currentRes.setImgBase64(imgBase64);
+            currentRes.setOriginalImgBase64(imgBase64);
+            currentRes.setDefections(new java.util.ArrayList<>());
+            currentRes.setDefectionsSum(0);
         }
+
+        // 设置原图到 SSE 消息中（左侧面板显示原图，右侧显示标注图）
+        if (currentRes.getOriginalImgBase64() == null) {
+            currentRes.setOriginalImgBase64(imgBase64);
+            log.info("[ImageModule] 设置 originalImgBase64，长度: {}", imgBase64.length());
+        } else {
+            log.info("[ImageModule] originalImgBase64 已存在，长度: {}", currentRes.getOriginalImgBase64().length());
+        }
+
+        // 更新 static res 仅用于 GUI 显示（不影响 SSE 推送）
+        res = currentRes;
 
         //存储新的检测信息
         //1.获取工单号 (如果没有工单，使用0作为默认值)
@@ -123,7 +148,7 @@ public class ImageModule {
             log.warn("获取工单ID失败，使用默认工单ID=0: {}", e.getMessage());
         }
         //2.缺陷总数
-        int defectionsSum=res.getDefections().size();
+        int defectionsSum = currentRes.getDefections() != null ? currentRes.getDefections().size() : 0;
 
         //3.存储相关信息
         //3.1 存储检测信息
@@ -134,7 +159,21 @@ public class ImageModule {
         detectLog.setWorkOrderId(workOrderId);
         detectLog.setStoragePath(ConfigProperties.properties.getModelConfig().getResStoragePath()+"/"+workOrderId+"/"+name);
         detectLog.setTime(LocalDateTime.now());
-        ImgUtil.saveImageToFile(res.getImgBase64(),detectLog.getStoragePath());
+        
+        // 先保存标注图（有红框）
+        log.info("[ImageModule] 开始保存标注图: {}", detectLog.getStoragePath());
+        ImgUtil.saveImageToFile(currentRes.getImgBase64(), detectLog.getStoragePath());
+        
+        // 再保存原图（无红框），文件名为 storagePath + "_original"
+        String originalPath = detectLog.getStoragePath().replaceAll("(\\.[a-zA-Z]+)$", "_original$1");
+        log.info("[ImageModule] 开始保存原图: {}, base64长度: {}", originalPath, imgBase64.length());
+        try {
+            ImgUtil.saveImageToFile(imgBase64, originalPath);
+            log.info("[ImageModule] 原图保存成功");
+        } catch (Exception e) {
+            log.error("[ImageModule] 原图保存失败: {}", e.getMessage(), e);
+        }
+        
         detectLogService.save(detectLog);
 
         LambdaQueryWrapper<DetectLog> lqw=new LambdaQueryWrapper<>();
@@ -145,23 +184,25 @@ public class ImageModule {
 
         //3.2 存储缺陷信息
         int actualDefectionCount = 0;
-        for(Defection defection:res.getDefections()){
+        if (currentRes.getDefections() != null) {
+            for(Defection defection : currentRes.getDefections()){
 
-            String category=defection.getCategory();
-            LambdaQueryWrapper<DefectionCategory> lqw1=new LambdaQueryWrapper<>();
-            lqw1.eq(category!=null,DefectionCategory::getName,category);
-            if(!defectionCategoryService.exists(lqw1)){
-                DefectionCategory defectionCategory=new DefectionCategory(null,category, 0,LocalDateTime.now());
-                defectionCategoryService.save(defectionCategory);
+                String category=defection.getCategory();
+                LambdaQueryWrapper<DefectionCategory> lqw1=new LambdaQueryWrapper<>();
+                lqw1.eq(category!=null,DefectionCategory::getName,category);
+                if(!defectionCategoryService.exists(lqw1)){
+                    DefectionCategory defectionCategory=new DefectionCategory(null,category, 0,LocalDateTime.now());
+                    defectionCategoryService.save(defectionCategory);
+                }
+                Integer categoryId=defectionCategoryService.getOne(lqw1).getId();
+                defection.setCategoryId(categoryId);
+                defection.setDetectId(detectId);
+                // 在 defection.setDetectId(detectId); 之后添加:
+                severityService.evaluateDefection(defection);
+                defectionService.save(defection);
+                actualDefectionCount++;
+
             }
-            Integer categoryId=defectionCategoryService.getOne(lqw1).getId();
-            defection.setCategoryId(categoryId);
-            defection.setDetectId(detectId);
-            // 在 defection.setDetectId(detectId); 之后添加:
-            severityService.evaluateDefection(defection);
-            defectionService.save(defection);
-            actualDefectionCount++;
-
         }
         
         // 3.3 更新detect_log的实际缺陷数（防止保存时计算错误）
@@ -183,18 +224,18 @@ public class ImageModule {
 
         //更新图像和图表 - 只在GUI可用时更新
         if(realtimeInterface != null) {
-            realtimeInterface.getDetectImagePanel().updateImageAndTable(res);
+            realtimeInterface.getDetectImagePanel().updateImageAndTable(currentRes);
             if (CommonResource.getCurrentWorkOder() != null) {
                 realtimeInterface.getDetectImagePanel().updateTextLabel(workOrderId, CommonResource.getCurrentNum(), CommonResource.getDetectSum());
             }
             realtimeInterface.updateCharts(dataModule.getDataMaps());
         }
 
-        //将最新结果发送至web端(通过SSE)
-        new Thread(sseUtil.sendMessageToAll(String.valueOf(Result.IMAGE_CODE),res),"发送检测结果").start();
+        //将最新结果发送至web端(通过SSE) — 使用局部变量 currentRes，避免并发覆盖
+        new Thread(sseUtil.sendMessageToAll(String.valueOf(Result.IMAGE_CODE), currentRes),"发送检测结果").start();
         
         //同时直接返回结果给调用方
-        return Result.success("检测完成", res);
+        return Result.success("检测完成", currentRes);
     }
 
 

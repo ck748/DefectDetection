@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,8 +56,8 @@ public class DashboardController {
         log.info("接收到Dashboard数据请求");
         
         try {
-            // 1. 从数据库获取最新的检测结果
-            DetectResDto resDto = getLatestDetectResult();
+            // 1. 从数据库获取最近的检测结果（轻量级，不含base64，最多28条）
+            java.util.List<Map<String, Object>> recentResults = getRecentDetectResults(28);
             
             // 2. 获取统计数据
             int runTime = SystemStatusUtil.getContinuousWorkingSeconds();
@@ -72,9 +73,7 @@ public class DashboardController {
             
             // 4. 封装数据
             Map<String, Object> data = new HashMap<>();
-            data.put("imgBase64", resDto.getImgBase64());
-            data.put("defections", resDto.getDefections());
-            data.put("defectionsSum", resDto.getDefectionsSum());
+            data.put("recentResults", recentResults);
             data.put("runTime", runTime);
             data.put("defectRate", defectRate);
             data.put("highestOccurrenceDefect", highestOccurrenceDefect);
@@ -185,13 +184,24 @@ public class DashboardController {
             DetectLog latestLog = detectLogService.getOne(lqw);
             
             if (latestLog != null) {
-                // 读取图片
+                // 读取标注图（有红框）
                 try {
                     String imgBase64 = ImgUtil.imageToBase64ByPath(latestLog.getStoragePath());
                     result.setImgBase64(imgBase64);
                 } catch (Exception e) {
                     log.warn("读取检测图片失败: {}", latestLog.getStoragePath(), e);
                     result.setImgBase64("");
+                }
+                
+                // 读取原图（无红框），文件名为 storagePath + "_original"
+                String originalPath = latestLog.getStoragePath().replaceAll("(\\.[a-zA-Z]+)$", "_original$1");
+                try {
+                    String originalImgBase64 = ImgUtil.imageToBase64ByPath(originalPath);
+                    result.setOriginalImgBase64(originalImgBase64);
+                } catch (Exception e) {
+                    log.debug("读取原图失败（可能为旧数据）: {}", originalPath);
+                    // 原图不存在时，用标注图作为原图
+                    result.setOriginalImgBase64(result.getImgBase64());
                 }
                 
                 // 查询该检测的所有缺陷
@@ -218,6 +228,125 @@ public class DashboardController {
         }
         
         return result;
+    }
+
+    /**
+     * 从数据库获取最近的N条检测结果（轻量级，不含base64图片）
+     */
+    private java.util.List<Map<String, Object>> getRecentDetectResults(int limit) {
+        java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
+        
+        try {
+            LambdaQueryWrapper<DetectLog> lqw = new LambdaQueryWrapper<>();
+            lqw.orderByDesc(DetectLog::getTime);
+            lqw.last("LIMIT " + limit);
+            java.util.List<DetectLog> recentLogs = detectLogService.list(lqw);
+            
+            for (DetectLog detectLog : recentLogs) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", detectLog.getId());
+                item.put("name", detectLog.getName());
+                item.put("time", detectLog.getTime());
+                item.put("storagePath", detectLog.getStoragePath());
+                item.put("defectionsSum", detectLog.getDefectionsSum());
+                
+                // 查询该检测的所有缺陷
+                LambdaQueryWrapper<Defection> defLqw = new LambdaQueryWrapper<>();
+                defLqw.eq(Defection::getDetectId, detectLog.getId());
+                java.util.List<Defection> defections = defectionService.list(defLqw);
+                if (defections == null) defections = new java.util.ArrayList<>();
+                item.put("defections", defections);
+                
+                results.add(item);
+            }
+            
+            // 按时间正序返回（旧的在前，新的在后）
+            java.util.Collections.reverse(results);
+        } catch (Exception e) {
+            this.log.error("获取最近检测结果失败", e);
+        }
+        
+        return results;
+    }
+
+    /**
+     * 根据ID获取单条检测结果的图片（base64）
+     */
+    @GetMapping("/image/{id}")
+    @ResponseBody
+    public Result<Map<String, String>> getImageById(@PathVariable Integer id) {
+        try {
+            DetectLog detectLog = detectLogService.getById(id);
+            if (detectLog == null) {
+                return Result.fail("检测记录不存在");
+            }
+            
+            Map<String, String> imageMap = new HashMap<>();
+            
+            // 读取标注图（有红框）
+            try {
+                String imgBase64 = ImgUtil.imageToBase64ByPath(detectLog.getStoragePath());
+                imageMap.put("imgBase64", imgBase64);
+            } catch (Exception e) {
+                this.log.warn("读取标注图失败: {}", detectLog.getStoragePath());
+                imageMap.put("imgBase64", "");
+            }
+            
+            // 读取原图（无红框）
+            String originalPath = detectLog.getStoragePath().replaceAll("(\\.[a-zA-Z]+)$", "_original$1");
+            try {
+                String originalImgBase64 = ImgUtil.imageToBase64ByPath(originalPath);
+                imageMap.put("originalImgBase64", originalImgBase64);
+            } catch (Exception e) {
+                this.log.debug("读取原图失败（可能为旧数据）: {}", originalPath);
+                imageMap.put("originalImgBase64", imageMap.get("imgBase64"));
+            }
+            
+            return Result.success("成功", imageMap);
+        } catch (Exception e) {
+            this.log.error("获取图片失败, id={}", id, e);
+            return Result.fail("获取图片失败");
+        }
+    }
+
+    /**
+     * 清空所有检测记录（删除数据库记录 + 图片文件）
+     */
+    @GetMapping("/clear")
+    @ResponseBody
+    public Result<String> clearAllRecords() {
+        try {
+            // 1. 查询所有检测记录
+            java.util.List<DetectLog> allLogs = detectLogService.list();
+            
+            // 2. 删除对应的图片文件
+            for (DetectLog detectLog : allLogs) {
+                try {
+                    String path = detectLog.getStoragePath();
+                    java.io.File file = new java.io.File(path);
+                    if (file.exists()) file.delete();
+                    // 删除原图
+                    String originalPath = path.replaceAll("(\\.[a-zA-Z]+)$", "_original$1");
+                    java.io.File originalFile = new java.io.File(originalPath);
+                    if (originalFile.exists()) originalFile.delete();
+                } catch (Exception e) {
+                    this.log.warn("删除图片文件失败: {}", detectLog.getStoragePath());
+                }
+            }
+            
+            // 3. 删除所有缺陷记录
+            LambdaQueryWrapper<Defection> defLqw = new LambdaQueryWrapper<>();
+            defectionService.remove(defLqw);
+            
+            // 4. 删除所有检测记录
+            detectLogService.remove(new LambdaQueryWrapper<>());
+            
+            this.log.info("已清空所有检测记录，共删除 {} 条", allLogs.size());
+            return Result.success("成功", "已清空 " + allLogs.size() + " 条检测记录");
+        } catch (Exception e) {
+            this.log.error("清空检测记录失败", e);
+            return Result.fail("清空失败: " + e.getMessage());
+        }
     }
 
 

@@ -130,9 +130,15 @@ public class DetectModel {
                 res.setImgBase64(jsonObject.getString("imgBase64"));
 
                 String defectionsStr=jsonObject.getString("defections");
-                List<Defection> defections= JSON.parseArray(defectionsStr,Defection.class);
+                List<Defection> defections = null;
+                if (defectionsStr != null && !defectionsStr.isEmpty()) {
+                    defections = JSON.parseArray(defectionsStr, Defection.class);
+                }
+                if (defections == null) {
+                    defections = new ArrayList<>();
+                }
                 res.setDefections(defections);
-                log.info("检测完成，发现缺陷数量: {}", defections != null ? defections.size() : 0);
+                log.info("检测完成，发现缺陷数量: {}", defections.size());
             } catch (Exception e) {
                 log.error("调用Python预测服务失败: {}", e.getMessage(), e);
                 throw e;  // 重新抛出异常，由上层捕获

@@ -54,46 +54,13 @@
             <el-divider style="margin: 6px 0;"></el-divider>
             <div class="robot-section">
               <div class="section-title">自动工作流 <el-tag :type="workflowTagType" size="small" style="margin-left:4px;">{{ workflowStateText }}</el-tag></div>
-              <div class="muted hint" style="margin-bottom:6px;">AGV→6号站 → 28次扫描 → AGV→3号站</div>
+              <div class="muted hint" style="margin-bottom:6px;"></div>
               <div class="workflow-btns">
                 <el-button type="success" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
                 <el-button type="warning" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
                 <el-button @click="resetWorkflow">重置</el-button>
               </div>
             </div>
-          </div>
-        </el-card>
-
-        <!-- 7 点位扫描控制 -->
-        <el-card shadow="hover" class="card-scan">
-          <div slot="header" class="card-header">
-            <span>7 点位扫描</span>
-            <el-tag :type="scanning ? 'warning' : 'info'" size="small">{{ scanning ? '扫描中...' : '待命' }}</el-tag>
-          </div>
-          <div class="scan-info muted hint" style="margin-bottom:6px;">
-            左→右→左→右，4 轮共 28 次拍照
-          </div>
-          <div class="scan-params" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">稳定等待(ms)</span>
-              <el-input-number v-model="scanSettleMs" :min="500" :max="5000" :step="100" style="width:100%;"></el-input-number>
-            </div>
-            <div style="flex:1;">
-              <span class="muted" style="font-size:12px;">相机等待(ms)</span>
-              <el-input-number v-model="scanCameraWait" :min="500" :max="10000" :step="500" style="width:100%;"></el-input-number>
-            </div>
-          </div>
-          <div class="scan-btns">
-            <el-button type="success" :disabled="!robotConnected || scanning" @click="startScan">
-              <i class="el-icon-video-play"></i> 启动扫描
-            </el-button>
-            <el-button type="danger" :disabled="!scanning" @click="stopScan">
-              <i class="el-icon-video-pause"></i> 停止
-            </el-button>
-          </div>
-          <div v-if="scanLog" class="scan-log" style="margin-top:8px;">
-            <div class="muted" style="font-size:11px;margin-bottom:4px;">扫描日志：</div>
-            <pre class="scan-log-text">{{ scanLog }}</pre>
           </div>
         </el-card>
 
@@ -158,16 +125,11 @@ export default {
       lastUpdate: '',
       agvMode: null,  // AGV当前工作模式：0=普通(基础) 1=站点编辑 2=站点召回
       agvSpeed: 500,  // AGV设定速度(米/小时)
-      // 扫描控制
-      scanning: false,
-      scanSettleMs: 1500,
-      scanCameraWait: 2000,
-      scanLog: '',
-      scanPollTimer: null,
       // 机械臂控制数据
       robotConnected: false,
       robotConnecting: false,
       workflowState: 'IDLE',
+      previousWorkflowState: 'IDLE',
       workflowPollTimer: null,
       // 机械臂控制数据
       // 每一节均支持: 转台左右 / 肘部前伸下压与左右 / 头部下压与左右 / 相机前伸与左右平移
@@ -241,7 +203,6 @@ export default {
   beforeDestroy() {
     this.stopStatusPolling();
     this.stopWorkflowPolling();
-    this.stopScanPolling();
     this.disposeAgv();
   },
   methods: {
@@ -627,6 +588,8 @@ export default {
         const res = await axios.post('api/workflow/start');
         if (res.data.code === 200) {
           this.$message.success('工作流已启动');
+          // 重置前序状态，确保首次状态变迁能被检测到
+          this.previousWorkflowState = 'IDLE';
           this.startWorkflowPolling();
         } else {
           this.$message.error(res.data.message);
@@ -638,12 +601,15 @@ export default {
         await axios.post('api/workflow/stop');
         this.$message.success('工作流已停止');
         this.stopWorkflowPolling();
+        this.stopInspection();
       } catch (e) { /* ignore */ }
     },
     async resetWorkflow() {
       try {
         await axios.post('api/workflow/reset');
         this.workflowState = 'IDLE';
+        this.previousWorkflowState = 'IDLE';
+        this.resetFlow();
         this.$message.success('工作流已重置');
       } catch (e) { /* ignore */ }
     },
@@ -661,67 +627,124 @@ export default {
       try {
         const res = await axios.get('api/workflow/status');
         if (res.data.code === 200 && res.data.data) {
-          this.workflowState = res.data.data.state;
-          if (this.workflowState === 'COMPLETED' || this.workflowState === 'ERROR') {
+          const newState = res.data.data.state;
+          this.workflowState = newState;
+          // 检测状态变迁 → 联动数字孪生
+          if (newState !== this.previousWorkflowState) {
+            this.syncDigitalTwin(newState);
+            this.previousWorkflowState = newState;
+          }
+          if (newState === 'COMPLETED' || newState === 'ERROR') {
             this.stopWorkflowPolling();
           }
         }
       } catch (e) { /* ignore */ }
     },
 
-    // ==================== 扫描控制 ====================
-    async startScan() {
-      try {
-        const res = await axios.post('api/aubo/scan/start', {
-          settleMs: this.scanSettleMs,
-          cameraWait: this.scanCameraWait
-        });
-        if (res.data.code === 200) {
-          this.$message.success(res.data.message);
-          this.scanning = true;
-          this.scanLog = '';
-          this.startScanPolling();
-        } else {
-          this.$message.error(res.data.message);
+    /**
+     * 根据工作流状态自动驱动数字孪生 3D 场景
+     * 状态变迁时自动：移动 AGV 模型 / 启停机械臂扫描 / 更新流程步骤
+     */
+    syncDigitalTwin(state) {
+      console.log('[DigitalTwin] 状态变迁 →', state);
+      switch (state) {
+        case 'AGV_TO_STATION6': {
+          // AGV 从当前位置驶向检测区(机械臂正前方 X:0)
+          this.animateAgvTo(0, 1.5, 6);
+          // 更新流程步骤: 到达上料区→完成, 到达检测区→进行中
+          this.setStepsDone(0);
+          this.setStepActive(1);
+          break;
         }
-      } catch (e) {
-        this.$message.error('启动扫描失败');
+        case 'SCANNING': {
+          // AGV 停在检测区，机械臂开始扫描动画
+          this.animateAgvTo(0, 1.5, 0);
+          this.setStepsDone(1);
+          this.setStepActive(2);
+          this.runInfiniteInspectionAnimation(true);
+          break;
+        }
+        case 'AGV_TO_STATION3': {
+          // 扫描完成，机械臂复位，AGV 直接驶向合格区
+          this.stopInspection();
+          this.setStepsDone(2);
+          this.setStepActive(3);
+          this.animateAgvToSortZone();
+          break;
+        }
+        case 'COMPLETED': {
+          // 流程完成，标记步骤
+          this.setStepsDone(3);
+          this.setStepActive(4);
+          setTimeout(() => this.setStepDone(4), 1500);
+          break;
+        }
+        case 'ERROR': {
+          // 异常：停止所有动画
+          this.stopInspection();
+          break;
+        }
+        case 'IDLE': {
+          // 空闲：不做额外操作（由 resetFlow 处理复位）
+          break;
+        }
       }
     },
-    async stopScan() {
-      try {
-        await axios.post('api/aubo/scan/stop');
-        this.$message.success('已发送停止信号');
-      } catch (e) { /* ignore */ }
+
+    /** AGV 模型平滑移动到目标位置 */
+    animateAgvTo(x, z, duration) {
+      if (!this._agvModel) return;
+      const pos = this._agvModel.position;
+      gsap.killTweensOf(pos);
+      gsap.to(pos, {
+        x, z,
+        duration: duration || 3,
+        ease: 'power1.inOut'
+      });
     },
-    startScanPolling() {
-      this.stopScanPolling();
-      this.scanPollTimer = setInterval(async () => {
-        try {
-          const res = await axios.get('api/aubo/scan/status');
-          if (res.data.code === 200 && res.data.data) {
-            this.scanning = res.data.data.scanning;
-            if (res.data.data.lastLog) {
-              this.scanLog = res.data.data.lastLog;
-            }
-            if (!this.scanning) {
-              this.stopScanPolling();
-              this.$message.success('扫描已完成');
-            }
-          }
-        } catch (e) { /* ignore */ }
-      }, 2000);
-    },
-    stopScanPolling() {
-      if (this.scanPollTimer) {
-        clearInterval(this.scanPollTimer);
-        this.scanPollTimer = null;
+
+    /** AGV 按检测结果驶向对应分拣区 */
+    animateAgvToSortZone() {
+      if (!this._agvModel) return;
+      const pos = this._agvModel.position;
+      gsap.killTweensOf(pos);
+      if (this.inspectResult === 'scratch') {
+        const tl = gsap.timeline();
+        tl.to(pos, { x: 3.8, z: 0.15, duration: 1.5, ease: 'power1.inOut' })
+          .to(pos, { x: 7.0, z: -0.35, duration: 1.8, ease: 'power1.inOut' });
+      } else if (this.inspectResult === 'crack') {
+        const tl = gsap.timeline();
+        tl.to(pos, { x: 3.8, z: 2.85, duration: 1.5, ease: 'power1.inOut' })
+          .to(pos, { x: 7.0, z: 3.35, duration: 1.8, ease: 'power1.inOut' });
+      } else {
+        gsap.to(pos, { x: 7.0, z: 1.5, duration: 2.5, ease: 'power1.inOut' });
       }
     },
+
+    /** 将指定索引及之前的步骤标记为 done */
+    setStepsDone(upToIndex) {
+      for (let j = 0; j <= upToIndex && j < this.steps.length; j++) {
+        this.steps[j].state = 'done';
+      }
+    },
+    /** 将指定步骤标记为 active */
+    setStepActive(index) {
+      if (index >= 0 && index < this.steps.length) {
+        this.steps[index].state = 'active';
+      }
+    },
+    /** 将指定步骤标记为 done */
+    setStepDone(index) {
+      if (index >= 0 && index < this.steps.length) {
+        this.steps[index].state = 'done';
+      }
+    },
+
     resetFlow() {
       this.steps.forEach(s => { s.state = 'pending'; });
       this.pendingStep = -1;
       this.pendingStation = null;
+      this.previousWorkflowState = 'IDLE';
       if (this._jointNodes) this.stopInspection();
       
       // 流程重置时，让 AGV 回到起点 (X: -7)
@@ -1264,14 +1287,6 @@ export default {
 .card-workflow ::v-deep .el-card__body { padding: 10px 12px 12px; }
 .workflow-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .workflow-btns .el-button { min-width: 90px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
-
-/* 7 点位扫描 */
-.card-scan ::v-deep .el-card__header { padding: 6px 12px; }
-.card-scan ::v-deep .el-card__body { padding: 6px 12px 8px; }
-.scan-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.scan-btns .el-button { min-width: 120px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
-.scan-log { max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px; }
-.scan-log-text { margin: 0; font-size: 11px; color: #aeb9c7; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.4; }
 
 /* 左侧滚动条 */
 .area-left::-webkit-scrollbar { width: 4px; }
