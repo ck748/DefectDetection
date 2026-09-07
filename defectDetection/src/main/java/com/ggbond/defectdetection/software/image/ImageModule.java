@@ -132,7 +132,7 @@ public class ImageModule {
         detectLog.setName(name);
         detectLog.setDefectionsSum(defectionsSum);
         detectLog.setWorkOrderId(workOrderId);
-        detectLog.setStoragePath(ConfigProperties.properties.getModelConfig().getResStoragePath()+"\\"+workOrderId+"\\"+name);
+        detectLog.setStoragePath(ConfigProperties.properties.getModelConfig().getResStoragePath()+"/"+workOrderId+"/"+name);
         detectLog.setTime(LocalDateTime.now());
         ImgUtil.saveImageToFile(res.getImgBase64(),detectLog.getStoragePath());
         detectLogService.save(detectLog);
