@@ -11,6 +11,32 @@
         <p class="page-desc">全维度规范车间整理、整顿、清扫、清洁、素养与安全标准化巡检与工位联锁调度</p>
       </div>
       <div class="header-right">
+        <div class="inspection-stage-group">
+          <el-button
+            size="small"
+            :type="currentInspectionStage === 'pre' ? 'primary' : ''"
+            :class="['stage-check-btn', { 'is-active': currentInspectionStage === 'pre' }]"
+            @click="handleStageCheck('pre')"
+          >
+            <i class="el-icon-time"></i> 事前检查
+          </el-button>
+          <el-button
+            size="small"
+            :type="currentInspectionStage === 'in' ? 'primary' : ''"
+            :class="['stage-check-btn', { 'is-active': currentInspectionStage === 'in' }]"
+            @click="handleStageCheck('in')"
+          >
+            <i class="el-icon-video-play"></i> 事中检查
+          </el-button>
+          <el-button
+            size="small"
+            :type="currentInspectionStage === 'post' ? 'primary' : ''"
+            :class="['stage-check-btn', { 'is-active': currentInspectionStage === 'post' }]"
+            @click="handleStageCheck('post')"
+          >
+            <i class="el-icon-circle-check"></i> 事后检查
+          </el-button>
+        </div>
         <el-button
           type="primary"
           size="small"
@@ -21,19 +47,6 @@
         >
           {{ checking ? '巡检中...' : '智能巡诊实时信息' }}
         </el-button>
-        <el-button
-          size="small"
-          icon="el-icon-download"
-          @click="exportReport"
-          class="header-act-btn-outline"
-          plain
-        >
-          导出巡检合规简报
-        </el-button>
-        <div class="flow-detail-link" @click="viewDetailAction">
-          <span>查看详情</span>
-          <i class="el-icon-arrow-right"></i>
-        </div>
       </div>
     </div>
 
@@ -46,22 +59,16 @@
           :class="'step-card-' + item.type"
           @click="selectCard(item)"
         >
-          <!-- 顶部行：左侧序号钢蓝方块 + 阶段名称，右侧蓝色分数 -->
+          <!-- 顶部行：左侧序号钢蓝方块 + 阶段名称 -->
           <div class="card-top-row">
             <div class="card-left-title-box">
               <span class="step-num-badge font-mono">{{ idx + 1 }}</span>
               <span class="step-title-text">{{ item.name }}</span>
             </div>
-            <div class="card-score-text font-mono">{{ item.score }}分</div>
           </div>
 
           <!-- 中间行：说明规范文本 -->
           <div class="card-desc-text" :title="item.desc">{{ item.desc }}</div>
-
-          <!-- 底部行：右对齐状态标签 -->
-          <div class="card-bottom-row">
-            <span class="status-outline-tag" :class="'tag-' + item.tagType">{{ item.status }}</span>
-          </div>
         </div>
       </div>
 
@@ -185,74 +192,20 @@
         </div>
       </div>
 
-      <!-- 右翼：数据监测与分析区 (雷达健康度 + 点检流水表格) -->
+      <!-- 右翼：数据监测与分析区 (6S 车间工位健康度雷达) -->
       <div class="right-data-column">
         <!-- 雷达图容器 -->
         <div class="analysis-card radar-card">
           <div class="card-header-clean">
             <div class="header-left">
-              <div class="header-icon-box bg-blue-subtle">
-                <i class="el-icon-pie-chart text-blue"></i>
-              </div>
               <span class="header-title-text">6S 车间工位健康度雷达</span>
             </div>
             <div class="header-right font-mono">
               <span class="rate-label">达成率:</span>
-              <span class="rate-value font-mono">98.5%</span>
+              <span class="rate-value font-mono">84.5%</span>
             </div>
           </div>
           <div class="radar-chart-stage" ref="radarChart"></div>
-        </div>
-
-        <!-- 点检流水表容器 -->
-        <div class="analysis-card table-card">
-          <div class="card-header-clean">
-            <div class="header-left">
-              <div class="header-icon-box bg-green-subtle">
-                <i class="el-icon-tickets text-green"></i>
-              </div>
-              <span class="header-title-text">车间 6S 点检与标准执行流水</span>
-            </div>
-            <span class="kpi-custom-badge badge-green">实时校验</span>
-          </div>
-          <div class="table-container">
-            <el-table
-              :data="checkTableData"
-              size="small"
-              stripe
-              style="width: 100%"
-              class="styled-sixs-table"
-            >
-              <el-table-column label="分类" width="75" align="center">
-                <template slot-scope="{ row }">
-                  <span class="mini-status-tag" :class="'tag-' + row.tagType">{{ row.category }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="station" label="受检工位" width="120" show-overflow-tooltip>
-                <template slot-scope="{ row }">
-                  <span class="station-cell-text">{{ row.station }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="点检与执行标准" min-width="190" show-overflow-tooltip>
-                <template slot-scope="{ row }">
-                  <div class="table-primary-item">{{ row.item }}</div>
-                  <div class="table-sub-std">{{ row.standard }}</div>
-                </template>
-              </el-table-column>
-              <el-table-column label="状态" width="80" align="center">
-                <template slot-scope="{ row }">
-                  <span class="status-pass-pill">
-                    <span class="status-dot"></span> {{ row.status }}
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="65" align="center">
-                <template slot-scope="{ row }">
-                  <el-button type="text" size="mini" class="guide-action-link" @click="handleDetail(row)">指引</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
         </div>
       </div>
     </div>
@@ -262,10 +215,10 @@
       :visible.sync="reportDialogVisible"
       width="920px"
       custom-class="sixs-report-dialog light-precision-modal"
+      top="4vh"
       :close-on-click-modal="true"
       :show-close="false"
-      :lock-scroll="true"
-      append-to-body
+      :lock-scroll="false"
     >
       <!-- 浅色工业标题栏 -->
       <div slot="title" class="report-light-header">
@@ -299,6 +252,26 @@
       </div>
 
       <div class="report-light-content">
+        <!-- 0. 报告来源溯源横幅 (联动专家报告) -->
+        <div class="report-source-provenance-bar">
+          <div class="provenance-left">
+            <i class="el-icon-link"></i>
+            <span class="prov-label">报告来源：</span>
+            <span class="prov-text">来自【<strong>{{ currentExpertPackage ? currentExpertPackage.workOrderId : '半轴总成-全周巡检' }}</strong>】检测全过程质检与工序专家报告</span>
+          </div>
+          <div class="provenance-right">
+            <el-button
+              size="mini"
+              type="primary"
+              icon="el-icon-document"
+              class="view-origin-btn"
+              @click="openExpertReportDetail"
+            >
+              查看专家报告原件
+            </el-button>
+          </div>
+        </div>
+
         <!-- 1. 顶部三联状态卡片 -->
         <div class="light-bento-row">
           <!-- Bento 1: 综合评分 -->
@@ -328,7 +301,7 @@
           <div class="bento-light-card kpi-hazard-card">
             <div class="bento-light-header">
               <span class="bento-light-label"><i class="el-icon-warning"></i> 现场问题统计</span>
-              <span class="bento-light-tag warn font-mono">共 5 项待处理</span>
+              <span class="bento-light-tag warn font-mono">共 4 项待处理</span>
             </div>
             <div class="hazard-stat-row font-mono">
               <div class="hazard-block danger">
@@ -340,7 +313,7 @@
                 <span class="hz-label">辅机未断电</span>
               </div>
               <div class="hazard-block blue">
-                <span class="hz-count">2</span>
+                <span class="hz-count">1</span>
                 <span class="hz-label">现场未清扫</span>
               </div>
             </div>
@@ -376,7 +349,7 @@
             >
               <i class="el-icon-menu"></i>
               <span>全部现场问题</span>
-              <span class="pill-badge">5</span>
+              <span class="pill-badge">4</span>
             </button>
             <button
               class="filter-pill-btn danger"
@@ -403,7 +376,7 @@
             >
               <i class="el-icon-brush"></i>
               <span>台面与清扫</span>
-              <span class="pill-badge cyan">2</span>
+              <span class="pill-badge cyan">1</span>
             </button>
           </div>
 
@@ -558,42 +531,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 5. 现场清扫与铁屑桶满溢 -->
-          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'clean'" class="light-issue-card border-blue">
-            <div class="card-glow-edge cyan"></div>
-            <div class="card-inner-shell">
-              <div class="issue-meta-row">
-                <div class="meta-left-tags">
-                  <span class="light-tag-pill cyan font-mono"><i class="el-icon-info"></i> 现场未清扫</span>
-                  <span class="light-station-tag"><i class="el-icon-location"></i> 半轴精磨除锈工区</span>
-                  <span class="light-dev-code font-mono">铁屑收集桶与走道</span>
-                </div>
-                <div class="meta-right-state">
-                  <span class="status-dot cyan"></span>
-                  <span class="state-txt cyan">铁屑满溢散落</span>
-                </div>
-              </div>
-
-              <div class="issue-title-block">
-                <h4 class="issue-heading">铁屑收集箱满溢 走道散落金属屑</h4>
-              </div>
-
-              <div class="issue-detail-narrative">
-                <strong>现场情况：</strong>除锈工位铁屑桶满溢未倒，周围走道地面散落金属铁屑未及时清扫。
-              </div>
-
-              <div class="issue-action-dock">
-                <div class="dock-left-guide">
-                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
-                  <span>清空铁屑收集桶，使用工业吸尘器清理走道散落铁屑。</span>
-                </div>
-                <el-button size="mini" type="primary" plain class="dock-act-btn" @click="sendQuickQuestion('光学检测相机镜头与半轴转台的每日清扫防尘标准')">
-                  查看清扫规范
-                </el-button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- 4. 底部数据汇总 -->
@@ -617,8 +554,8 @@
           <div class="audit-col">
             <span class="audit-k"><i class="el-icon-warning"></i> 待整改项</span>
             <div class="audit-v-row">
-              <span class="audit-v text-crimson">5 项</span>
-              <span class="audit-sub">2项复位 / 3项清扫断电</span>
+              <span class="audit-v text-crimson">4 项</span>
+              <span class="audit-sub">2项复位 / 2项清扫断电</span>
             </div>
           </div>
 
@@ -652,6 +589,203 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- AI 工业表面缺陷智控专家分析报告原件弹窗 -->
+    <el-dialog
+      :visible.sync="expertDetailVisible"
+      title="AI 工业表面缺陷智控专家分析报告 (原件)"
+      width="80%"
+      class="expert-report-dialog"
+      top="3vh"
+      :close-on-click-modal="false"
+      :lock-scroll="false"
+    >
+      <div v-if="expertReportLoading" class="expert-loading">
+        <i class="el-icon-loading"></i>
+        <p>正在由 AI 视觉大模型与智控中枢生成专家分析报告...</p>
+      </div>
+      <div v-else-if="currentExpertReport" class="expert-report-container" id="expert-report-printable-sixs">
+        <!-- 报告头部 -->
+        <div class="report-header">
+          <div class="header-main">
+            <div class="brand-badge">
+              <i class="el-icon-office-building"></i> 灵眸巡诊 · 工业质检报告
+            </div>
+            <h2 class="report-title">半轴表面缺陷检测与工艺处置单</h2>
+            <div class="report-meta">
+              <span>流水号：<strong>#{{ currentExpertReport.id || '202609' }}</strong></span>
+              <span>检测时间：<strong>{{ currentExpertReport.time || '2026-9-3 18:58:19' }}</strong></span>
+              <span>耗时：<strong>{{ currentExpertReport.runtime ? (currentExpertReport.runtime + 's') : '12.5s' }}</strong></span>
+              <span>算法引擎：<strong>{{ currentExpertReport.algorithmEngine || 'Vision-Model v2.4' }}</strong></span>
+              <span class="meta-highlight-tag">
+                <i :class="(currentExpertReport.actualImages >= 28 || !currentExpertReport.actualImages) ? 'el-icon-circle-check' : 'el-icon-warning-outline'"></i>
+                采集可信度：<strong>{{ currentExpertReport.reliabilityStatus || ((currentExpertReport.actualImages >= 28 || !currentExpertReport.actualImages) ? '可信 (合格)' : '需复检 (异常)') }}</strong>
+              </span>
+              <span>总共拍摄：<strong>{{ currentExpertReport.actualImages || 28 }} / 标准 {{ currentExpertReport.standardImages || 28 }} 张</strong></span>
+              <span>端点检测：<strong>{{ currentExpertReport.endpointDetected || 4 }} / {{ currentExpertReport.endpointStandard || 4 }}</strong></span>
+            </div>
+          </div>
+          <div class="header-actions no-print">
+            <el-button type="primary" size="small" icon="el-icon-printer" class="export-print-btn" @click="printExpertReport">
+              打印 / 导出PDF
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 核心指标卡片 -->
+        <div class="report-kpi-grid">
+          <div class="kpi-card danger">
+            <div class="kpi-card-header">
+              <span class="kpi-icon-wrap"><i class="el-icon-warning-outline"></i></span>
+              <span class="kpi-label">检出缺陷总数</span>
+            </div>
+            <div class="kpi-val">{{ currentExpertReport.defectionsSum || 4 }} <span class="unit">处</span></div>
+            <div class="kpi-sub"><i class="el-icon-check"></i> 涉及缺陷图片: {{ expertDefectImagesCount }} 张</div>
+          </div>
+          <div class="kpi-card warning">
+            <div class="kpi-card-header">
+              <span class="kpi-icon-wrap"><i class="el-icon-data-line"></i></span>
+              <span class="kpi-label">最高风险等级</span>
+            </div>
+            <div class="kpi-val highlight">{{ currentExpertAdvice && currentExpertAdvice['最严重等级'] ? currentExpertAdvice['最严重等级'] : '严重' }}</div>
+            <div class="kpi-sub">依据算法综合评定</div>
+          </div>
+          <div class="kpi-card primary">
+            <div class="kpi-card-header">
+              <span class="kpi-icon-wrap"><i class="el-icon-pie-chart"></i></span>
+              <span class="kpi-label">缺陷图片占比</span>
+            </div>
+            <div class="kpi-val">{{ ((expertDefectImagesCount / 28) * 100).toFixed(1) }}%</div>
+            <div class="kpi-sub">⚙ 检出 {{ expertDefectImagesCount }} 张 / 实拍 28 张</div>
+          </div>
+          <div class="kpi-card success">
+            <div class="kpi-card-header">
+              <span class="kpi-icon-wrap"><i class="el-icon-guide"></i></span>
+              <span class="kpi-label">最终处置决策</span>
+            </div>
+            <div class="kpi-val decision">{{ currentExpertAdvice && currentExpertAdvice['最终处置建议'] ? currentExpertAdvice['最终处置建议'] : '建议质检员现场卡尺测量，根据公差标准判定是否返修' }}</div>
+            <div class="kpi-sub"><i class="el-icon-circle-check"></i> 现场复核合格后放行</div>
+          </div>
+        </div>
+
+        <!-- 图像与大模型深度研判 -->
+        <div class="report-split-section">
+          <!-- 左侧：缺陷定位图像及切片翻页操作条 -->
+          <div class="split-left">
+            <div class="section-title">
+              <i class="el-icon-picture-outline"></i> 缺陷视觉图谱与定位切片
+            </div>
+            <div class="report-image-box">
+              <img
+                v-if="currentSliceImage"
+                :src="getBase64ImageUrl(currentSliceImage)"
+                class="report-image"
+                alt="缺陷检测图谱"
+              />
+              <div v-else class="no-img-text">未获取到原始图像</div>
+              <div class="image-watermark">灵眸巡诊 缺陷切片图谱</div>
+            </div>
+            <div class="slice-pagination-bar">
+              <span class="slice-page-indicator">当前展示: {{ currentSliceIndex + 1 }} / {{ (sliceImagesList && sliceImagesList.length) || 1 }}</span>
+              <div class="slice-page-actions">
+                <el-button size="mini" icon="el-icon-arrow-left" :disabled="currentSliceIndex <= 0" @click="prevSliceImage">上一张</el-button>
+                <el-button size="mini" :disabled="currentSliceIndex >= sliceImagesList.length - 1" @click="nextSliceImage">下一张 <i class="el-icon-arrow-right"></i></el-button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：Qwen 大模型智控专家研判中枢 -->
+          <div class="split-right">
+            <div class="section-title">
+              <i class="el-icon-cpu"></i> 智控专家大模型研判中枢 (Qwen-AI)
+            </div>
+            <div class="advice-block-card">
+              <div class="advice-item">
+                <div class="item-title">
+                  <span class="icon-tag tag-info">1</span>
+                  <strong>总体缺陷情况研判</strong>
+                </div>
+                <div class="item-content">
+                  {{ currentExpertAdvice && currentExpertAdvice['总体缺陷情况'] ? currentExpertAdvice['总体缺陷情况'] : `工件表面累计检出 ${currentExpertReport.defectionsSum || 4} 处异常，当前状态：COMPLETED。` }}
+                </div>
+              </div>
+
+              <div class="advice-item">
+                <div class="item-title">
+                  <span class="icon-tag tag-warning">2</span>
+                  <strong>综合分析依据 (AI报告)</strong>
+                </div>
+                <div class="item-content">
+                  {{ currentExpertAdvice && currentExpertAdvice['综合分析依据'] ? currentExpertAdvice['综合分析依据'] : '缺陷呈局部聚集分布，累计面积占比约 27.4%，最高严重程度评定为 4 级。' }}
+                </div>
+              </div>
+
+              <div class="advice-item highlight-item">
+                <div class="item-title">
+                  <span class="icon-tag tag-danger">3</span>
+                  <strong>车间工件处置指令</strong>
+                </div>
+                <div class="item-content bold-action">
+                  {{ currentExpertAdvice && currentExpertAdvice['最终处置建议'] ? currentExpertAdvice['最终处置建议'] : '建议质检员现场卡尺测量，根据公差标准判定是否返修' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 缺陷切片明细列表 -->
+        <div class="report-table-section">
+          <div class="section-title">
+            <i class="el-icon-document-copy"></i> 缺陷检测切片结构化明细
+          </div>
+          <el-table
+            :data="expertTableList"
+            size="small"
+            border
+            style="width: 100%"
+            class="expert-inner-table"
+          >
+            <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+            <el-table-column prop="imageName" label="所属原图" width="140" align="center">
+              <template slot-scope="scope">
+                <span class="font-mono">{{ scope.row.imageName || 'mock_01.jpg' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="category" label="缺陷类型" width="130" align="center">
+              <template slot-scope="scope">
+                <el-tag size="small" type="danger" effect="plain" class="defect-type-pill">{{ scope.row.category || '划痕/裂痕' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="defectCount" label="本图缺陷数" width="110" align="center">
+              <template slot-scope="scope">
+                <strong>{{ scope.row.defectCount || 2 }}</strong>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="判定状态" width="100" align="center">
+              <template slot-scope="scope">
+                <span class="status-ng-badge">{{ scope.row.status || 'NG' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="repairSuggestion" label="初步工艺建议">
+              <template slot-scope="scope">
+                <span class="report-repair-text">{{ scope.row.repairSuggestion || '建议质检员现场卡尺测量，根据公差标准判定是否返修' }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 报告底部签字栏 -->
+        <div class="report-footer">
+          <div class="footer-sign">
+            <span>质检核对员：__________________</span>
+            <span>车间工段长：__________________</span>
+          </div>
+          <div class="footer-note">
+            * 本报告由灵眸巡诊深度视觉大模型自动分析生成，仅供生产线质检与工艺处置复核参考。
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -662,12 +796,22 @@ export default {
   name: 'SixSManager',
   data() {
     return {
-      logoImg: require('@/assets/logo.png'),
+      logoImg: require('@/assets/logo.7f766218.png'),
       defaultAvatar: require('@/assets/头像.jpg'),
       checking: false,
       reportDialogVisible: false,
       reportFilterTab: 'all',
       reportTime: '',
+      currentInspectionStage: '',
+      currentExpertPackage: null,
+      expertDetailVisible: false,
+      expertReportLoading: false,
+      currentExpertReport: null,
+      currentExpertAdvice: null,
+      currentSliceIndex: 0,
+      sliceImagesList: [],
+      expertTableList: [],
+      expertDefectImagesCount: 13,
       activeCard: 'seiri',
       inputQuestion: '',
       isThinking: false,
@@ -708,6 +852,12 @@ export default {
     };
   },
   computed: {
+    currentSliceImage() {
+      if (this.sliceImagesList && this.sliceImagesList.length > 0) {
+        return this.sliceImagesList[this.currentSliceIndex] || (this.currentExpertReport ? this.currentExpertReport.imgBase64 : '');
+      }
+      return this.currentExpertReport ? this.currentExpertReport.imgBase64 : '';
+    },
     currentUser() {
       try {
         return JSON.parse(localStorage.getItem('useradmin') || '{}');
@@ -746,6 +896,28 @@ export default {
     selectCard(item) {
       this.activeCard = item.type;
       this.sendQuickQuestion(item.prompt);
+    },
+    handleStageCheck(stage) {
+      this.currentInspectionStage = stage;
+      const stageMap = {
+        pre: {
+          name: '事前检查 (开机准入点检)',
+          query: '请执行工位【事前检查】：检查机械臂、分拣小车是否归位，半轴是否定置归位，桌面是否规整，人员是否规范佩戴安全帽。'
+        },
+        in: {
+          name: '事中检查 (过程合规巡检)',
+          query: '请执行工位【事中检查】：检查算法置信度阈值、人员劳保手套与安全帽规范佩戴、缺陷检测操作与判定过程是否规范。'
+        },
+        post: {
+          name: '事后检查 (班后维护与归位)',
+          query: '请执行工位【事后检查】：检查机械臂与分拣小车是否复位、半轴是否分拣成功、现场工位与桌面是否整齐、辅机是否安全断电。'
+        }
+      };
+      const target = stageMap[stage];
+      if (target) {
+        this.$message.success(`已切换至「${target.name}」标准化核对模式`);
+        this.sendQuickQuestion(target.query);
+      }
     },
     sendQuickQuestion(text) {
       this.inputQuestion = text;
@@ -822,12 +994,26 @@ export default {
       }, 16);
     },
     generate6SAnswer(query) {
+      // 1. 最高优先级：三阶段综合点检（事前/事中/事后检查）
+      if (query.includes('事前检查') || query.includes('班前点检') || query.includes('开机准入')) {
+        return `### 🕒 【6S·事前检查】班前开机与工位准入 5 大合规核验：\n1. 🦾 **机械臂归位检查**：确认全周检测 1~6 轴机械臂处于初始原点待命位，伺服抱闸锁定正常。\n2. 🛺 **分拣小车归位检查**：确认 AGV 分拣小车处于规定标定待命点，激光避障传感器常开，通道无杂物阻碍运行。\n3. ⚙️ **半轴定置归位检查**：确认待检半轴已按要求放置在指定的固定工位与定置区域，摆放规范整齐。\n4. 🧹 **桌面规整检查**：工作台面无废纸杂物，数显千分尺/卡尺及检测工具 100% 收纳归入专用 EVA 卡槽，保持台面整洁有序。\n5. 👷‍♂️ **人员安全帽与劳保合规**：进入作业区人员已 100% 正确佩戴安全帽，穿戴劳保手套，严禁裸手接触精磨工件。`;
+      }
+      if (query.includes('事中检查') || query.includes('过程巡检') || query.includes('过程合规')) {
+        return `### ⚡ 【6S·事中检查】生产作业与缺陷质检过程 4 大合规核验：\n1. 🎯 **算法置信度阈值监控**：确认 AI 深度视觉识别算法置信度阈值锁定在 ≥0.85，运行状态稳定，无未经授权篡改，防止误判与漏检。\n2. 🧤 **劳保手套佩戴规范**：质检人员操作样本标定与工件周转全程规范佩戴劳保手套，严禁裸手直接触碰精加工半轴表面。\n3. 👷‍♂️ **作业人员安全帽规范**：作业区全员 100% 正确佩戴安全帽并扣紧下颚带，严禁在旋转机械臂与 AGV 运行通道内违规摘卸。\n4. 🔍 **缺陷检测过程与判定规范**：严格执行半轴全周旋转检测作业流程，三定物料防错分流（合格品入绿色定置箱，缺陷品即刻挂红牌入黄色防错锁扣箱），判定标准与处置流程 100% 合规。`;
+      }
+      if (query.includes('事后检查') || query.includes('班后维护') || query.includes('停机归整')) {
+        return `### 🏁 【6S·事后检查】班后维护与停机归整 4 大合规核验：\n1. 🦾 **机械臂复位检查**：确认下发工控复位指令后，全周检测 1~6 轴机械臂已平稳复位至停机初始原点，伺服安全锁定。\n2. 🛺 **小车复位检查**：确认 AGV 分拣小车已安全调度复位至指定充电待命点，无滞留堵塞车间主干道。\n3. ⚙️ **半轴分拣结果确认**：确认批次半轴已全部完成检测与分拣流转（合格品与缺陷品 100% 正确归仓入库，无滞留混料）。\n4. 🧹 **工位整齐与安全断电**：现场工作台面清洁规整、量具归位、废屑铁屑箱清空，检测箱高频补光灯及辅机安全断电，完成 6S 数字化点检交接。`;
+      }
+
+      // 2. 硬件与控制指令
       if (query.includes('机械臂复位') || query.includes('复位机械臂') || query.includes('将机械臂复位')) {
         return `好的，已通过工控总线为全周检测工位下发指令：**机械臂六轴已平稳复位至初始原点**，伺服抱闸锁定正常，处于待命就绪状态！🦾`;
       }
       if (query.includes('小车归位') || query.includes('分拣小车归位') || query.includes('小车复位') || query.includes('归位分拣小车') || query.includes('AGV小车归位')) {
         return `好的，已为车间分拣单元下发调度指令：**分拣小车已安全调度归位**，随时准备下一批次缺陷品转运！🛺`;
       }
+
+      // 3. 6S 单项标准规范
       if (query.includes('整理') || query.includes('Seiri')) {
         return `### 📌 【6S·整理 (Seiri)】半轴质检工位实施规范：\n1. **红牌作战机制**：对连续 3 批次未检/无法标定半轴挂设红牌，4小时内移至待查隔离区；\n2. **要与不要分类**：工作台上严禁摆放私人水杯、非检验图纸、已失效标定工具；\n3. **空间释放**：检测机柜周围 1.2 米内禁止堆叠闲置纸箱，保障机柜散热与巡检通道畅通。`;
       }
@@ -841,7 +1027,7 @@ export default {
         return `### 📌 【6S·清洁 (Seiketsu)】长效常态化机制：\n1. 坚持前 3S（整理、整顿、清扫）的成果标准化；\n2. 每日实行 **「班前5分钟确认，班后10分钟维持」** 责任包干制；\n3. 质检系统已开启自动巡检日志，每周五下午生成 6S 数字化综合诊断红黑榜。`;
       }
       if (query.includes('素养') || query.includes('Shitsuke')) {
-        return `### 📌 【6S·素养 (Shitsuke)】质检人员行为规程：\n1. 严格遵守半轴外观缺陷判定基准（GB/T 38885）；\n2. 严禁未经授权修改 AI 缺陷识别置信度阈值（当前阈值锁定 ≥0.85）；\n3. 作业过程穿戴防静电服与丁腈无尘手套，严禁裸手接触精加工半轴表面。`;
+        return `### 📌 【6S·素养 (Shitsuke)】质检人员行为规程：\n1. 严格遵守半轴外观缺陷判定基准（GB/T 38885）；\n2. 严禁未经授权修改 AI 缺陷识别置信度阈值（当前阈值锁定 ≥0.85）；\n3. 作业过程穿戴劳保手套，严禁裸手接触精加工半轴表面。`;
       }
       if (query.includes('安全') || query.includes('Safety') || query.includes('AGV')) {
         return `### 📌 【6S·安全 (Safety)】智能运检联锁安全防线：\n1. **AGV激光避障**：AGV 行进路径 1.5 米内感应减速，0.6 米内触发硬级联急停；\n2. **机械臂联锁**：全周质检工作站安全光栅遮断时，伺服主轴 0.1s 内制动锁定；\n3. **用电与接地**：大功率高频光源与计算服务器外壳接地电阻需 ＜4Ω，杜绝静电击穿。`;
@@ -867,97 +1053,137 @@ export default {
     initRadarChart() {
       if (!this.$refs.radarChart) return;
       this.radarChartInstance = echarts.init(this.$refs.radarChart);
+
+      // 6S 当前实测与演进多轮拟合曲线 (非满分、合理梯次实测值)
+      const targetScore = [86, 78, 88, 82, 85, 91];
+      const baseScore = [32, 36, 28, 30, 42, 38];
+      const totalRounds = 26;
+
+      const seriesList = [];
+      for (let i = 1; i <= totalRounds; i++) {
+        const t = i / totalRounds;
+        const v1 = Math.round(baseScore[0] + (targetScore[0] - baseScore[0]) * Math.pow(t, 0.85));
+        const v2 = Math.round(baseScore[1] + (targetScore[1] - baseScore[1]) * Math.pow(t, 1.25));
+        const v3 = Math.round(baseScore[2] + (targetScore[2] - baseScore[2]) * Math.pow(t, 1.45));
+        const v4 = Math.round(baseScore[3] + (targetScore[3] - baseScore[3]) * Math.pow(t, 0.9));
+        const v5 = Math.round(baseScore[4] + (targetScore[4] - baseScore[4]) * Math.pow(t, 1.15));
+        const v6 = Math.round(baseScore[5] + (targetScore[5] - baseScore[5]) * Math.pow(t, 1.05));
+
+        const isLatest = (i === totalRounds);
+        seriesList.push({
+          type: 'radar',
+          symbol: isLatest ? 'circle' : 'none',
+          symbolSize: isLatest ? 5 : 0,
+          lineStyle: {
+            width: isLatest ? 2 : 1,
+            opacity: isLatest ? 1 : 0.85
+          },
+          emphasis: {
+            lineStyle: {
+              width: 2.5
+            },
+            areaStyle: {
+              color: 'rgba(234, 179, 8, 0.25)'
+            }
+          },
+          data: [
+            {
+              value: [v1, v2, v3, v4, v5, v6],
+              name: isLatest ? '最新巡检实测' : `巡检批次 #${i}`
+            }
+          ]
+        });
+      }
+
       const option = {
         tooltip: {
           trigger: 'item',
-          backgroundColor: '#fff',
-          borderColor: 'rgba(35, 136, 232, 0.3)',
+          backgroundColor: 'rgba(255, 255, 255, 0.96)',
+          borderColor: '#e2e8f0',
           borderWidth: 1,
-          padding: [8, 12],
-          textStyle: { color: '#1C3047', fontSize: 12 },
-          extraCssText: 'box-shadow: 0 6px 16px rgba(50, 110, 165, 0.08); border-radius: 8px;',
+          padding: [10, 14],
+          textStyle: { color: '#1e293b', fontSize: 12 },
+          extraCssText: 'box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08); border-radius: 10px; backdrop-filter: blur(8px);',
           formatter: (params) => {
-            let str = `<div style="font-weight:700;margin-bottom:6px;color:#2388e8">${params.seriesName}</div>`;
+            let str = `<div style="font-weight:700;margin-bottom:8px;color:#0f172a;font-size:13px;border-bottom:1px solid #f1f5f9;padding-bottom:5px;display:flex;align-items:center;justify-content:space-between;">
+              <span>${params.name || '6S 巡检实测'}</span>
+              <span style="font-size:11px;color:#0284c7;background:#f0f9ff;padding:1px 6px;border-radius:4px;font-weight:600;">达成率 84.5%</span>
+            </div>`;
             const indicators = ['整理', '整顿', '清扫', '清洁', '素养', '安全'];
-            params.value.forEach((v, i) => {
-              str += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11.5px;line-height:1.6;">
-                <span style="color:#64748b">${indicators[i]}:</span>
-                <span style="font-weight:700;color:#2388e8">${v}分</span>
+            params.value.forEach((v, idx) => {
+              str += `<div style="display:flex;justify-content:space-between;gap:18px;font-size:12px;line-height:1.75;">
+                <span style="color:#64748b">${indicators[idx]}</span>
+                <span style="font-weight:700;color:#0284c7;font-family:monospace;">${v} <span style="font-size:10.5px;color:#94a3b8;font-weight:normal;">分</span></span>
               </div>`;
             });
             return str;
           }
         },
+        visualMap: {
+          top: 'middle',
+          right: 12,
+          min: 0,
+          max: 100,
+          formatter: '{value}分',
+          itemWidth: 12,
+          itemHeight: 130,
+          textStyle: {
+            color: '#64748b',
+            fontSize: 11
+          },
+          inRange: {
+            color: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4']
+          },
+          calculable: true
+        },
         radar: {
           indicator: [
-            { name: '整理 (Seiri)', max: 100 },
-            { name: '整顿 (Seiton)', max: 100 },
-            { name: '清扫 (Seiso)', max: 100 },
-            { name: '清洁 (Seiketsu)', max: 100 },
-            { name: '素养 (Shitsuke)', max: 100 },
-            { name: '安全 (Safety)', max: 100 }
+            { name: '整理', max: 100 },
+            { name: '整顿', max: 100 },
+            { name: '清扫', max: 100 },
+            { name: '清洁', max: 100 },
+            { name: '素养', max: 100 },
+            { name: '安全', max: 100 }
           ],
-          radius: '62%',
-          center: ['50%', '52%'],
+          radius: '56%',
+          center: ['46%', '52%'],
           splitNumber: 4,
+          shape: 'polygon',
           axisName: {
-            color: '#64748b',
-            fontWeight: 600,
-            fontSize: 11.5
+            color: '#1e293b',
+            fontWeight: 700,
+            fontSize: 14
           },
           splitLine: {
             lineStyle: {
-              color: 'rgba(35, 136, 232, 0.16)'
+              color: [
+                'rgba(226, 232, 240, 0.7)',
+                'rgba(226, 232, 240, 0.8)',
+                'rgba(203, 213, 225, 0.9)',
+                'rgba(203, 213, 225, 0.95)'
+              ],
+              width: 1
             }
           },
           splitArea: {
             show: true,
             areaStyle: {
-              color: ['rgba(35, 136, 232, 0.02)', 'rgba(35, 136, 232, 0.04)', 'rgba(35, 136, 232, 0.02)', 'rgba(35, 136, 232, 0.06)']
+              color: [
+                'rgba(248, 250, 252, 0.4)',
+                'rgba(241, 245, 249, 0.4)',
+                'rgba(248, 250, 252, 0.45)',
+                'rgba(241, 245, 249, 0.55)'
+              ]
             }
           },
           axisLine: {
             lineStyle: {
-              color: 'rgba(35, 136, 232, 0.18)'
+              color: 'rgba(203, 213, 225, 0.75)',
+              width: 1
             }
           }
         },
-        series: [
-          {
-            name: '车间6S健康度',
-            type: 'radar',
-            data: [
-              {
-                value: [98, 99, 97, 100, 98, 100],
-                name: '实测评分',
-                symbol: 'circle',
-                symbolSize: 5,
-                itemStyle: {
-                  color: '#2388e8',
-                  borderColor: '#fff',
-                  borderWidth: 2
-                },
-                lineStyle: {
-                  width: 2.2,
-                  color: '#2388e8'
-                },
-                areaStyle: {
-                  color: 'rgba(35, 136, 232, 0.28)'
-                }
-              },
-              {
-                value: [90, 90, 90, 90, 90, 95],
-                name: '基准目标线',
-                symbol: 'none',
-                lineStyle: {
-                  type: 'dashed',
-                  width: 1.2,
-                  color: '#94a3b8'
-                }
-              }
-            ]
-          }
-        ]
+        series: seriesList
       };
       this.radarChartInstance.setOption(option);
     },
@@ -1001,6 +1227,298 @@ export default {
     },
     handleDetail(row) {
       this.sendQuickQuestion(`请详细说明【${row.station}】在【${row.category}】方面的标准要求及操作指导。`);
+    },
+    // 打开 AI 智控专家分析报告原件弹窗
+    openExpertReportDetail() {
+      this.reportDialogVisible = false; // 关闭上一层巡检诊断弹窗，避免多层弹窗 DOM 堆叠导致定位紊乱与顶部遮挡
+      this.expertDetailVisible = true;
+      this.expertReportLoading = true;
+      this.currentSliceIndex = 0;
+
+      // 读取最新专家报告与全过程工况数据
+      let pkg = null;
+      try {
+        const stored = localStorage.getItem('LATEST_6S_EXPERT_PACKAGE');
+        if (stored) {
+          pkg = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('读取 6S 专家报告缓存失败', e);
+      }
+
+      setTimeout(() => {
+        if (pkg) {
+          this.currentExpertPackage = pkg;
+          this.expertDefectImagesCount = pkg.defectImagesCount || 13;
+          this.expertTableList = pkg.expertTableList || [];
+          this.sliceImagesList = (pkg.expertTableList || []).map(i => i.imgBase64 || pkg.imgBase64).filter(Boolean);
+          if (this.sliceImagesList.length === 0 && pkg.imgBase64) {
+            this.sliceImagesList = [pkg.imgBase64];
+          }
+
+          this.currentExpertReport = {
+            id: pkg.reportId || '202609',
+            workOrderId: pkg.workOrderId || '半轴总成-全周巡检',
+            time: pkg.checkTime || '2026-9-3 18:58:19',
+            defectionsSum: pkg.totalDefects || 26,
+            imgBase64: pkg.imgBase64 || '',
+            defections: []
+          };
+
+          this.currentExpertAdvice = {
+            '总体缺陷情况': `工件表面累计检出 ${pkg.totalDefects || 26} 处异常，当前状态：COMPLETED。`,
+            '最严重等级': pkg.maxSeverity || '严重',
+            '综合分析依据': '缺陷呈局部聚集分布，累计面积占比约 27.4%，最高严重程度评定为 4 级。',
+            '最终处置建议': pkg.decision || '建议质检员现场卡尺测量，根据公差标准判定是否返修'
+          };
+        } else {
+          // 兜底默认值
+          this.expertDefectImagesCount = 13;
+          this.expertTableList = [
+            { imageName: '工件切片_01.jpg', category: '夹杂', defectCount: 4, status: 'NG', repairSuggestion: '表面夹杂异物，建议超声波探伤并评估深度' },
+            { imageName: '工件切片_02.jpg', category: '划痕', defectCount: 2, status: 'NG', repairSuggestion: '建议局部砂纸抛光打磨后复检' },
+            { imageName: '工件切片_03.jpg', category: '裂纹', defectCount: 1, status: 'NG', repairSuggestion: '高风险结构裂纹，建议直接送探伤复检或报废处置' }
+          ];
+          this.currentExpertReport = {
+            id: '202609',
+            workOrderId: '半轴总成-全周巡检',
+            time: '2026-9-3 18:58:19',
+            defectionsSum: 26,
+            imgBase64: '',
+            defections: []
+          };
+          this.currentExpertAdvice = {
+            '总体缺陷情况': '工件表面累计检出 26 处异常，当前状态：COMPLETED。',
+            '最严重等级': '严重',
+            '综合分析依据': '缺陷呈局部聚集分布，累计面积占比约 27.4%，最高严重程度评定为 4 级。',
+            '最终处置建议': '建议质检员现场卡尺测量，根据公差标准判定是否返修'
+          };
+        }
+        this.expertReportLoading = false;
+      }, 350);
+    },
+    getBase64ImageUrl(base64) {
+      if (!base64) return '';
+      if (base64.startsWith('data:image')) {
+        return base64;
+      }
+      return `data:image/jpeg;base64,${base64}`;
+    },
+    prevSliceImage() {
+      if (this.currentSliceIndex > 0) {
+        this.currentSliceIndex--;
+      }
+    },
+    nextSliceImage() {
+      if (this.sliceImagesList && this.currentSliceIndex < this.sliceImagesList.length - 1) {
+        this.currentSliceIndex++;
+      }
+    },
+    printExpertReport() {
+      const printableDom = document.getElementById('expert-report-printable-sixs');
+      if (!printableDom) {
+        this.$message.error('未找到可打印的报告内容');
+        return;
+      }
+
+      let oldIframe = document.getElementById('expert-report-print-iframe-sixs');
+      if (oldIframe) {
+        document.body.removeChild(oldIframe);
+      }
+
+      const iframe = document.createElement('iframe');
+      iframe.id = 'expert-report-print-iframe-sixs';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentWindow.document;
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>AI工业表面缺陷智控专家分析报告</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #1f2937;
+              background: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              padding: 5px;
+            }
+            .no-print { display: none !important; }
+            .report-header {
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 12px;
+              margin-bottom: 14px;
+            }
+            .brand-badge {
+              display: inline-block;
+              background: #eff6ff;
+              color: #2563eb;
+              border: 1px solid #bfdbfe;
+              font-size: 11px;
+              font-weight: 600;
+              padding: 2px 8px;
+              border-radius: 4px;
+              margin-bottom: 4px;
+            }
+            .report-title {
+              font-size: 18px;
+              color: #111827;
+              font-weight: 700;
+              margin: 3px 0 8px 0;
+            }
+            .report-meta {
+              display: flex;
+              gap: 16px;
+              font-size: 11px;
+              color: #4b5563;
+            }
+            .report-kpi-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 10px;
+              margin-bottom: 14px;
+            }
+            .kpi-card {
+              border: 1px solid #e5e7eb;
+              border-radius: 6px;
+              padding: 8px 10px;
+              border-left: 4px solid #9ca3af;
+              background: #f9fafb;
+            }
+            .kpi-card.danger { border-left-color: #ef4444; background: #fef2f2; }
+            .kpi-card.warning { border-left-color: #f59e0b; background: #fffbeb; }
+            .kpi-card.primary { border-left-color: #3b82f6; background: #eff6ff; }
+            .kpi-card.success { border-left-color: #10b981; background: #ecfdf5; }
+            .kpi-label { font-size: 11px; color: #6b7280; }
+            .kpi-val { font-size: 16px; font-weight: 700; color: #111827; margin: 3px 0; }
+            .kpi-val.decision { font-size: 13px; color: #b91c1c; }
+            .kpi-sub { font-size: 10px; color: #9ca3af; }
+            .report-split-section {
+              display: grid;
+              grid-template-columns: 1fr 1.3fr;
+              gap: 12px;
+              margin-bottom: 14px;
+            }
+            .section-title {
+              font-size: 12px;
+              font-weight: 700;
+              color: #1f2937;
+              margin-bottom: 6px;
+            }
+            .report-image-box {
+              background: #000000;
+              border-radius: 6px;
+              height: 200px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              position: relative;
+            }
+            .report-image {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
+            }
+            .image-watermark {
+              position: absolute;
+              bottom: 4px;
+              right: 6px;
+              background: rgba(0, 0, 0, 0.7);
+              color: #fff;
+              font-size: 9px;
+              padding: 1px 4px;
+              border-radius: 2px;
+            }
+            .advice-block-card {
+              background: #f9fafb;
+              border: 1px solid #e5e7eb;
+              border-radius: 6px;
+              padding: 10px 12px;
+              height: 178px;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            .advice-item {
+              border-bottom: 1px dashed #e5e7eb;
+              padding-bottom: 6px;
+            }
+            .advice-item:last-child { border-bottom: none; }
+            .item-title { font-size: 11px; font-weight: 700; color: #374151; margin-bottom: 2px; }
+            .icon-tag {
+              display: inline-block;
+              width: 14px;
+              height: 14px;
+              line-height: 14px;
+              text-align: center;
+              border-radius: 50%;
+              font-size: 9px;
+              color: #fff;
+              margin-right: 4px;
+            }
+            .tag-info { background: #3b82f6; }
+            .tag-warning { background: #f59e0b; }
+            .tag-danger { background: #ef4444; }
+            .item-content { font-size: 11px; color: #4b5563; line-height: 1.4; padding-left: 18px; }
+            .item-content.bold-action { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 3px 6px; border-radius: 3px; }
+            .report-table-section { margin-bottom: 14px; }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th, td {
+              border: 1px solid #d1d5db;
+              padding: 6px 8px;
+              text-align: center;
+            }
+            th { background: #f3f4f6; font-weight: 600; color: #374151; }
+            .report-footer {
+              border-top: 1px solid #e5e7eb;
+              padding-top: 10px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #4b5563;
+            }
+            .footer-sign { display: flex; gap: 30px; }
+            .footer-note { font-size: 9px; color: #9ca3af; }
+          </style>
+        </head>
+        <body>
+          ${printableDom.innerHTML}
+        </body>
+        </html>
+      `;
+
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }, 250);
     }
   }
 };
@@ -1054,14 +1572,14 @@ export default {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* ================= 3. 顶部 4 列 KPI 紧凑概览条 ================= */
-.top-kpi-bar {
+/* ================= 3. 顶部 4 列 KPI 紧凑概览条 (已弃用归档，避免样式污染) ================= */
+.legacy-top-kpi-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
-.kpi-card {
+.legacy-kpi-card {
   position: relative;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 255, 0.94));
   border-radius: 18px !important;
@@ -1465,11 +1983,11 @@ export default {
 }
 
 .step-num-badge {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px !important;
   color: #ffffff;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
@@ -1478,7 +1996,7 @@ export default {
 }
 
 .step-title-text {
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 700;
   color: #1c3047;
   white-space: nowrap;
@@ -1487,20 +2005,20 @@ export default {
 }
 
 .card-score-text {
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 800;
   color: #2388e8;
   flex-shrink: 0;
 }
 
 .card-desc-text {
-  font-size: 11.5px;
-  color: #8a9aaf;
-  line-height: 1.4;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 4px 0 6px 0;
+  margin: 6px 0 2px 0;
 }
 
 .card-bottom-row {
@@ -1554,19 +2072,25 @@ export default {
   grid-template-columns: 1.25fr 0.75fr;
   gap: 16px;
   align-items: stretch;
+  height: 640px;
+  min-height: 640px;
+  max-height: 640px;
 }
 
 .left-ai-column {
   height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ================= 左翼：AI 工作台 (全页视觉中心) ================= */
 .ai-workbench-card {
   flex: 1;
   height: 100%;
-  min-height: 610px;
+  max-height: 100%;
+  min-height: 0;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 18px !important;
@@ -1728,6 +2252,7 @@ export default {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px 16px;
   background: linear-gradient(135deg, #f1f7fe 0%, #eaf3fd 100%);
   border-radius: 16px !important;
@@ -1735,6 +2260,25 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(35, 136, 232, 0.35) transparent;
+}
+
+.ai-chat-stage::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-chat-stage::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-chat-stage::-webkit-scrollbar-thumb {
+  background: rgba(35, 136, 232, 0.28);
+  border-radius: 4px;
+}
+
+.ai-chat-stage::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 136, 232, 0.55);
 }
 
 .ai-msg-row {
@@ -1755,26 +2299,34 @@ export default {
 .ai-avatar-box {
   width: 38px;
   height: 38px;
-  border-radius: 12px !important;
-  background: #ffffff;
-  border: 1px solid rgba(195, 222, 248, 0.6);
+  border-radius: 50% !important;
+  background: transparent;
+  border: none;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .ai-avatar-box img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  border-radius: 50% !important;
+  object-fit: cover;
+}
+
+.ai-avatar-box.user-avatar-box {
+  border-radius: 50% !important;
+  border: 1px solid rgba(195, 222, 248, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .ai-avatar-box.user-avatar-box img {
   width: 100%;
   height: 100%;
+  border-radius: 50% !important;
   object-fit: cover;
 }
 
@@ -1940,7 +2492,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 11px 16px;
+  padding: 14px 18px;
   border-bottom: 1px solid #edf3f9;
   background: #fbfdff;
   flex-shrink: 0;
@@ -1949,17 +2501,18 @@ export default {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .header-icon-box {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px !important;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px !important;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 16px;
 }
 
 .bg-blue-subtle {
@@ -1971,9 +2524,10 @@ export default {
 }
 
 .header-title-text {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
   color: #1c3047;
+  letter-spacing: -0.2px;
 }
 
 .header-right {
@@ -1983,19 +2537,19 @@ export default {
 }
 
 .rate-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #8a9aaf;
 }
 
 .rate-value {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: #16a34a;
 }
 
 .radar-card {
-  flex: 0 0 260px;
-  height: 260px;
+  flex: 1;
+  height: 100%;
   margin-bottom: 0;
 }
 
@@ -2098,16 +2652,9 @@ export default {
 }
 
 /* ================= 7. 智能巡诊现场深度诊断报告弹窗 (现代高端浅色精工风格) ================= */
-::v-deep .el-dialog__wrapper {
-  overflow: hidden !important;
-}
-
 ::v-deep .sixs-report-dialog.light-precision-modal {
-  margin: 0 !important;
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  margin-top: 5vh !important;
+  margin-bottom: 5vh !important;
   border-radius: 18px !important;
   overflow: hidden !important;
   background: #ffffff !important;
@@ -2900,5 +3447,417 @@ export default {
 .light-hero-exec-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 5px 14px rgba(220, 38, 38, 0.35) !important;
+}
+
+/* ================= 8. AI 智控专家分析报告原件专属排版样式 (与预警信息/实时检测页面 1:1 完全对齐) ================= */
+.expert-report-dialog :deep(.el-dialog) {
+  margin-top: 3vh !important;
+  margin-bottom: 3vh !important;
+  top: 0 !important;
+  transform: none !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  border: 1px solid #e2e8f0;
+}
+
+.expert-report-dialog :deep(.el-dialog__header) {
+  flex-shrink: 0 !important;
+  background: #ffffff;
+  padding: 16px 24px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.expert-report-dialog :deep(.el-dialog__title) {
+  color: #1e293b;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expert-report-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.expert-report-dialog :deep(.el-dialog__headerbtn .el-dialog__close:hover) {
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.expert-report-dialog :deep(.el-dialog__body) {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 20px 24px !important;
+  background: #fcfdfd;
+  height: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.expert-loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.expert-loading i {
+  font-size: 42px;
+  color: #2563eb;
+  margin-bottom: 16px;
+}
+
+.expert-report-container {
+  padding: 4px 8px;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: #1e293b;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(59, 130, 246, 0.12) 100%);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.report-title {
+  margin: 6px 0 14px 0;
+  font-size: 23px;
+  color: #0f172a;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.report-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.report-meta span {
+  background: #f8fafc;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-meta strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.report-meta .meta-highlight-tag {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.report-meta .meta-highlight-tag strong {
+  color: #047857;
+}
+
+/* 4大核心指标卡片 4列水平网格 */
+.report-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  margin-bottom: 24px !important;
+}
+
+.kpi-card {
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.kpi-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.kpi-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.kpi-label {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.kpi-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.kpi-val .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 2px;
+}
+
+.kpi-sub {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi-card.danger { border-top: 3px solid #ef4444; }
+.kpi-card.danger .kpi-icon-wrap { background: #fef2f2; color: #ef4444; }
+.kpi-card.danger .kpi-val { color: #dc2626; }
+
+.kpi-card.warning { border-top: 3px solid #f59e0b; }
+.kpi-card.warning .kpi-icon-wrap { background: #fffbeb; color: #d97706; }
+.kpi-card.warning .kpi-val.highlight { color: #b45309; font-size: 21px; }
+
+.kpi-card.primary { border-top: 3px solid #2563eb; }
+.kpi-card.primary .kpi-icon-wrap { background: #eff6ff; color: #2563eb; }
+.kpi-card.primary .kpi-val { color: #1d4ed8; }
+
+.kpi-card.success { border-top: 3px solid #059669; }
+.kpi-card.success .kpi-icon-wrap { background: #ecfdf5; color: #059669; }
+.kpi-card.success .kpi-val.decision { font-size: 14.5px; color: #991b1b; font-weight: 700; line-height: 1.45; }
+
+/* 左右分栏 */
+.report-split-section {
+  display: grid !important;
+  grid-template-columns: 1fr 1.2fr !important;
+  gap: 20px !important;
+  margin-bottom: 24px !important;
+}
+
+.section-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.section-title i {
+  color: #2563eb;
+  font-size: 16px;
+}
+
+.report-image-box {
+  position: relative;
+  background: #090d16;
+  border-radius: 10px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.report-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-watermark {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(4px);
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.slice-pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.slice-page-indicator {
+  font-size: 11.5px;
+  color: #475569;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.slice-page-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.advice-block-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 260px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.advice-item {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.advice-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.item-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #1e293b;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.icon-tag {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.icon-tag.tag-info { background: #3b82f6; }
+.icon-tag.tag-warning { background: #f59e0b; }
+.icon-tag.tag-danger { background: #ef4444; }
+
+.item-content {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+  padding-left: 28px;
+}
+
+.item-content.bold-action {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #991b1b;
+  background: #fef2f2;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #fee2e2;
+  border-left: 4px solid #ef4444;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.report-table-section {
+  margin-bottom: 22px;
+}
+
+.report-table-section :deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.report-table-section :deep(.el-table th) {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+}
+
+.report-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-sign {
+  display: flex;
+  gap: 48px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.footer-note {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-style: italic;
 }
 </style>

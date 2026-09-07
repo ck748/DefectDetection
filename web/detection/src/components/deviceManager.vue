@@ -2102,7 +2102,7 @@ export default {
 
     // 机械臂实时关节角度轮询
     fetchRealtimeJoints() {
-      axios.get('api/aubo/realtime').then(res => {
+      axios.get('api/aubo/realtime').then(res => {  //读取机械臂六个关节的“角度与弧度”信息
         if (res.data && res.data.code === 200 && res.data.data) {
           this.realtimeJoints = {
             connected: res.data.data.connected || false,

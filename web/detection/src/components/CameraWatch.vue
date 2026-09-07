@@ -9,13 +9,13 @@
           </div>
           <div class="title-text-group">
             <div class="title-row">
-              <h2 class="page-title">摄像头自动监听与图片流</h2>
+              <h2 class="page-title">目录自动监听与图片流</h2>
               <span class="status-badge" :class="running ? 'is-active' : 'is-stopped'">
                 <span class="status-dot"></span>
                 {{ running ? '实时监听中' : '监听已停止' }}
               </span>
             </div>
-            <p class="page-desc">实时监听指定本地目录，当摄像头产生新抓拍半轴图像后，后端自动捕获并无感推送到本界面</p>
+            <p class="page-desc">实时监听指定本地目录，当产生新抓拍半轴图像后，后端自动捕获并无感推送到本界面</p>
           </div>
         </div>
       </div>
@@ -150,10 +150,10 @@
             </div>
             <div class="empty-holder" v-else>
               <div class="empty-icon-wrap">
-                <i class="el-icon-camera"></i>
+                <i class="el-icon-picture"></i>
               </div>
               <p class="empty-main-text">暂无捕获图片</p>
-              <span class="sub-tip">请在小米摄像头目录「{{ watchPath }}」中放入半轴图片即可实时呈现</span>
+              <span class="sub-tip">请在监听目录「{{ watchPath }}」中放入半轴图片即可实时呈现</span>
             </div>
           </div>
         </div>
@@ -217,7 +217,7 @@
                 <i class="el-icon-picture-outline"></i>
               </div>
               <p class="empty-main-text">队列为空</p>
-              <span class="sub-tip">等待摄像头抓拍图片推送...</span>
+              <span class="sub-tip">等待抓拍图片推送...</span>
             </div>
           </div>
         </div>
@@ -233,7 +233,9 @@ function toFullImageUrl(url) {
     return url;
   }
   const cleanUrl = url.startsWith('/') ? url : '/' + url;
-  return 'http://localhost:8081' + cleanUrl;
+  // 动态获取当前访问页面的主机名与协议，自动适应局域网 IP / 域名 / 端口，避免写死 localhost
+  const host = window.location.hostname || 'localhost';
+  return `http://${host}:8081${cleanUrl}`;
 }
 
 export default {
@@ -395,12 +397,16 @@ export default {
 .camera-watch-container {
   padding: 20px 24px;
   background: #f0f4f8;
+  height: calc(100vh - 84px);
   min-height: calc(100vh - 84px);
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 顶部控制栏 */
 .watch-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -510,6 +516,7 @@ export default {
 
 /* 监听配置卡片 */
 .config-card {
+  flex-shrink: 0;
   background: #ffffff;
   padding: 14px 20px;
   border-radius: 12px;
@@ -587,6 +594,8 @@ export default {
 
 /* 核心布局 */
 .content-body {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   gap: 18px;
@@ -595,9 +604,13 @@ export default {
 .latest-card-wrap,
 .stream-list-wrap {
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-card {
+  height: 100%;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
@@ -608,6 +621,7 @@ export default {
 }
 
 .panel-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -680,11 +694,17 @@ export default {
 }
 
 .panel-content {
+  flex: 1;
+  min-height: 0;
   padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 左侧大图展示区 */
 .latest-image-box {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -693,7 +713,8 @@ export default {
 .image-preview-wrapper {
   position: relative;
   width: 100%;
-  height: 390px;
+  flex: 1;
+  min-height: 380px;
   background: #0f172a;
   border-radius: 10px;
   overflow: hidden;
@@ -723,6 +744,7 @@ export default {
 }
 
 .image-meta-info {
+  flex-shrink: 0;
   background: #f8fafc;
   padding: 14px 18px;
   border-radius: 10px;
@@ -765,10 +787,12 @@ export default {
 
 /* 右侧流水队列网格 */
 .stream-grid {
+  flex: 1;
+  height: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  align-content: start;
   gap: 12px;
-  max-height: 500px;
   overflow-y: auto;
   padding-right: 4px;
 }

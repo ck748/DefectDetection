@@ -3,11 +3,16 @@ package com.ggbond.defectdetection.controller;
 import com.ggbond.defectdetection.common.Result;
 import com.ggbond.defectdetection.pojo.CameraWatchRecord;
 import com.ggbond.defectdetection.service.CameraFolderWatchService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.net.URLConnection;
 import java.util.Map;
 
 @Slf4j
@@ -60,6 +65,17 @@ public class CameraWatchController {
     @GetMapping("/status")
     public Result<Map<String, Object>> getStatus() {
         return Result.success("获取成功", cameraFolderWatchService.getStatusAndImages());
+    }
+
+    /**
+     * 直接输出相机抓拍图片流（彻底解决跨域与静态目录路径映射问题）
+     * 无论保存在 /root/desc 还是 uploads 均可安全流式读取
+     */
+    @GetMapping("/image")
+    public void getImageStream(@RequestParam(value = "id", required = false) Integer id,
+                               @RequestParam(value = "name", required = false) String name,
+                               HttpServletResponse response) {
+        cameraFolderWatchService.writeImageStream(id, name, response);
     }
 
     /**

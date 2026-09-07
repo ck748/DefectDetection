@@ -40,83 +40,92 @@ public class OperatorController {
     ManagerService managerService;
 
     @GetMapping("/key/info")
-    public Result getOperatorInfoHandler(Integer page,Integer pageSize ){
+    public Result getOperatorInfoHandler(Integer page, Integer pageSize) {
+        if (page == null) page = 1;
+        if (pageSize == null) pageSize = 10;
 
-        IPage<Operator> operatorIPage=new Page<>(page,pageSize);
-        operatorService.page(operatorIPage);
-        List<Operator> operatorList=operatorIPage.getRecords();
-        int totalPages= Math.toIntExact(operatorService.count());
+        IPage<Manager> managerIPage = new Page<>(page, pageSize);
+        managerService.page(managerIPage);
+        List<Manager> managerList = managerIPage.getRecords();
+        int totalPages = Math.toIntExact(managerService.count());
 
-        if(operatorList!=null){
-            for (Operator operator : operatorList) {
-                operator.totals =totalPages;
-                if(operator.getLoginPwd()!=null){
-                    operator.setLoginPwd(EncryptionUtil.decrypt(operator.getLoginPwd()));
-                }
-                operator.setOpPwd(EncryptionUtil.decrypt(operator.getOpPwd()));
+        List<Operator> operatorList = new java.util.ArrayList<>();
+        if (managerList != null) {
+            for (int i = 0; i < managerList.size(); i++) {
+                Manager manager = managerList.get(i);
+                Operator operator = new Operator();
+
+                // 序号保持 manager 的 id
+                operator.setId(manager.getId());
+                // 姓名换成 manager 的 account 字段
+                operator.setName(manager.getAccount());
+                // 工号变成 100 + 序号数字 (例如 id=1 则为 1001)
+                operator.setJobId(1000 + (manager.getId() != null ? manager.getId() : (i + 1)));
+                // 密码就是 manager 表中的密码
+                operator.setLoginPwd(manager.getPwd());
+                operator.setOpPwd(manager.getPwd());
+
+                // 时间与备注保持默认/基本信息
+                operator.setCreateTime(LocalDateTime.now());
+                operator.setRemark("管理员账户转换");
+                operator.totals = totalPages;
+
+                operatorList.add(operator);
             }
-            return Result.success("获取成功",operatorList);
-        }else{
+            return Result.success("获取成功", operatorList);
+        } else {
             return Result.fail("获取失败,请稍后再试");
         }
     }
 
     @PostMapping("/key/add")
-    @LogPoint(value = OpEnum.Add, mainRole = Manager.class,target = Operator.class)
+    @LogPoint(value = OpEnum.Add, mainRole = Manager.class, target = Manager.class)
     public Result addOperatorHandler(HttpSession httpSession,
                                      @RequestBody Operator operator
                                      ){
+        if (operator.getName() == null || operator.getName().trim().isEmpty()) {
+            return Result.fail("姓名(账号)不能为空");
+        }
 
-        LambdaQueryWrapper<Operator> lqw=new LambdaQueryWrapper<>();
-        lqw.exists("select login_pwd from operator where login_pwd is not null");
+        // 检查 manager 表中 account 是否重复
+        LambdaQueryWrapper<Manager> lqw = new LambdaQueryWrapper<>();
+        lqw.eq(Manager::getAccount, operator.getName().trim());
+        if (managerService.count(lqw) > 0) {
+            return Result.fail("账号已存在，请更换姓名/账号");
+        }
 
-        boolean res=operatorService.exists(lqw);
-        log.info("res:{}",res);
+        Manager manager = new Manager();
+        // 姓名作为 account
+        manager.setAccount(operator.getName().trim());
+        manager.setName(operator.getName().trim());
 
-        if(!res){ //存在非空密码
-            if(operator.getLoginPwd()!=null&&operatorService.count()>0){
-                return Result.fail("修改失败,请检查登入密码是否为空");
+        // 密码保存（优先取 loginPwd 或 opPwd）
+        String rawPwd = operator.getLoginPwd() != null ? operator.getLoginPwd() : operator.getOpPwd();
+        if (rawPwd != null && !rawPwd.isEmpty()) {
+            // manager 默认 md5 存储，若已是 md5 或明文均妥善处理
+            if (rawPwd.length() == 32) {
+                manager.setPwd(rawPwd);
+            } else {
+                manager.setPwd(DigestUtils.md5DigestAsHex(rawPwd.getBytes()));
             }
-        }else{
-            if(operator.getLoginPwd()==null){
-                return Result.fail("修改失败,请检查登入密码是否为空");
-            }
+        } else {
+            // 默认密码 123456
+            manager.setPwd(DigestUtils.md5DigestAsHex("123456".getBytes()));
         }
 
-        lqw.clear();
-        lqw.eq(operator.getOpPwd()!=null,Operator::getOpPwd,EncryptionUtil.encrypt(operator.getOpPwd()))
-                .or()
-                .eq(operator.getJobId()!=null,Operator::getJobId,operator.getJobId());
+        manager.setPhone("13800138000");
+        manager.setEmail(operator.getName() + "@example.com");
+        manager.setOnline(false);
+        manager.setWarningsOpen(false);
 
-        if(operatorService.exists(lqw)){
-            return Result.fail("工号或操作密码重复");
+        boolean saved = managerService.save(manager);
+        if (saved) {
+            operator.setId(manager.getId());
+            operator.setJobId(1000 + manager.getId());
+            return Result.success("添加成功", operator);
+        } else {
+            return Result.fail("添加失败，请稍后再试");
         }
-
-        if(operator.getLoginPwd()!=null){
-            operator.setLoginPwd(EncryptionUtil.encrypt(operator.getLoginPwd()));
-        }
-        operator.setOpPwd(EncryptionUtil.encrypt(operator.getOpPwd()));
-
-//        Operator operator=new Operator(jobId,loginPwd,opPwd,name,remark);
-
-        //设置入职时间
-        operator.setCreateTime(LocalDateTime.now());
-
-        //设置创建者名称
-        Integer creatorId= (Integer) httpSession.getAttribute("user");
-        Manager manager=managerService.getById(creatorId);
-        operator.setCreateName(manager.getName());
-
-        operatorService.save(operator);
-        lqw.clear();
-        lqw.eq(Operator::getOpPwd,operator.getOpPwd());
-        operator=operatorService.getOne(lqw);
-
-        if(operator.getJobId()==null){
-            operator.setJobId(operator.getId());
-        }
-
-        return Result.success("添加成功",operator);
     }
 
     @PutMapping("/key/batchPwd")

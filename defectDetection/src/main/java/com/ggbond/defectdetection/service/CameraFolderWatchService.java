@@ -12,7 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLConnection;
+import jakarta.servlet.http.HttpServletResponse;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -258,14 +262,57 @@ public class CameraFolderWatchService {
     }
 
     private String buildWebUrl(String storedName) {
-        String dir = this.serverWatchDir.replace("\\", "/");
-        if (dir.contains("uploads/")) {
-            String sub = dir.substring(dir.indexOf("uploads/"));
-            if (!sub.startsWith("/")) sub = "/" + sub;
-            if (!sub.endsWith("/")) sub = sub + "/";
-            return sub + storedName;
+        return "/api/detectInfo/cameraWatch/image?name=" + storedName;
+    }
+
+    /**
+     * 将图片文件流直接写入 HTTP 响应（跨机器/容器部署最健壮方案）
+     */
+    public void writeImageStream(Integer id, String name, HttpServletResponse response) {
+        try {
+            File targetFile = null;
+            if (id != null) {
+                CameraWatchRecord record = cameraWatchRecordService.getById(id);
+                if (record != null && record.getFilePath() != null) {
+                    targetFile = new File(record.getFilePath());
+                }
+            }
+            if ((targetFile == null || !targetFile.exists()) && name != null && !name.trim().isEmpty()) {
+                String cleanName = new File(name.trim()).getName();
+                targetFile = new File(this.serverWatchDir, cleanName);
+                if (!targetFile.exists()) {
+                    targetFile = new File("/root/desc/cmzj-main/mijia-watcher/image", cleanName);
+                }
+                if (!targetFile.exists()) {
+                    targetFile = new File("uploads/camera_watch", cleanName);
+                }
+            }
+
+            if (targetFile == null || !targetFile.exists()) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            String mimeType = URLConnection.guessContentTypeFromName(targetFile.getName());
+            if (mimeType == null) {
+                mimeType = "image/jpeg";
+            }
+            response.setContentType(mimeType);
+            response.setContentLengthLong(targetFile.length());
+            response.setHeader("Cache-Control", "max-age=86400, public");
+
+            try (FileInputStream fis = new FileInputStream(targetFile);
+                 OutputStream os = response.getOutputStream()) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+                os.flush();
+            }
+        } catch (Exception e) {
+            log.warn("输出相机抓拍图片流失败: {}", e.getMessage());
         }
-        return "/uploads/camera_watch/" + storedName;
     }
 
     private void stopLocalNioWatch() {

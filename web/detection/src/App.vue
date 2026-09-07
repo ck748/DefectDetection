@@ -1,8 +1,8 @@
 <template>
   <div id="app">
     <router-view/>
-    <!-- 6S管家 AI智能体 (全页面常驻悬浮球+抽屉) -->
-    <SixSButler />
+    <!-- 6S管家 AI智能体 (登录页/封面页隐藏，仅在系统内页常驻) -->
+    <SixSButler v-if="$route.path !== '/login'" />
   </div>
 </template>
 

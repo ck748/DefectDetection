@@ -67,7 +67,7 @@
               </template>
               <el-menu-item index="/camera-watch">
                 <i class="el-icon-video-camera"></i>
-                <span slot="title">摄像头目录监听</span>
+                <span slot="title">目录监听</span>
               </el-menu-item>
               <el-menu-item index="/feature-checklist">
                 <i class="el-icon-circle-check"></i>
