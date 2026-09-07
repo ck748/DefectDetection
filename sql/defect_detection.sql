@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80041
 File Encoding         : 65001
 
-Date: 2026-09-04 13:08:11
+Date: 2026-09-07 16:47:54
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -165,6 +165,29 @@ INSERT INTO `api` VALUES ('43', '0', null, null, 'admin1', null, null, '30', '10
 INSERT INTO `api` VALUES ('44', '0', null, null, 'admin1', null, null, '30', '1000', '1', 'ma-1ij6yL2Slp', '1', '', '0');
 
 -- ----------------------------
+-- Table structure for camera_watch_record
+-- ----------------------------
+DROP TABLE IF EXISTS `camera_watch_record`;
+CREATE TABLE `camera_watch_record` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `file_name` varchar(255) NOT NULL COMMENT '原始图片文件名',
+  `stored_name` varchar(255) NOT NULL COMMENT '服务器存储文件名',
+  `file_path` varchar(500) NOT NULL COMMENT '服务器物理存储路径',
+  `web_url` varchar(500) DEFAULT NULL COMMENT 'Web访问静态URL',
+  `file_size` varchar(64) DEFAULT NULL COMMENT '格式化文件大小(如 124.50 KB)',
+  `file_bytes` bigint DEFAULT NULL COMMENT '文件字节大小(Bytes)',
+  `upload_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '上传/捕获时间',
+  `server_watch_dir` varchar(500) DEFAULT NULL COMMENT '对应服务器端存储目录',
+  `status` varchar(32) DEFAULT '0' COMMENT '图片处理状态',
+  `is_deleted` tinyint DEFAULT '0' COMMENT '逻辑删除(0-正常, 1-已删除)',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='小米摄像头自动监听抓拍记录表';
+
+-- ----------------------------
+-- Records of camera_watch_record
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for defection
 -- ----------------------------
 DROP TABLE IF EXISTS `defection`;
@@ -305,6 +328,86 @@ INSERT INTO `defection_category` VALUES ('10', '斑块', '0', '2025-12-21 10:50:
 INSERT INTO `defection_category` VALUES ('11', '开裂', '0', '2025-12-21 10:51:09');
 
 -- ----------------------------
+-- Table structure for detection_batch
+-- ----------------------------
+DROP TABLE IF EXISTS `detection_batch`;
+CREATE TABLE `detection_batch` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `batch_id` varchar(64) NOT NULL COMMENT 'Python批次ID',
+  `detection_time` datetime DEFAULT NULL COMMENT '检测时间',
+  `runtime` double DEFAULT NULL COMMENT '检测耗时秒',
+  `expected_images` int DEFAULT NULL COMMENT '标准图片数量',
+  `actual_images` int DEFAULT NULL COMMENT '实际图片数量',
+  `image_complete` tinyint(1) DEFAULT NULL COMMENT '图片是否完整',
+  `endpoint_normal_count` int DEFAULT NULL COMMENT 'endpoint_normal数量',
+  `endpoint_normal_required` int DEFAULT NULL COMMENT '要求endpoint_normal数量',
+  `endpoint_complete` tinyint(1) DEFAULT NULL COMMENT '端点采集是否完整',
+  `trusted_collection` tinyint(1) DEFAULT NULL COMMENT '是否可信采集',
+  `scratch_count` int DEFAULT NULL COMMENT 'scratch缺陷数量',
+  `scratch_image_count` int DEFAULT NULL COMMENT '存在缺陷的图片数量',
+  `unclear_image_count` int DEFAULT NULL COMMENT '不清晰图片数量',
+  `unclear_roi_count` int DEFAULT NULL COMMENT '不清晰ROI数量',
+  `qwen_status` varchar(32) DEFAULT NULL COMMENT 'Qwen状态',
+  `qwen_report` text COMMENT 'Qwen综合报告',
+  `qwen_severity` varchar(32) DEFAULT NULL COMMENT 'Qwen严重程度',
+  `qwen_need_recheck` tinyint(1) DEFAULT NULL COMMENT 'Qwen是否建议复检',
+  `qwen_disposal_advice` text COMMENT 'Qwen处置建议',
+  `final_status` varchar(32) DEFAULT NULL COMMENT '最终状态 OK/NG/RECHECK',
+  `need_recheck` tinyint(1) DEFAULT NULL COMMENT '最终是否复检',
+  `disposal_advice` text COMMENT '最终处置建议',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `batch_id` (`batch_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='车辆半轴AI检测批次';
+
+-- ----------------------------
+-- Records of detection_batch
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for detection_defect_image
+-- ----------------------------
+DROP TABLE IF EXISTS `detection_defect_image`;
+CREATE TABLE `detection_defect_image` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` varchar(64) NOT NULL COMMENT '批次ID',
+  `detection_image_id` bigint NOT NULL COMMENT '检测图片ID',
+  `defect_index` int DEFAULT NULL COMMENT '当前图片中的缺陷序号',
+  `image_base64` longtext COMMENT '缺陷ROI Base64',
+  `content_type` varchar(64) DEFAULT 'image/jpeg',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_batch_id` (`batch_id`),
+  KEY `idx_detection_image_id` (`detection_image_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI缺陷ROI图片';
+
+-- ----------------------------
+-- Records of detection_defect_image
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for detection_image
+-- ----------------------------
+DROP TABLE IF EXISTS `detection_image`;
+CREATE TABLE `detection_image` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` varchar(64) NOT NULL COMMENT '检测批次ID',
+  `filename` varchar(255) NOT NULL COMMENT '图片名称',
+  `status` varchar(32) DEFAULT NULL COMMENT '图片检测状态',
+  `endpoint_normal_count` int DEFAULT '0' COMMENT 'endpoint_normal数量',
+  `scratch_count` int DEFAULT '0' COMMENT 'scratch数量',
+  `unclear_roi_count` int DEFAULT '0' COMMENT '不清晰ROI数量',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_batch_id` (`batch_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI检测图片明细';
+
+-- ----------------------------
+-- Records of detection_image
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for detect_log
 -- ----------------------------
 DROP TABLE IF EXISTS `detect_log`;
@@ -352,7 +455,6 @@ INSERT INTO `detect_log` VALUES ('81', 'c41df54d_ee1d_4098_9200_969bd80629f9_202
 INSERT INTO `detect_log` VALUES ('82', 'c198bcc3_a9dc_4fd3_b386_18b47714bbb9_20251221105126.jpeg', '1', '2025-12-21 10:51:26', '2', './detectPicture\\2\\c198bcc3_a9dc_4fd3_b386_18b47714bbb9_20251221105126.jpeg', 'detection', null);
 INSERT INTO `detect_log` VALUES ('83', '2f633010_613c_48e0_b1af_fc41ccff8537_20251221105144.jpeg', '1', '2025-12-21 10:51:45', '2', './detectPicture\\2\\2f633010_613c_48e0_b1af_fc41ccff8537_20251221105144.jpeg', 'detection', null);
 INSERT INTO `detect_log` VALUES ('84', 'e8a3f797_03c6_4b72_b894_10ac30f3a284_20251221105215.jpeg', '2', '2025-12-21 10:52:16', '2', './detectPicture\\2\\e8a3f797_03c6_4b72_b894_10ac30f3a284_20251221105215.jpeg', 'detection', null);
-INSERT INTO `detect_log` VALUES ('85', '8c1b2452_d6fc_406f_951f_ce3972c5c605_20260903093905.jpeg', '0', '2026-09-03 09:39:05', '2', './detectPicture\\2\\8c1b2452_d6fc_406f_951f_ce3972c5c605_20260903093905.jpeg', 'detection', null);
 INSERT INTO `detect_log` VALUES ('86', '35c53e8c_9fca_4711_82c3_3dd130eb4ed5_20260903185819.jpeg', '4', '2026-09-03 18:58:19', '2', './detectPicture\\2\\35c53e8c_9fca_4711_82c3_3dd130eb4ed5_20260903185819.jpeg', 'detection', null);
 
 -- ----------------------------
@@ -399,19 +501,19 @@ CREATE TABLE `manager` (
   `email_way` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `account` (`account`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
 
 -- ----------------------------
 -- Records of manager
 -- ----------------------------
-INSERT INTO `manager` VALUES ('1', 'admin1', 'e10adc3949ba59abbe56e057f20f883e', '12345678901', 'admin1', 'admin1@example.com', '0', '1', '0', '0', '1');
+INSERT INTO `manager` VALUES ('1', 'admin1', 'e10adc3949ba59abbe56e057f20f883e', '12345678901', 'admin1', 'lingmouxunzhen@163.com', '1', '0', '0', '0', '0');
 INSERT INTO `manager` VALUES ('2', 'admin2', 'e10adc3949ba59abbe56e057f20f883e', '98765432109', 'admin2', 'admin2@example.com', '0', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('3', 'HUMING', 'e10adc3949ba59abbe56e057f20f883e', '13800138000', 'HM', 'huming@example.com', '1', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('4', 'CHENKUN', 'e10adc3949ba59abbe56e057f20f883e', '13800138001', 'CK', 'chenkun@example.com', '0', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('5', 'YEMIN', 'e10adc3949ba59abbe56e057f20f883e', '13800138002', 'YM', 'yemin@example.com', '0', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('6', 'LIHONGBIN', 'e10adc3949ba59abbe56e057f20f883e', '13800138003', 'LHB', 'lihongbin@example.com', '0', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('7', 'HEJIA', 'e10adc3949ba59abbe56e057f20f883e', '13800138004', 'HJ', 'hejia@example.com', '0', '0', '0', '0', '0');
-INSERT INTO `manager` VALUES ('8', 'QINLONG', 'e10adc3949ba59abbe56e057f20f883e', '13800138005', 'QL', 'qinlong@example.com', '0', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('3', '202406401', 'e10adc3949ba59abbe56e057f20f883e', '13800138000', 'HM', 'HM@example.com', '1', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('4', '202406402', 'e10adc3949ba59abbe56e057f20f883e', '13800138001', 'CK', 'CK@example.com', '0', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('5', '202406403', 'e10adc3949ba59abbe56e057f20f883e', '13800138002', 'YM', 'YM@example.com', '0', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('6', '202406404', 'e10adc3949ba59abbe56e057f20f883e', '13800138003', 'LHB', 'LHB@example.com', '0', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('7', '202406405', 'e10adc3949ba59abbe56e057f20f883e', '13800138004', 'HJ', 'HJ@example.com', '0', '0', '0', '0', '0');
+INSERT INTO `manager` VALUES ('8', '202406406', 'e10adc3949ba59abbe56e057f20f883e', '13800138005', 'QL', 'QL@example.com', '0', '0', '0', '0', '0');
 
 -- ----------------------------
 -- Table structure for model
@@ -550,7 +652,7 @@ CREATE TABLE `sys_log` (
   `status` varchar(32) DEFAULT '成功' COMMENT '操作状态',
   `details` varchar(500) DEFAULT '' COMMENT '操作详情',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=247 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=271 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_log
@@ -787,6 +889,30 @@ INSERT INTO `sys_log` VALUES ('243', '2026-09-03 08:22:19', '登录', '1', '0', 
 INSERT INTO `sys_log` VALUES ('244', '2026-09-03 08:31:23', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
 INSERT INTO `sys_log` VALUES ('245', '2026-09-03 11:16:01', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
 INSERT INTO `sys_log` VALUES ('246', '2026-09-03 18:35:53', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('247', '2026-09-04 16:06:08', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('248', '2026-09-04 20:27:34', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('249', '2026-09-04 20:35:42', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('250', '2026-09-05 13:35:34', '登录', '-1', '0', '系统用户', '系统用户', '192.168.137.1', '失败', '用户登录: 账号[null] 密码错误或用户不存在');
+INSERT INTO `sys_log` VALUES ('251', '2026-09-05 13:44:31', '登录', '-1', '0', '系统用户', '系统用户', '192.168.137.1', '失败', '用户登录: 账号[null] 密码错误或用户不存在');
+INSERT INTO `sys_log` VALUES ('252', '2026-09-05 13:45:00', '登录', '-1', '0', '系统用户', '系统用户', '192.168.137.1', '失败', '用户登录: 账号[admin1] 密码错误或用户不存在');
+INSERT INTO `sys_log` VALUES ('253', '2026-09-05 13:47:42', '登录', '-1', '0', '系统用户', '系统用户', '192.168.137.1', '失败', '用户登录: 账号[admin1] 密码错误或用户不存在');
+INSERT INTO `sys_log` VALUES ('254', '2026-09-05 13:50:14', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('255', '2026-09-05 13:50:27', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('256', '2026-09-05 15:50:46', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('257', '2026-09-05 17:02:09', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('258', '2026-09-05 19:33:06', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('259', '2026-09-06 09:16:00', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('260', '2026-09-06 11:26:39', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('261', '2026-09-06 19:20:19', '删除', '-1', '0', '质检检测', '质检检测', '192.168.137.1', '成功', '删除成功');
+INSERT INTO `sys_log` VALUES ('262', '2026-09-06 22:25:40', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('263', '2026-09-06 22:25:52', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('264', '2026-09-07 10:18:07', '添加', '-1', '0', '操作人员', '操作人员', '192.168.137.1', '失败', '添加操作员: 姓名=admin3, 工号=1009');
+INSERT INTO `sys_log` VALUES ('265', '2026-09-07 10:18:12', '添加', '-1', '0', '操作人员', '操作人员', '192.168.137.1', '失败', '添加操作员: 姓名=admin3, 工号=1009');
+INSERT INTO `sys_log` VALUES ('266', '2026-09-07 10:19:51', '添加', '-1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '添加成功');
+INSERT INTO `sys_log` VALUES ('267', '2026-09-07 10:20:29', '删除', '-1', '0', 'API密钥', 'API密钥', '192.168.137.1', '成功', '批量删除API密钥: ID列表=[9]');
+INSERT INTO `sys_log` VALUES ('268', '2026-09-07 13:46:20', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('269', '2026-09-07 14:26:52', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
+INSERT INTO `sys_log` VALUES ('270', '2026-09-07 14:41:57', '登录', '1', '0', '系统用户', '系统用户', '192.168.137.1', '成功', '用户登录: 账号[admin1] 验证成功');
 
 -- ----------------------------
 -- Table structure for warnings
@@ -846,23 +972,3 @@ CREATE TABLE `work_order` (
 -- ----------------------------
 INSERT INTO `work_order` VALUES ('1', '0', '2025-11-22 19:12:50', '1', '10', '10', '1', '2025-11-26 17:09:02', '2025-11-22 19:12:50', '1', '??1');
 INSERT INTO `work_order` VALUES ('2', '0', '2025-11-22 19:12:50', '2', '2', '20', '0', null, '2025-11-22 19:12:50', '2', '??2');
-
--- ----------------------------
--- Table structure for camera_watch_record
--- ----------------------------
-DROP TABLE IF EXISTS `camera_watch_record`;
-CREATE TABLE `camera_watch_record` (
-  `id` int NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `file_name` varchar(255) NOT NULL COMMENT '原始图片文件名',
-  `stored_name` varchar(255) NOT NULL COMMENT '服务器存储文件名',
-  `file_path` varchar(500) NOT NULL COMMENT '服务器物理存储路径',
-  `web_url` varchar(500) DEFAULT NULL COMMENT 'Web访问静态URL',
-  `file_size` varchar(64) DEFAULT NULL COMMENT '格式化文件大小(如 124.50 KB)',
-  `file_bytes` bigint DEFAULT NULL COMMENT '文件字节大小(Bytes)',
-  `upload_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '上传/捕获时间',
-  `server_watch_dir` varchar(500) DEFAULT NULL COMMENT '对应服务器端存储目录',
-  `status` varchar(32) DEFAULT '0' COMMENT '图片处理状态',
-  `is_deleted` tinyint DEFAULT '0' COMMENT '逻辑删除(0-正常, 1-已删除)',
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='小米摄像头自动监听抓拍记录表';
-

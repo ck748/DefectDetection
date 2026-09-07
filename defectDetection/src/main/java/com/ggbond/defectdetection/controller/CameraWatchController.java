@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/cameraWatch")
+@RequestMapping({"/cameraWatch", "/detectInfo/cameraWatch"})
 public class CameraWatchController {
 
     @Autowired
