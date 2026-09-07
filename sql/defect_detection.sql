@@ -846,3 +846,23 @@ CREATE TABLE `work_order` (
 -- ----------------------------
 INSERT INTO `work_order` VALUES ('1', '0', '2025-11-22 19:12:50', '1', '10', '10', '1', '2025-11-26 17:09:02', '2025-11-22 19:12:50', '1', '??1');
 INSERT INTO `work_order` VALUES ('2', '0', '2025-11-22 19:12:50', '2', '2', '20', '0', null, '2025-11-22 19:12:50', '2', '??2');
+
+-- ----------------------------
+-- Table structure for camera_watch_record
+-- ----------------------------
+DROP TABLE IF EXISTS `camera_watch_record`;
+CREATE TABLE `camera_watch_record` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `file_name` varchar(255) NOT NULL COMMENT '原始图片文件名',
+  `stored_name` varchar(255) NOT NULL COMMENT '服务器存储文件名',
+  `file_path` varchar(500) NOT NULL COMMENT '服务器物理存储路径',
+  `web_url` varchar(500) DEFAULT NULL COMMENT 'Web访问静态URL',
+  `file_size` varchar(64) DEFAULT NULL COMMENT '格式化文件大小(如 124.50 KB)',
+  `file_bytes` bigint DEFAULT NULL COMMENT '文件字节大小(Bytes)',
+  `upload_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '上传/捕获时间',
+  `server_watch_dir` varchar(500) DEFAULT NULL COMMENT '对应服务器端存储目录',
+  `status` varchar(32) DEFAULT '0' COMMENT '图片处理状态',
+  `is_deleted` tinyint DEFAULT '0' COMMENT '逻辑删除(0-正常, 1-已删除)',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='小米摄像头自动监听抓拍记录表';
+
