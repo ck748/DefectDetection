@@ -1,4 +1,4 @@
-const nodemailer = require('../../node_modules/nodemailer');
+const nodemailer = require('nodemailer');
 const express = require('express');
 
 module.exports = {

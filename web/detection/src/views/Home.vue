@@ -57,27 +57,6 @@
                 <i class="el-icon-tickets"></i>
                 <span slot="title">历史检测</span>
               </el-menu-item>
-
-              <el-menu-item index="/daping">
-                <i class="el-icon-data-analysis"></i>
-                <span slot="title">数据大屏</span>
-              </el-menu-item>
-            </el-submenu>
-
-            <!-- 数据标注子菜单 -->
-            <el-submenu index="annotation-manager">
-              <template slot="title">
-                <i class="el-icon-edit-outline"></i>
-                <span slot="title">标注系统</span>
-              </template>
-              <el-menu-item index="/annotation">
-                <i class="el-icon-edit"></i>
-                <span slot="title">数据标注</span>
-              </el-menu-item>
-              <el-menu-item index="/history-annotation">
-                <i class="el-icon-time"></i>
-                <span slot="title">历史标注</span>
-              </el-menu-item>
             </el-submenu>
 
             <!-- 【国赛2.0】AGV运检一体化升级系统 -->
@@ -100,6 +79,22 @@
               </el-menu-item>
             </el-submenu>
 
+            <!-- 数据标注子菜单 -->
+            <el-submenu index="annotation-manager">
+              <template slot="title">
+                <i class="el-icon-edit-outline"></i>
+                <span slot="title">标注系统</span>
+              </template>
+              <el-menu-item index="/annotation">
+                <i class="el-icon-edit"></i>
+                <span slot="title">数据标注</span>
+              </el-menu-item>
+              <el-menu-item index="/history-annotation">
+                <i class="el-icon-time"></i>
+                <span slot="title">历史标注</span>
+              </el-menu-item>
+            </el-submenu>
+
             <!-- 系统管理 -->
             <el-submenu index="sysmanager">
               <template slot="title">
@@ -116,7 +111,7 @@
               </el-menu-item>
               <el-menu-item index="/pwdmanager">
                 <i class="el-icon-lock"></i>
-                <span slot="title">密钥管理</span>
+                <span slot="title">人员管理</span>
               </el-menu-item>
             </el-submenu>
           </el-menu>
@@ -205,7 +200,9 @@
         <el-main class="app-main" :class="{ 'is-fullscreen-view': $route.meta && $route.meta.isFullLayout }">
           <transition name="fade-transform" mode="out-in">
             <div class="main-content-view" :class="{ 'flush-view': $route.meta && $route.meta.isFullLayout }">
-              <router-view @update:user="updateUser" />
+              <keep-alive>
+                <router-view @update:user="updateUser" :key="$route.meta && $route.meta.noCache ? $route.fullPath : undefined" />
+              </keep-alive>
             </div>
           </transition>
         </el-main>

@@ -5,7 +5,7 @@
       <div class="header-left">
         <div class="title-wrap">
           <span class="title-icon"><i class="el-icon-lock"></i></span>
-          <h2 class="page-title">操作密钥与人员管理</h2>
+          <h2 class="page-title">人员管理</h2>
           <span class="title-tag">操作员权限</span>
         </div>
         <p class="page-desc">管理产线质检人员凭证、工控上位机操作密码与系统登录凭据</p>

@@ -146,12 +146,23 @@ public class DetectInfoController {
         List<DetectLog> detectLogList=pageInfo.getRecords();
         List<DetectResDto> detectResDtoList=DetectResDto.getDtoFromEntities(detectLogList);
 
-
         if(detectResDtoList==null){
             return  Result.fail("获取失败,请稍后再试");
         }
         for (DetectResDto detectResDto : detectResDtoList) {
             detectResDto.totals =totalPages;
+            // 绑定该检测记录关联的真实缺陷切片列表
+            LambdaQueryWrapper<Defection> defLqw = new LambdaQueryWrapper<>();
+            defLqw.eq(Defection::getDetectId, detectResDto.getId());
+            List<Defection> defs = defectionService.list(defLqw);
+            if (defs != null) {
+                for (Defection d : defs) {
+                    if (d.getCategory() != null) {
+                        d.setCategory(d.getCategory().replace("裂痕", "裂纹"));
+                    }
+                }
+                detectResDto.setDefections(defs);
+            }
         }
         return Result.success("获取成功",detectResDtoList);
     }
@@ -183,12 +194,23 @@ public class DetectInfoController {
         List<DetectLog> detectLogList=pageInfo.getRecords();
         List<DetectResDto> detectResDtoList=DetectResDto.getDtoFromEntities(detectLogList);
 
-
         if(detectResDtoList==null){
             return  Result.fail("获取失败,请稍后再试");
         }
         for (DetectResDto detectResDto : detectResDtoList) {
             detectResDto.totals =totalPages;
+            // 绑定该检测记录关联的真实缺陷切片列表
+            LambdaQueryWrapper<Defection> defLqw = new LambdaQueryWrapper<>();
+            defLqw.eq(Defection::getDetectId, detectResDto.getId());
+            List<Defection> defs = defectionService.list(defLqw);
+            if (defs != null) {
+                for (Defection d : defs) {
+                    if (d.getCategory() != null) {
+                        d.setCategory(d.getCategory().replace("裂痕", "裂纹"));
+                    }
+                }
+                detectResDto.setDefections(defs);
+            }
         }
         return Result.success("获取成功",detectResDtoList);
     }

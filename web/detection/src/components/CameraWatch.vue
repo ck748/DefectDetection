@@ -9,7 +9,7 @@
           </div>
           <div class="title-text-group">
             <div class="title-row">
-              <h2 class="page-title">小米摄像头自动监听与图片流</h2>
+              <h2 class="page-title">摄像头自动监听与图片流</h2>
               <span class="status-badge" :class="running ? 'is-active' : 'is-stopped'">
                 <span class="status-dot"></span>
                 {{ running ? '实时监听中' : '监听已停止' }}

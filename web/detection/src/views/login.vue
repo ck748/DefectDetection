@@ -184,14 +184,14 @@ export default {
                 if (res.data.code === 200) {
                   localStorage.setItem('useradmin', JSON.stringify(res.data.data));
                   this.$message.success('登录成功');
-                  this.$router.push('/daping');
+                  this.$router.push('/warning');
                 } else {
                   this.$message.error(res.data.message);
                 }
               })
               .catch(() => {
                 this.$message.success('演示模式：登录成功');
-                this.$router.push('/daping');
+                this.$router.push('/warning');
               })
               .finally(() => {
                 this.loading = false;

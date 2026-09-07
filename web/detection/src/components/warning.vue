@@ -122,6 +122,8 @@
         <!-- 表格容器 -->
         <div class="table-container">
           <el-table
+            v-loading="tableLoading"
+            element-loading-text="正在加载最新预警数据..."
             :data="paginatedWarnings"
             border
             stripe
@@ -134,9 +136,16 @@
                 <span class="axle-code-badge">{{ scope.row.axleCode || scope.row.code || '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="type" label="缺陷名称" min-width="120" align="center">
+            <el-table-column prop="type" label="缺陷类型" min-width="120" align="center">
               <template slot-scope="scope">
-                <span class="warning-type-text" :class="scope.row.type === '裂纹' ? 'defect-crack' : 'defect-scratch'">{{ scope.row.type }}</span>
+                <span class="warning-type-text" :class="scope.row.type && scope.row.type.includes('裂纹') ? 'defect-crack' : 'defect-scratch'">{{ scope.row.type }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="defectionsSum" label="缺陷数量" width="85" align="center">
+              <template slot-scope="scope">
+                <el-tag size="small" :type="scope.row.defectionsSum > 0 ? (scope.row.defectionsSum >= 3 ? 'danger' : 'warning') : 'info'" effect="plain">
+                  {{ scope.row.defectionsSum !== undefined ? scope.row.defectionsSum : 0 }} 处
+                </el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="category" label="质量类别" width="130" align="center">
@@ -532,6 +541,7 @@ export default {
   name: 'WarningManagement',
   data() {
     return {
+      tableLoading: true,
       warningsOpen: true,
       warningsLevel: '2',
       Way: '2',
@@ -539,412 +549,21 @@ export default {
       email: '319213993@qq.com',
       searchName: '',
       searchLevel: '',
-      warningsList: [
-        {
-          id: 1,
-          axleCode: '3109550-P2887',
-          workOrderId: 'WO-2026-01',
-          type: '裂纹',
-          category: '结构完整性',
-          level: '3',
-          createTime: '2026-9-3 18:58:19',
-          time: '2026-9-3 18:58:19',
-          defectionsSum: 4,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 2,
-          axleCode: 'SH058146',
-          workOrderId: 'WO-2026-02',
-          type: '划痕',
-          category: '配合面划痕',
-          level: '1',
-          createTime: '2026-9-3 9:39:05',
-          time: '2026-9-3 9:39:05',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 3,
-          axleCode: '2409733-P9085',
-          workOrderId: 'WO-2026-03',
-          type: '划痕',
-          category: '外观表面缺陷',
-          level: '2',
-          createTime: '2025-12-21 10:52:16',
-          time: '2025-12-21 10:52:16',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 4,
-          axleCode: 'JS035772',
-          workOrderId: 'WO-2026-04',
-          type: '裂纹',
-          category: '结构完整性',
-          level: '2',
-          createTime: '2025-12-21 10:51:45',
-          time: '2025-12-21 10:51:45',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 5,
-          axleCode: '2480050-P6383',
-          workOrderId: 'WO-2026-05',
-          type: '划痕',
-          category: '配合面划痕',
-          level: '1',
-          createTime: '2025-12-21 10:51:26',
-          time: '2025-12-21 10:51:26',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 6,
-          axleCode: 'HB094498',
-          workOrderId: 'WO-2026-01',
-          type: '裂纹',
-          category: '内部探伤缺陷',
-          level: '2',
-          createTime: '2025-12-21 10:51:09',
-          time: '2025-12-21 10:51:09',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 7,
-          axleCode: '2404619-P3681',
-          workOrderId: 'WO-2026-02',
-          type: '划痕',
-          category: '轴颈表面损伤',
-          level: '2',
-          createTime: '2025-12-21 10:50:59',
-          time: '2025-12-21 10:50:59',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 8,
-          axleCode: 'ZJ018224',
-          workOrderId: 'WO-2026-03',
-          type: '裂纹',
-          category: '金相疲劳',
-          level: '2',
-          createTime: '2025-12-21 10:50:41',
-          time: '2025-12-21 10:50:41',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 9,
-          axleCode: '2480190-P9879',
-          workOrderId: 'WO-2026-04',
-          type: '划痕',
-          category: '外观表面缺陷',
-          level: '2',
-          createTime: '2025-12-21 10:50:20',
-          time: '2025-12-21 10:50:20',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 10,
-          axleCode: 'TJ095850',
-          workOrderId: 'WO-2026-05',
-          type: '裂纹',
-          category: '结构完整性',
-          level: '2',
-          createTime: '2025-12-21 10:50:03',
-          time: '2025-12-21 10:50:03',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 11,
-          axleCode: '2403511-P3011',
-          workOrderId: 'WO-2026-01',
-          type: '划痕',
-          category: '机械加工划伤',
-          level: '1',
-          createTime: '2025-12-21 10:49:45',
-          time: '2025-12-21 10:49:45',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 12,
-          axleCode: 'SH058147',
-          workOrderId: 'WO-2026-02',
-          type: '裂纹',
-          category: '应力开裂',
-          level: '3',
-          createTime: '2025-12-21 10:49:22',
-          time: '2025-12-21 10:49:22',
-          defectionsSum: 3,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 13,
-          axleCode: '2409733-P9086',
-          workOrderId: 'WO-2026-03',
-          type: '划痕',
-          category: '装配划损',
-          level: '1',
-          createTime: '2025-12-21 10:49:01',
-          time: '2025-12-21 10:49:01',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 14,
-          axleCode: 'JS035773',
-          workOrderId: 'WO-2026-04',
-          type: '裂纹',
-          category: '无损探伤',
-          level: '3',
-          createTime: '2025-12-21 10:48:40',
-          time: '2025-12-21 10:48:40',
-          defectionsSum: 4,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 15,
-          axleCode: '2480050-P6384',
-          workOrderId: 'WO-2026-05',
-          type: '划痕',
-          category: '搬运磕划',
-          level: '2',
-          createTime: '2025-12-21 10:48:15',
-          time: '2025-12-21 10:48:15',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 16,
-          axleCode: 'HB094499',
-          workOrderId: 'WO-2026-01',
-          type: '裂纹',
-          category: '表面微裂纹',
-          level: '3',
-          createTime: '2025-12-21 10:47:50',
-          time: '2025-12-21 10:47:50',
-          defectionsSum: 3,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 17,
-          axleCode: '2404619-P3682',
-          workOrderId: 'WO-2026-02',
-          type: '划痕',
-          category: '外观表面缺陷',
-          level: '1',
-          createTime: '2025-12-21 10:47:20',
-          time: '2025-12-21 10:47:20',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 18,
-          axleCode: 'ZJ018225',
-          workOrderId: 'WO-2026-03',
-          type: '裂纹',
-          category: '结构完整性',
-          level: '3',
-          createTime: '2025-12-21 10:46:55',
-          time: '2025-12-21 10:46:55',
-          defectionsSum: 4,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 19,
-          axleCode: '2480190-P9880',
-          workOrderId: 'WO-2026-04',
-          type: '划痕',
-          category: '配合面划痕',
-          level: '2',
-          createTime: '2025-12-21 10:46:30',
-          time: '2025-12-21 10:46:30',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 20,
-          axleCode: 'TJ095851',
-          workOrderId: 'WO-2026-05',
-          type: '裂纹',
-          category: '金相疲劳',
-          level: '3',
-          createTime: '2025-12-21 10:46:00',
-          time: '2025-12-21 10:46:00',
-          defectionsSum: 3,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 21,
-          axleCode: '2403511-P3012',
-          workOrderId: 'WO-2026-01',
-          type: '划痕',
-          category: '轴颈表面损伤',
-          level: '1',
-          createTime: '2025-12-21 10:45:30',
-          time: '2025-12-21 10:45:30',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 22,
-          axleCode: 'SH058148',
-          workOrderId: 'WO-2026-02',
-          type: '裂纹',
-          category: '内部探伤缺陷',
-          level: '2',
-          createTime: '2025-12-21 10:45:00',
-          time: '2025-12-21 10:45:00',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 23,
-          axleCode: '2409733-P9087',
-          workOrderId: 'WO-2026-03',
-          type: '划痕',
-          category: '机械加工划伤',
-          level: '2',
-          createTime: '2025-12-21 10:44:30',
-          time: '2025-12-21 10:44:30',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 24,
-          axleCode: 'JS035774',
-          workOrderId: 'WO-2026-04',
-          type: '裂纹',
-          category: '结构完整性',
-          level: '3',
-          createTime: '2025-12-21 10:44:00',
-          time: '2025-12-21 10:44:00',
-          defectionsSum: 3,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 25,
-          axleCode: '2480050-P6385',
-          workOrderId: 'WO-2026-05',
-          type: '划痕',
-          category: '外观表面缺陷',
-          level: '1',
-          createTime: '2025-12-21 10:43:30',
-          time: '2025-12-21 10:43:30',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 26,
-          axleCode: 'HB094500',
-          workOrderId: 'WO-2026-01',
-          type: '裂纹',
-          category: '应力开裂',
-          level: '2',
-          createTime: '2025-12-21 10:43:00',
-          time: '2025-12-21 10:43:00',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 27,
-          axleCode: '2404619-P3683',
-          workOrderId: 'WO-2026-02',
-          type: '划痕',
-          category: '配合面划痕',
-          level: '2',
-          createTime: '2025-12-21 10:42:30',
-          time: '2025-12-21 10:42:30',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 28,
-          axleCode: 'ZJ018226',
-          workOrderId: 'WO-2026-03',
-          type: '裂纹',
-          category: '金相疲劳',
-          level: '3',
-          createTime: '2025-12-21 10:42:00',
-          time: '2025-12-21 10:42:00',
-          defectionsSum: 3,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 29,
-          axleCode: '2480190-P9881',
-          workOrderId: 'WO-2026-04',
-          type: '划痕',
-          category: '装配划损',
-          level: '1',
-          createTime: '2025-12-21 10:41:30',
-          time: '2025-12-21 10:41:30',
-          defectionsSum: 1,
-          imgBase64: null,
-          content: ''
-        },
-        {
-          id: 30,
-          axleCode: 'TJ095852',
-          workOrderId: 'WO-2026-05',
-          type: '划痕',
-          category: '表面缺陷',
-          level: '2',
-          createTime: '2025-12-21 10:41:00',
-          time: '2025-12-21 10:41:00',
-          defectionsSum: 2,
-          imgBase64: null,
-          content: ''
-        }
-      ],
-      warningsSum: 30,
-      oneDayWarningsSum: 1,
+      warningsList: [],
+      warningsSum: 0,
+      oneDayWarningsSum: 0,
       levelDistributionData: {
-        '1': 8,
-        '2': 14,
-        '3': 8
+        '1': 0,
+        '2': 0,
+        '3': 0
       },
       chartId: 'warning-chart',
       barChart: {
         name: '紧急程度分布',
         source: {
-          '紧急程度 1': 8,
-          '紧急程度 2': 14,
-          '紧急程度 3': 8
+          '紧急程度 1': 0,
+          '紧急程度 2': 0,
+          '紧急程度 3': 0
         }
       },
       chartInstance: null,
@@ -958,6 +577,9 @@ export default {
       currentExpertReport: null,
       currentExpertAdvice: null
     };
+  },
+  created() {
+    this.fetchData();
   },
   computed: {
     level3Count() {
@@ -991,7 +613,6 @@ export default {
     }
   },
   mounted() {
-    this.fetchData();
     this.$nextTick(() => {
       this.drawChart();
     });
@@ -1130,11 +751,30 @@ export default {
                   realTimeStr = rawT;
                 }
 
-                // 缺陷类型与质量类别对齐（若有缺陷则智能研判，若缺陷数为0则展示合格或轻微瑕疵）
-                const defSum = hist.defectionsSum !== undefined ? hist.defectionsSum : (item.defectionsSum !== undefined ? item.defectionsSum : 1);
+                // 缺陷类型与质量类别对齐（如果有多种不同缺陷，使用逗号分隔去重展示；若只有一种则展示单种）
+                const defSum = hist.defectionsSum !== undefined ? hist.defectionsSum : (item.defectionsSum !== undefined ? item.defectionsSum : (item.defections ? item.defections.length : 1));
                 const levelVal = defSum === 0 ? '1' : (defSum >= 3 ? '3' : (defSum >= 2 ? '2' : ((idx % 3 === 0) ? '2' : '1')));
-                const isCrack = levelVal === '3' || (levelVal === '2' && idx % 2 === 1);
-                const defectType = isCrack ? '裂纹' : (defSum === 0 ? '划痕' : '划痕');
+
+                let defectType = '';
+                const rawDefections = hist.defections || item.defections;
+                if (rawDefections && Array.isArray(rawDefections) && rawDefections.length > 0) {
+                  const typeSet = new Set();
+                  rawDefections.forEach(d => {
+                    const c = this.formatDefectCategory(d.category);
+                    if (c) typeSet.add(c);
+                  });
+                  defectType = Array.from(typeSet).join('，');
+                }
+
+                if (!defectType) {
+                  if (item.type) {
+                    defectType = this.formatDefectCategory(item.type);
+                  } else {
+                    const isCrack = levelVal === '3' || (levelVal === '2' && idx % 2 === 1);
+                    defectType = isCrack ? '裂纹' : '划痕';
+                  }
+                }
+                const isCrack = defectType.includes('裂纹');
                 const catPool = isCrack ? crackCategoryPool : scratchCategoryPool;
                 const catIndex = (idx * 3 + itemId) % catPool.length;
 
@@ -1151,6 +791,7 @@ export default {
                   createTime: realTimeStr,
                   time: realTimeStr,
                   defectionsSum: defSum,
+                  defections: hist.defections || [],
                   imgBase64: hist.imgBase64 || null,
                   content: ''
                 };
@@ -1200,6 +841,8 @@ export default {
           }
         }).catch(err => {
           console.error('连接后端告警接口失败:', err);
+        }).finally(() => {
+          this.tableLoading = false;
         });
       }).catch(() => {
         // 请求降级容错
@@ -1207,6 +850,8 @@ export default {
           if (res.code === 200 && res.data && res.data.warningsList) {
             this.warningsList = res.data.warningsList;
           }
+        }).finally(() => {
+          this.tableLoading = false;
         });
       });
     },

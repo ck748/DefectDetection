@@ -22,8 +22,8 @@ const routes = [
         path: '/home',
         name: 'Home',
         component: Home,
+        redirect: '/warning',
         children: [
-            { path: '/daping', name: 'Daping', meta: { name: '数据大屏' }, component: () => import('../components/platform.vue') }, 
             { path: '/picture_detection', name: 'Picture_detection', meta: { name: '图片检测' }, component: () => import('../components/picture_detection.vue') },
             { path: '/dashboard', name: 'Dashboard', meta: { name: '概要信息' }, component: () => import('../components/dashboard.vue') },
             { path: '/info', name: 'Info', meta: { name: '历史检测' }, component: () => import('../components/info.vue') },

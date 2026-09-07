@@ -1,4 +1,4 @@
-package com.ggbond.defectdetection.service.impl;
+package com.ggbond.defectdetection.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

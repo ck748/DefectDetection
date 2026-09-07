@@ -1261,7 +1261,7 @@ export default {
         const rt = this.realtimeJoints;
         const jd = rt.joints_deg;
         return [
-          { label: '机械臂型号', value: 'AUBO-CB-iS', highlight: true, sub: '6 轴协作型机械臂' },
+          { label: '机械臂型号', value: '灵眸-CB-iS', highlight: true, sub: '6 轴协作型机械臂' },
           { label: 'J1 关节角度', value: jd[0].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[0].toFixed(4) + ' rad' },
           { label: 'J2 关节角度', value: jd[1].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[1].toFixed(4) + ' rad' },
           { label: 'J3 关节角度', value: jd[2].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[2].toFixed(4) + ' rad' },
