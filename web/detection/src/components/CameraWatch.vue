@@ -232,10 +232,7 @@ function toFullImageUrl(url) {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  const cleanUrl = url.startsWith('/') ? url : '/' + url;
-  // 动态获取当前访问页面的主机名与协议，自动适应局域网 IP / 域名 / 端口，避免写死 localhost
-  const host = window.location.hostname || 'localhost';
-  return `http://${host}:8081${cleanUrl}`;
+  return url.startsWith('/') ? url : '/' + url;
 }
 
 export default {
@@ -284,7 +281,7 @@ export default {
       return toFullImageUrl(url);
     },
     fetchStatus() {
-      this.$request.get('/api/detectInfo/cameraWatch/status').then(res => {
+      this.$request.get('/api/cameraWatch/status').then(res => {
         if (res.code === 200 || res.code === 1 || res.code === '200') {
           const data = res.data || {};
           this.running = Boolean(data.running);
@@ -311,7 +308,7 @@ export default {
       this.startWatch();
     },
     startWatch() {
-      this.$request.post('/api/detectInfo/cameraWatch/start', { watchPath: this.watchPath }).then(res => {
+      this.$request.post('/api/cameraWatch/start', { watchPath: this.watchPath }).then(res => {
         if (res.code === 200 || res.code === 1 || res.code === '200') {
           this.$message.success(res.msg || res.message || '目录监听启动成功！');
           this.running = true;
@@ -324,7 +321,7 @@ export default {
       });
     },
     stopWatch() {
-      this.$request.post('/api/detectInfo/cameraWatch/stop').then(res => {
+      this.$request.post('/api/cameraWatch/stop').then(res => {
         if (res.code === 200 || res.code === 1 || res.code === '200') {
           this.$message.info('目录监听已停止');
           this.running = false;
@@ -345,7 +342,7 @@ export default {
           type: 'warning'
         }
       ).then(() => {
-        this.$request.post('/api/detectInfo/cameraWatch/delete', {
+        this.$request.post('/api/cameraWatch/delete', {
           id: item.id,
           deleteSourceFile: true
         }).then(res => {
@@ -374,7 +371,7 @@ export default {
           type: 'danger'
         }
       ).then(() => {
-        this.$request.post('/api/detectInfo/cameraWatch/clear', {
+        this.$request.post('/api/cameraWatch/clear', {
           deletePhysical: true
         }).then(res => {
           if (res.code === 200 || res.code === 1 || res.code === '200') {

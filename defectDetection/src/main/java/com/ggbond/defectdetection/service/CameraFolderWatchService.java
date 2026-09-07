@@ -262,7 +262,7 @@ public class CameraFolderWatchService {
     }
 
     private String buildWebUrl(String storedName) {
-        return "/api/detectInfo/cameraWatch/image?name=" + storedName;
+        return "/api/cameraWatch/image?name=" + storedName;
     }
 
     /**
