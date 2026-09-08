@@ -444,7 +444,7 @@
               </div>
 
               <div class="issue-title-block">
-                <h4 class="issue-heading">灵巡SLAM-500 搬运小车未归位</h4>
+                <h4 class="issue-heading">灵巡LN-IA 搬运小车未归位</h4>
               </div>
 
               <div class="issue-detail-narrative">

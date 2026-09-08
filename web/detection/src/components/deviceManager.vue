@@ -990,14 +990,14 @@ export default {
         },
         {
           id: 'dev_agv_01',
-          name: ' 灵巡SLAM-500',
+          name: ' 灵巡LN-IA',
           type: 'agv',
           typeName: '自主底盘',
           icon: 'el-icon-truck',
           ip: '192.168.1.101',
           port: 502,
           protocol: 'Modbus-TCP',
-          sn: 'AGV-SLAM-500K-01',
+          sn: 'AGV-LN-IA-01',
           vendor: '',
           primaryMetricName: '动力电池',
           primaryMetricVal: '88 %',
@@ -1049,7 +1049,6 @@ export default {
         const rt = this.realtimeJoints;
         const jd = rt.joints_deg;
         return [
-          { label: '机械臂型号', value: '灵眸-CB-iS', highlight: true, sub: '6 轴协作型机械臂' },
           { label: 'J1 关节角度', value: jd[0].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[0].toFixed(4) + ' rad' },
           { label: 'J2 关节角度', value: jd[1].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[1].toFixed(4) + ' rad' },
           { label: 'J3 关节角度', value: jd[2].toFixed(2) + '°', highlight: rt.connected, sub: '实时弧度: ' + rt.joints_rad[2].toFixed(4) + ' rad' },
@@ -1059,7 +1058,7 @@ export default {
         ];
       } else if (dev.type === 'agv') {
         return [
-          { label: '导航方式', value: 'SLAM 激光导航', highlight: true, sub: '高精自主建图与定位' },
+          { label: '导航方式', value: '磁条导航', highlight: true, sub: '高精自主建图与定位' },
           { label: '最大载重', value: '100 kg', highlight: true, sub: '工业级重载搬运底盘' },
           { label: '最大速度', value: '1.5 m/s', highlight: true, sub: '全向平稳巡航行驶' }
         ];
@@ -3512,23 +3511,24 @@ export default {
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
-  gap: 3px !important;
+  gap: 5px !important;
   background: #0f172a !important;
   border: 1px solid rgba(0, 229, 255, 0.25) !important;
   border-radius: 6px !important;
-  padding: 8px 12px !important;
+  padding: 10px 14px !important;
   box-sizing: border-box !important;
-  min-height: 54px !important;
+  min-height: 64px !important;
 }
 
 .agv-status-item .k {
-  font-size: 11.5px !important;
+  font-size: 14px !important;
   color: #94a3b8 !important;
   line-height: 1.2 !important;
+  font-weight: 500 !important;
 }
 
 .agv-status-item .v {
-  font-size: 13.5px !important;
+  font-size: 19px !important;
   font-weight: 700 !important;
   color: #f8fafc !important;
   font-family: 'Roboto Mono', 'SF Mono', Consolas, Monaco, monospace !important;
