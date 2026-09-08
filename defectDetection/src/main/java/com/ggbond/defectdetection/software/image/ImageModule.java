@@ -86,96 +86,46 @@ public class ImageModule {
     //接收图像
     @PostMapping("/img")
     public Result imgProcess(@RequestPart("img") MultipartFile img) throws Exception {
-        System.out.println("接收图像");
+        System.out.println("接收图像，仅执行保存操作");
 
-        /*
-        if(CommonResource.getStatus() != SysStatus.WORKING){
-            //同步控制暂停设备
-            return;
+        // 1. 判断是否为空
+        if (img == null || img.isEmpty()) {
+            return Result.fail("上传的图片为空");
         }
-        */
 
-        //判断是否为图片并转为jpeg格式
+        // 2. 将上传的文件转为 Base64 格式
         String imgBase64 = ImgUtil.convertToJPGBase64(img);
-        log.info("[ImageModule] 图片转换完成，base64长度: {}", imgBase64.length());
 
-        // 【关键修复】先保存原始图片到临时路径，避免后续被覆盖
-        String tempOriginalPath = ConfigProperties.properties.getModelConfig().getResStoragePath() + "/temp_original_" + System.currentTimeMillis() + ".jpg";
-        try {
-            ImgUtil.saveImageToFile(imgBase64, tempOriginalPath);
-            log.info("[ImageModule] 原始图片已保存到临时路径: {}", tempOriginalPath);
-        } catch (Exception e) {
-            log.error("[ImageModule] 保存原始图片失败: {}", e.getMessage(), e);
+        // 3. 强制保存到指定的路径，并直接使用原图的名字，不再随机生成新文件名
+        String originalFilename = img.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            originalFilename = ImgUtil.generateRandomName(); // 兜底防止无文件名
         }
-
-        // 旧模型检测已禁用，由 ModelMain_V4.py 新模型统一处理（含批次检测+Qwen分析+回调）
-        // 此处仅保存原图，不做检测，检测结果由 Python 端回调 /detection/batch/callback 写入
-        DetectResDto currentRes = new DetectResDto();
-        currentRes.setImgBase64(imgBase64);
-        currentRes.setOriginalImgBase64(imgBase64);
-        currentRes.setDefections(new java.util.ArrayList<>());
-        currentRes.setDefectionsSum(0);
-        log.info("[ImageModule] 旧模型检测已跳过，图片将由 ModelMain_V4.py 新模型处理");
-
-        // 设置原图到 SSE 消息中（左侧面板显示原图，右侧显示标注图）
-        if (currentRes.getOriginalImgBase64() == null) {
-            currentRes.setOriginalImgBase64(imgBase64);
-            log.info("[ImageModule] 设置 originalImgBase64，长度: {}", imgBase64.length());
-        } else {
-            log.info("[ImageModule] originalImgBase64 已存在，长度: {}", currentRes.getOriginalImgBase64().length());
-        }
-
-        // 更新 static res 仅用于 GUI 显示（不影响 SSE 推送）
-        res = currentRes;
-
-        // ===== 图片文件保存（GUI 桌面端显示用）=====
-        // 注意：不再保存到 DetectLog 表，避免与新模型 DetectionImage 表产生重复记录
-        // 新模型的检测结果由 ModelMain_V4.py 回调 /detection/batch/callback 统一入库
-        Integer workOrderId = 0;
-        try {
-            if (CommonResource.getCurrentWorkOder() != null) {
-                workOrderId = CommonResource.getCurrentWorkOder().getId();
-            }
-        } catch (Exception e) {
-            log.warn("获取工单ID失败: {}", e.getMessage());
-        }
-
-        // 保存标注图和原图到文件（供 GUI 桌面端显示）
-        String name = ImgUtil.generateRandomName();
-        String storagePath = ConfigProperties.properties.getModelConfig().getResStoragePath() + "/" + workOrderId + "/" + name;
-        try {
-            ImgUtil.saveImageToFile(currentRes.getImgBase64(), storagePath);
-            String originalPath = storagePath.replaceAll("(\\.[a-zA-Z]+)$", "_original$1");
-            ImgUtil.saveImageToFile(imgBase64, originalPath);
-            log.info("[ImageModule] 图片文件保存成功: {}", storagePath);
-        } catch (Exception e) {
-            log.error("[ImageModule] 图片文件保存失败: {}", e.getMessage(), e);
-        }
-
-        // ===== 更新内存统计数据（不写数据库）=====
-        int defectionsSum = currentRes.getDefections() != null ? currentRes.getDefections().size() : 0;
-        currentRes.setDefectionsSum(defectionsSum);
-        dataModule.updateDataMaps(currentRes);
-
-        //3.4 工单进度加1,更新到新工单
-        if (CommonResource.getCurrentWorkOder() != null) {
-            CommonResource.updateWorkOrder();
-        }
-
-        //更新图像和图表 - 只在GUI可用时更新
-        if(realtimeInterface != null) {
-            realtimeInterface.getDetectImagePanel().updateImageAndTable(currentRes);
-            if (CommonResource.getCurrentWorkOder() != null) {
-                realtimeInterface.getDetectImagePanel().updateTextLabel(workOrderId, CommonResource.getCurrentNum(), CommonResource.getDetectSum());
-            }
-            realtimeInterface.updateCharts(dataModule.getDataMaps());
-        }
-
-        //将最新结果发送至web端(通过SSE) — 使用局部变量 currentRes，避免并发覆盖
-        new Thread(sseUtil.sendMessageToAll(String.valueOf(Result.IMAGE_CODE), currentRes),"发送检测结果").start();
         
-        //同时直接返回结果给调用方
-        return Result.success("检测完成", currentRes);
+        // 【核心修复】：解决文件重复复制、带入路径的问题
+        // 因为 formData 中的 filename 可能带有客户端的绝对路径（如 C:\xxx\yyy.jpg），
+        // 导致写入时产生预期外的文件或层级。
+        // 这里强制只取纯文件名：
+        originalFilename = new java.io.File(originalFilename).getName();
+        
+        String storagePath = "/root/desc/cmzj-main/defectDetection/detectPicture/2/" + originalFilename;
+
+        // 4. 将原始图片的 Base64 数据保存到物理磁盘
+        try {
+            ImgUtil.saveImageToFile(imgBase64, storagePath);
+            log.info("图片已成功保存到路径: {}", storagePath);
+
+            // 为了不影响前端或其他依赖该接口的调用方，返回一个包含原图且没有缺陷的假数据结果
+            DetectResDto dummyRes = new DetectResDto();
+            dummyRes.setImgBase64(imgBase64);
+            dummyRes.setDefections(new java.util.ArrayList<>());
+            dummyRes.setDefectionsSum(0);
+
+            return Result.success("图片保存成功", dummyRes);
+        } catch (Exception e) {
+            log.error("图片保存失败: {}", e.getMessage(), e);
+            return Result.fail("图片保存失败");
+        }
     }
 
 
@@ -187,7 +137,7 @@ public class ImageModule {
             // 使用相对路径，兼容不同环境
             String initImagePath = "src/main/resources/assets/init.png";
             java.io.File initFile = new java.io.File(initImagePath);
-            
+
             if (initFile.exists()) {
                 res.setImgBase64(ImgUtil.imageToBase64ByPath(initImagePath));
             } else {
@@ -195,7 +145,7 @@ public class ImageModule {
                 // 设置空的Base64字符串而不是null
                 res.setImgBase64("");
             }
-            
+
             // 初始化为空列表而不是null，避免前端报错
             res.setDefections(new java.util.ArrayList<>());
             res.setDefectionsSum(0);
@@ -213,21 +163,14 @@ public class ImageModule {
         return res;
     }
 
-    //图像检测（旧模型已禁用，由 ModelMain_V4.py 统一处理）
+    //图像检测
     public DetectResDto imgDetect(String  imgBase64){
 
         if(imgBase64==null){
             return null;
         }
 
-        // 旧模型检测已禁用，返回原图和空缺陷列表
-        DetectResDto res = new DetectResDto();
-        res.setImgBase64(imgBase64);
-        res.setOriginalImgBase64(imgBase64);
-        res.setDefections(new java.util.ArrayList<>());
-        res.setDefectionsSum(0);
-        log.info("[ImageModule.imgDetect] 旧模型检测已跳过");
-        return res;
+        return detectModel.detectOne(imgBase64);
     }
 
 
