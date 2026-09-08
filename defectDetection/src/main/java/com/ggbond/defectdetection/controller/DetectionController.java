@@ -94,6 +94,25 @@ public class DetectionController {
     }
 
     /**
+     * 从数据库获取最新批次检测结果（含完整图片base64数据）
+     * 用于专家报告等需要完整数据的场景
+     *
+     * @return 完整的VO数据
+     */
+    @GetMapping("/latest-db")
+    public Result<ModelResultVO> getLatestFromDb() {
+        log.info("从数据库获取最新批次检测结果...");
+        ModelResultVO detail = detectionService.getLatestDetail();
+        
+        if (detail == null) {
+            return Result.fail("数据库中暂无检测结果");
+        }
+        log.info("从数据库获取到最新批次 [{}]，图片数: {}", 
+            detail.getBatchId(), detail.getImages() != null ? detail.getImages().size() : 0);
+        return Result.success("获取成功", detail);
+    }
+
+    /**
      * 根据批次ID查询完整检测结果 (ModelResultVO) (纯数据库查询)
      *
      * @param batchId 批次ID

@@ -747,6 +747,45 @@
                     @click="agvReset"
                   >复位（回1号站）</el-button>
                 </div>
+                <!-- 6个站点导航按钮 -->
+                <div class="btn-group-grid" style="margin-top: 8px;">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(1)"
+                  >1号站</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(2)"
+                  >2号站</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(3)"
+                  >3号站</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(4)"
+                  >4号站</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(5)"
+                  >5号站</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :disabled="!agvConnected"
+                    @click="agvGoStation(6)"
+                  >6号站</el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -967,6 +1006,45 @@
                       @click="agvReset"
                     >复位（回1号站）</el-button>
                   </div>
+                  <!-- 6个站点导航按钮 -->
+                  <div class="btn-group-grid" style="margin-top: 8px;">
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(1)"
+                    >1号站</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(2)"
+                    >2号站</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(3)"
+                    >3号站</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(4)"
+                    >4号站</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(5)"
+                    >5号站</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!agvConnected"
+                      @click="agvGoStation(6)"
+                    >6号站</el-button>
+                  </div>
                   <div class="control-subrow" style="margin-top: 10px;">
                     <span class="tip-label" style="width: 58px;">检测结果:</span>
                     <el-select v-model="inspectResult" size="small" style="width: 160px;">
@@ -1004,7 +1082,7 @@
                     <el-button
                       type="warning"
                       size="small"
-                      :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'"
+                      :disabled="workflowState === 'IDLE'"
                       @click="stopWorkflow"
                     >停止</el-button>
                     <el-button

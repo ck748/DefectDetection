@@ -118,7 +118,8 @@ public class WorkflowService {
         log.info("[步骤2] 开始 28 点位扫描（4 轮，左→右→左→右）");
 
         // 执行扫描（同步阻塞，直到 28 次拍照完成）
-        String scanResult = auboRobotService.executeScanPattern(1500, 2000);
+        // settleMs=500（机械臂稳定等待），cameraWait=2000（相机超时/降级等待）
+        String scanResult = auboRobotService.executeScanPattern(2000, 2000);
         log.info("[步骤2] 扫描完成: {}", scanResult);
 
         // 扫描完成后机械臂回原位
@@ -205,13 +206,27 @@ public class WorkflowService {
     }
 
     /**
-     * 停止当前工作流
+     * 停止当前工作流（机械臂 + AGV 同时停止）
      */
     public synchronized void stopWorkflow() {
+        // 1. 停止机械臂扫描
+        auboRobotService.stopScan();
+        log.info("[停止] 机械臂扫描已停止");
+
+        // 2. 取消工作流任务
         if (currentWorkflow != null) {
             currentWorkflow.cancel(true);
             currentWorkflow = null;
         }
+
+        // 3. 发送 AGV 停止指令（尝试基础模式停止）
+        try {
+            agvSerialService.sendCommand(0x87, 0x04, 0x00);
+            log.info("[停止] AGV 停止指令已发送");
+        } catch (Exception e) {
+            log.warn("[停止] AGV 停止指令发送失败: {}", e.getMessage());
+        }
+
         currentState.set(WorkflowState.IDLE);
         log.info("工作流已停止");
     }

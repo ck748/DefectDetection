@@ -57,7 +57,7 @@
               <div class="muted hint" style="margin-bottom:6px;"></div>
               <div class="workflow-btns">
                 <el-button type="success" :disabled="!canStartWorkflow" @click="startWorkflow">启动</el-button>
-                <el-button type="warning" :disabled="workflowState !== 'IDLE' && workflowState !== 'COMPLETED' && workflowState !== 'ERROR'" @click="stopWorkflow">停止</el-button>
+                <el-button type="warning" :disabled="workflowState === 'IDLE'" @click="stopWorkflow">停止</el-button>
                 <el-button @click="resetWorkflow">重置</el-button>
               </div>
             </div>

@@ -48,7 +48,7 @@ public class VmCameraController {
     /** 测试触发拍照 */
     @PostMapping("/trigger")
     public Result trigger(@RequestBody(required = false) Map<String, Object> body) {
-        int timeout = 10;
+        int timeout = 500;  // 默认 500ms
         if (body != null && body.containsKey("timeout")) {
             timeout = Integer.parseInt(String.valueOf(body.get("timeout")));
         }

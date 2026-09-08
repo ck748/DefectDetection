@@ -32,8 +32,8 @@ public class VmCameraTriggerService {
     @Value("${vm.tcp.port:8888}")
     private int tcpPort;
 
-    @Value("${vm.tcp.capture-timeout:10}")
-    private int captureTimeoutSeconds;
+    @Value("${vm.tcp.capture-timeout:5000}")
+    private int captureTimeoutMs;
 
     private ServerSocket serverSocket;
     private volatile Socket vmSocket;
@@ -161,16 +161,16 @@ public class VmCameraTriggerService {
      * @return true=拍照完成, false=超时或通信失败
      */
     public boolean triggerCapture() {
-        return triggerCapture(captureTimeoutSeconds);
+        return triggerCapture(captureTimeoutMs);
     }
 
     /**
      * 触发 VM 拍照并等待完成
      *
-     * @param timeoutSeconds 超时时间（秒）
+     * @param timeoutMs 超时时间（毫秒）
      * @return true=拍照完成, false=超时或通信失败
      */
-    public boolean triggerCapture(int timeoutSeconds) {
+    public boolean triggerCapture(int timeoutMs) {
         if (!connected.get() || vmOut == null) {
             log.warn("VM 未连接，无法触发拍照");
             return false;
@@ -184,16 +184,16 @@ public class VmCameraTriggerService {
             String cmd = "TRIGGER\n";
             vmOut.write(cmd.getBytes(StandardCharsets.UTF_8));
             vmOut.flush();
-            log.info("[Java→VM] 已发送触发指令，等待拍照完成（超时 {}s）", timeoutSeconds);
+            log.info("[Java→VM] 已发送触发指令，等待拍照完成（超时 {}ms）", timeoutMs);
 
             // 等待 VM 响应
-            String response = responseQueue.poll(timeoutSeconds, TimeUnit.SECONDS);
+            String response = responseQueue.poll(timeoutMs, TimeUnit.MILLISECONDS);
 
             if ("CAPTURE_DONE".equals(response)) {
                 log.info("[Java←VM] 拍照完成确认");
                 return true;
             } else {
-                log.warn("[Java←VM] 等待超时，未收到 CAPTURE_DONE（{}s）", timeoutSeconds);
+                log.warn("[Java←VM] 等待超时，未收到 CAPTURE_DONE（{}ms）", timeoutMs);
                 return false;
             }
 
