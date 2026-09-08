@@ -514,67 +514,6 @@
                 <div class="agv-status-item"><span class="k">充电状态</span><span class="v">{{ agvView.charging }}</span></div>
                 <div class="agv-status-item"><span class="k">更新时间</span><span class="v">{{ agvLastUpdate || '--' }}</span></div>
               </div>
-
-              <!-- AGV 控制 (从右侧迁移至左侧底部空白区) -->
-              <div class="direct-control-block" style="margin-bottom: 0;">
-                <div class="block-title">
-                  <span class="title-text">AGV 控制</span>
-                  <el-tag :type="agvModeTagType" size="small">{{ agvModeText }}</el-tag>
-                </div>
-                <div class="btn-group-grid">
-                  <el-button
-                    type="danger"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvEmergencyStop"
-                  >急停</el-button>
-                  <el-button
-                    type="warning"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvReset"
-                  >复位（回1号站）</el-button>
-                </div>
-                <!-- 6个站点导航按钮 -->
-                <div class="btn-group-grid" style="margin-top: 8px;">
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(1)"
-                  >1号站</el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(2)"
-                  >2号站</el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(3)"
-                  >3号站</el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(4)"
-                  >4号站</el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(5)"
-                  >5号站</el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    :disabled="!agvConnected"
-                    @click="agvGoStation(6)"
-                  >6号站</el-button>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -867,6 +806,12 @@
                       :disabled="!canStartWorkflow"
                       @click="startWorkflow"
                     >启动</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :disabled="!canStartWorkflow"
+                      @click="startWorkflowStayAt6"
+                    >启动留6号站</el-button>
                     <el-button
                       type="warning"
                       size="small"
@@ -1854,6 +1799,20 @@ export default {
         if (res.data.code === 200) {
           this.$message.success('工作流已启动');
           this.appendBusLog('agv', 'WORKFLOW-COORDINATOR', 'RPC / Bus', 'Coordinator', 'Auto Workflow Started');
+          this.startWorkflowPolling();
+        } else {
+          this.$message.error(res.data.message);
+        }
+      } catch (e) {
+        this.$message.error('启动失败');
+      }
+    },
+    async startWorkflowStayAt6() {
+      try {
+        const res = await axios.post('api/workflow/start', { stayAtStation6: true });
+        if (res.data.code === 200) {
+          this.$message.success('工作流已启动（拍照后留6号站）');
+          this.appendBusLog('agv', 'WORKFLOW-COORDINATOR', 'RPC / Bus', 'Coordinator', 'Auto Workflow Started (Stay at Station 6)');
           this.startWorkflowPolling();
         } else {
           this.$message.error(res.data.message);
