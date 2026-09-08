@@ -140,6 +140,26 @@
                 </div>
                 <div class="ai-msg-bubble" :class="msg.role">
                   <div class="markdown-render" v-html="formatMessage(msg.content)"></div>
+
+                  <!-- 事前检查机械臂复位专属交互问答按钮组 -->
+                  <div v-if="msg.interactive === 'reset_arm' && !isTyping" class="ai-interactive-actions">
+                    <div v-if="!msg.userChoice" class="action-btn-group">
+                      <button class="choice-btn yes-btn" @click="handleArmResetChoice('yes', msg)">
+                        <i class="el-icon-check"></i> 是（立即复位）
+                      </button>
+                      <button class="choice-btn no-btn" @click="handleArmResetChoice('no', msg)">
+                        <i class="el-icon-close"></i> 否（暂不复位）
+                      </button>
+                    </div>
+                    <div v-else class="action-done-status font-mono">
+                      <span v-if="msg.userChoice === 'yes'" class="done-tag yes">
+                        <i class="el-icon-circle-check"></i> 已调度工控接口执行复位
+                      </span>
+                      <span v-else class="done-tag no">
+                        <i class="el-icon-info"></i> 已选择暂不复位
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -202,7 +222,7 @@
             </div>
             <div class="header-right font-mono">
               <span class="rate-label">达成率:</span>
-              <span class="rate-value font-mono">84.5%</span>
+              <span class="rate-value font-mono">94.7%</span>
             </div>
           </div>
           <div class="radar-chart-stage" ref="radarChart"></div>
@@ -213,7 +233,7 @@
     <!-- 智能巡诊实时分析报告弹窗卡片 (现代工业浅色高精风 + 简洁白话工况报告) -->
     <el-dialog
       :visible.sync="reportDialogVisible"
-      width="920px"
+      width="1040px"
       custom-class="sixs-report-dialog light-precision-modal"
       top="4vh"
       :close-on-click-modal="true"
@@ -282,16 +302,16 @@
             </div>
             <div class="score-main-flex">
               <div class="score-number-box">
-                <span class="score-num font-mono">78.5</span>
+                <span class="score-num font-mono">94.7</span>
                 <span class="score-unit font-mono">/ 100分</span>
               </div>
               <div class="score-delta-wrap">
                 <div class="delta-bar-shell">
-                  <div class="delta-bar-fill" style="width: 78.5%;"></div>
+                  <div class="delta-bar-fill" style="width: 94.7%;"></div>
                 </div>
                 <div class="delta-meta font-mono">
                   <span>合格基准 ≥ 95.0分</span>
-                  <span class="text-danger">差距 16.5 分</span>
+                  <span class="text-danger">差距 0.3 分</span>
                 </div>
               </div>
             </div>
@@ -301,20 +321,16 @@
           <div class="bento-light-card kpi-hazard-card">
             <div class="bento-light-header">
               <span class="bento-light-label"><i class="el-icon-warning"></i> 现场问题统计</span>
-              <span class="bento-light-tag warn font-mono">共 4 项待处理</span>
+              <span class="bento-light-tag warn font-mono">共 3 项待处理</span>
             </div>
             <div class="hazard-stat-row font-mono">
               <div class="hazard-block danger">
                 <span class="hz-count">2</span>
                 <span class="hz-label">设备未复位</span>
               </div>
-              <div class="hazard-block amber">
-                <span class="hz-count">1</span>
-                <span class="hz-label">辅机未断电</span>
-              </div>
               <div class="hazard-block blue">
                 <span class="hz-count">1</span>
-                <span class="hz-label">现场未清扫</span>
+                <span class="hz-label">桌面不整洁</span>
               </div>
             </div>
           </div>
@@ -349,7 +365,7 @@
             >
               <i class="el-icon-menu"></i>
               <span>全部现场问题</span>
-              <span class="pill-badge">4</span>
+              <span class="pill-badge">3</span>
             </button>
             <button
               class="filter-pill-btn danger"
@@ -361,21 +377,12 @@
               <span class="pill-badge danger">2</span>
             </button>
             <button
-              class="filter-pill-btn amber"
-              :class="{ 'is-active': reportFilterTab === 'power' }"
-              @click="reportFilterTab = 'power'"
-            >
-              <i class="el-icon-switch-button"></i>
-              <span>辅机未断电</span>
-              <span class="pill-badge amber">1</span>
-            </button>
-            <button
               class="filter-pill-btn cyan"
               :class="{ 'is-active': reportFilterTab === 'clean' }"
               @click="reportFilterTab = 'clean'"
             >
               <i class="el-icon-brush"></i>
-              <span>台面与清扫</span>
+              <span>台面与手套</span>
               <span class="pill-badge cyan">1</span>
             </button>
           </div>
@@ -395,8 +402,6 @@
               <div class="issue-meta-row">
                 <div class="meta-left-tags">
                   <span class="light-tag-pill red font-mono"><i class="el-icon-error"></i> 机械臂未归位</span>
-                  <span class="light-station-tag"><i class="el-icon-location"></i> 1号全周检测站</span>
-                  <span class="light-dev-code font-mono">AUBO 协作机械臂</span>
                 </div>
                 <div class="meta-right-state">
                   <span class="status-dot red"></span>
@@ -405,11 +410,11 @@
               </div>
 
               <div class="issue-title-block">
-                <h4 class="issue-heading">AUBO 协作机械臂未归位</h4>
+                <h4 class="issue-heading">机械臂 灵眸-CB-iS 未归位</h4>
               </div>
 
               <div class="issue-detail-narrative">
-                <strong>现场情况：</strong>检测结束 未回到原位 且通电发热。夹爪悬停于半轴工件上方，存在误碰风险。
+                <strong>现场情况：</strong>检测结束 未恢复原位 且通电发热。
               </div>
 
               <div class="issue-action-dock">
@@ -431,8 +436,6 @@
               <div class="issue-meta-row">
                 <div class="meta-left-tags">
                   <span class="light-tag-pill red font-mono"><i class="el-icon-error"></i> 小车未归位</span>
-                  <span class="light-station-tag"><i class="el-icon-location"></i> 成品分拣主干道 (3号路口)</span>
-                  <span class="light-dev-code font-mono">AGV 搬运小车</span>
                 </div>
                 <div class="meta-right-state">
                   <span class="status-dot red"></span>
@@ -441,17 +444,17 @@
               </div>
 
               <div class="issue-title-block">
-                <h4 class="issue-heading">AGV 搬运小车未归位</h4>
+                <h4 class="issue-heading">灵巡SLAM-500 搬运小车未归位</h4>
               </div>
 
               <div class="issue-detail-narrative">
-                <strong>现场情况：</strong>检测结束 AGV小车未归位 电量剩余23%，停留在主干通道中间。
+                <strong>现场情况：</strong>检测结束 AGV小车未归位，停留在主干通道中间。
               </div>
 
               <div class="issue-action-dock">
                 <div class="dock-left-guide">
                   <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
-                  <span>下发返航指令，调度 AGV 小车驶回 1 号充电桩进行充电。</span>
+                  <span>下发返航指令，调度AGV小车归位。</span>
                 </div>
                 <el-button size="mini" type="danger" plain class="dock-act-btn" @click="sendQuickQuestion('请将分拣小车归位')">
                   调度 AGV 小车归位
@@ -460,70 +463,32 @@
             </div>
           </div>
 
-          <!-- 3. 设备未断电 -->
-          <div v-show="reportFilterTab === 'all' || reportFilterTab === 'power'" class="light-issue-card border-amber">
-            <div class="card-glow-edge amber"></div>
-            <div class="card-inner-shell">
-              <div class="issue-meta-row">
-                <div class="meta-left-tags">
-                  <span class="light-tag-pill amber font-mono"><i class="el-icon-warning"></i> 辅机未断电</span>
-                  <span class="light-station-tag"><i class="el-icon-location"></i> 智能光学检测暗箱</span>
-                  <span class="light-dev-code font-mono">相机补光灯与旋转台</span>
-                </div>
-                <div class="meta-right-state">
-                  <span class="status-dot amber"></span>
-                  <span class="state-txt amber">电源常通未断</span>
-                </div>
-              </div>
-
-              <div class="issue-title-block">
-                <h4 class="issue-heading">相机辅机照明与旋转台电源未关闭</h4>
-              </div>
-
-              <div class="issue-detail-narrative">
-                <strong>现场情况：</strong>检测结束 补光灯及转台驱动电源未断开，长时间空载通电发热。
-              </div>
-
-              <div class="issue-action-dock">
-                <div class="dock-left-guide">
-                  <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
-                  <span>切断暗箱补光灯及旋转台电机驱动电源，进入节能休眠状态。</span>
-                </div>
-                <el-button size="mini" type="warning" plain class="dock-act-btn" @click="sendQuickQuestion('检测相机镜头清洁保养与辅机冷休眠规程')">
-                  切断闲置电源
-                </el-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 4. 标定台桌面整洁与量具定置 -->
+          <!-- 3. 标定台桌面整洁与手套用具 -->
           <div v-show="reportFilterTab === 'all' || reportFilterTab === 'clean'" class="light-issue-card border-blue">
             <div class="card-glow-edge cyan"></div>
             <div class="card-inner-shell">
               <div class="issue-meta-row">
                 <div class="meta-left-tags">
-                  <span class="light-tag-pill cyan font-mono"><i class="el-icon-info"></i> 台面不整洁</span>
-                  <span class="light-station-tag"><i class="el-icon-location"></i> 2号样本标定工作台</span>
-                  <span class="light-dev-code font-mono">标定工具台面</span>
+                  <span class="light-tag-pill cyan font-mono"><i class="el-icon-info"></i> 桌面不整洁</span>
                 </div>
                 <div class="meta-right-state">
                   <span class="status-dot cyan"></span>
-                  <span class="state-txt cyan">量具未定置归位</span>
+                  <span class="state-txt cyan">用具未摆放整齐</span>
                 </div>
               </div>
 
               <div class="issue-title-block">
-                <h4 class="issue-heading">标定台面未清理 量具未定置</h4>
+                <h4 class="issue-heading">工作台面不整洁 手套用具未摆放整齐</h4>
               </div>
 
               <div class="issue-detail-narrative">
-                <strong>现场情况：</strong>标定结束 台面遗留废纸杂物，数显千分尺及卡尺未收纳回专用防震槽。
+                <strong>现场情况：</strong>检测结束 工作台面杂乱，劳保手套与工位用具随意摆放未归位。
               </div>
 
               <div class="issue-action-dock">
                 <div class="dock-left-guide">
                   <span class="guide-lead"><i class="el-icon-s-operation"></i> 整改措施:</span>
-                  <span>清理桌面杂物，量具擦拭后规整放入专用防震卡槽。</span>
+                  <span>整理清洁工作台面，将劳保手套及工件用具规范定置摆放。</span>
                 </div>
                 <el-button size="mini" type="primary" plain class="dock-act-btn" @click="sendQuickQuestion('半轴缺陷标定区与合格品库房的整顿三定管理要求')">
                   查看整顿规范
@@ -554,8 +519,8 @@
           <div class="audit-col">
             <span class="audit-k"><i class="el-icon-warning"></i> 待整改项</span>
             <div class="audit-v-row">
-              <span class="audit-v text-crimson">4 项</span>
-              <span class="audit-sub">2项复位 / 2项清扫断电</span>
+              <span class="audit-v text-crimson">3 项</span>
+              <span class="audit-sub">2项复位 / 1项桌面整洁</span>
             </div>
           </div>
 
@@ -791,6 +756,7 @@
 
 <script>
 import * as echarts from 'echarts';
+import axios from 'axios';
 
 export default {
   name: 'SixSManager',
@@ -961,10 +927,15 @@ export default {
         const fullReply = this.generate6SAnswer(q);
         this.isThinking = false;
 
+        const isPreCheck = q.includes('事前检查') || q.includes('班前点检') || q.includes('开机准入');
+        const isPostCheck = q.includes('事后检查') || q.includes('班后维护') || q.includes('停机归整');
+
         const assistantMsg = {
           role: 'assistant',
           content: '',
-          time: this.getNowTime()
+          time: this.getNowTime(),
+          interactive: (isPreCheck || isPostCheck) ? 'reset_arm' : null,
+          userChoice: null
         };
         this.messageList.push(assistantMsg);
         this.startTypewriter(assistantMsg, fullReply);
@@ -993,16 +964,72 @@ export default {
         }
       }, 16);
     },
+    async handleArmResetChoice(choice, msgObj) {
+      if (!msgObj || msgObj.userChoice) return;
+      this.$set(msgObj, 'userChoice', choice);
+
+      if (choice === 'no') {
+        // 点击“否”：不产生硬件动作，仅记录选择
+        this.messageList.push({
+          role: 'user',
+          content: '否',
+          time: this.getNowTime()
+        });
+        this.$nextTick(() => this.scrollToBottom());
+      } else if (choice === 'yes') {
+        // 点击“是”：调用车间检测页面同款回原位接口 api/aubo/photo/moveToHome
+        this.messageList.push({
+          role: 'user',
+          content: '是，请将机械臂复位',
+          time: this.getNowTime()
+        });
+        this.isThinking = true;
+        this.thinkingText = '正在下发工控指令，调度机械臂平稳复位至原点...';
+        this.$nextTick(() => this.scrollToBottom());
+
+        try {
+          const res = await axios.post('api/aubo/photo/moveToHome');
+          this.isThinking = false;
+          if (res.data && res.data.code === 200) {
+            this.$message.success('机械臂已回原位');
+            const doneMsg = {
+              role: 'assistant',
+              content: '好的，已通过工控总线为全周检测工位下发指令：**机械臂六轴已平稳复位至初始原点**，伺服抱闸锁定正常，处于待命就绪状态！🦾',
+              time: this.getNowTime()
+            };
+            this.messageList.push(doneMsg);
+            this.startTypewriter(doneMsg, doneMsg.content);
+          } else {
+            const errTip = (res.data && res.data.message) || '机械臂回原位响应异常';
+            this.$message.error(errTip);
+            this.messageList.push({
+              role: 'assistant',
+              content: `机械臂复位指令执行未成功：${errTip}，请检查工控总线连接状态。`,
+              time: this.getNowTime()
+            });
+          }
+        } catch (e) {
+          this.isThinking = false;
+          this.$message.error('调度机械臂移动失败，请确认工控网络已连接');
+          this.messageList.push({
+            role: 'assistant',
+            content: '工控通信失败：未能成功连接到机械臂控制器，请检查网络或总线设置。',
+            time: this.getNowTime()
+          });
+        }
+        this.$nextTick(() => this.scrollToBottom());
+      }
+    },
     generate6SAnswer(query) {
       // 1. 最高优先级：三阶段综合点检（事前/事中/事后检查）
       if (query.includes('事前检查') || query.includes('班前点检') || query.includes('开机准入')) {
-        return `### 🕒 【6S·事前检查】班前开机与工位准入 5 大合规核验：\n1. 🦾 **机械臂归位检查**：确认全周检测 1~6 轴机械臂处于初始原点待命位，伺服抱闸锁定正常。\n2. 🛺 **分拣小车归位检查**：确认 AGV 分拣小车处于规定标定待命点，激光避障传感器常开，通道无杂物阻碍运行。\n3. ⚙️ **半轴定置归位检查**：确认待检半轴已按要求放置在指定的固定工位与定置区域，摆放规范整齐。\n4. 🧹 **桌面规整检查**：工作台面无废纸杂物，数显千分尺/卡尺及检测工具 100% 收纳归入专用 EVA 卡槽，保持台面整洁有序。\n5. 👷‍♂️ **人员安全帽与劳保合规**：进入作业区人员已 100% 正确佩戴安全帽，穿戴劳保手套，严禁裸手接触精磨工件。`;
+        return `### 🕒 【6S·事前检查】班前开机与工位准入 5 大合规核验：\n1. ⚠️ **机械臂归位检查**：<span style="color:#ef4444;font-weight:700;">【未复位】</span> 全周检测机械臂未回原点待命位，需复位就绪。\n2. 🛺 **分拣小车归位检查**：<span style="color:#16a34a;font-weight:700;">【正常】</span> AGV 分拣小车处于规定标定待命点，避障传感器常开。\n3. ⚙️ **半轴定置归位检查**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 待检半轴已定置放置于固定工位，摆放规范整齐。\n4. 🧹 **桌面规整检查**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 工作台面规整整洁，劳保手套与工位用具已定置。\n5. 👷‍♂️ **人员安全帽与劳保合规**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 进入作业区人员已 100% 正确佩戴安全帽与劳保手套。\n\n🤖 **管家提示**：检测到机械臂未复位，是否立即让机械臂复位？`;
       }
       if (query.includes('事中检查') || query.includes('过程巡检') || query.includes('过程合规')) {
-        return `### ⚡ 【6S·事中检查】生产作业与缺陷质检过程 4 大合规核验：\n1. 🎯 **算法置信度阈值监控**：确认 AI 深度视觉识别算法置信度阈值锁定在 ≥0.85，运行状态稳定，无未经授权篡改，防止误判与漏检。\n2. 🧤 **劳保手套佩戴规范**：质检人员操作样本标定与工件周转全程规范佩戴劳保手套，严禁裸手直接触碰精加工半轴表面。\n3. 👷‍♂️ **作业人员安全帽规范**：作业区全员 100% 正确佩戴安全帽并扣紧下颚带，严禁在旋转机械臂与 AGV 运行通道内违规摘卸。\n4. 🔍 **缺陷检测过程与判定规范**：严格执行半轴全周旋转检测作业流程，三定物料防错分流（合格品入绿色定置箱，缺陷品即刻挂红牌入黄色防错锁扣箱），判定标准与处置流程 100% 合规。`;
+        return `### ⚡ 【6S·事中检查】生产作业与缺陷质检过程 4 大合规核验：\n1. 🎯 **算法置信度阈值监控**：<span style="color:#16a34a;font-weight:700;">【正常】</span> AI 深度视觉识别算法置信度阈值锁定 ≥0.85，运行状态稳定。\n2. 🧤 **劳保手套佩戴规范**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 质检人员全程规范佩戴劳保手套，严禁裸手接触精加工工件。\n3. 👷‍♂️ **作业人员安全帽规范**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 作业区人员 100% 正确佩戴安全帽并扣紧下颚带。\n4. 🔍 **缺陷检测过程与判定规范**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 严格执行半轴全周旋转检测流程，合格品与缺陷品定置分流合规。`;
       }
       if (query.includes('事后检查') || query.includes('班后维护') || query.includes('停机归整')) {
-        return `### 🏁 【6S·事后检查】班后维护与停机归整 4 大合规核验：\n1. 🦾 **机械臂复位检查**：确认下发工控复位指令后，全周检测 1~6 轴机械臂已平稳复位至停机初始原点，伺服安全锁定。\n2. 🛺 **小车复位检查**：确认 AGV 分拣小车已安全调度复位至指定充电待命点，无滞留堵塞车间主干道。\n3. ⚙️ **半轴分拣结果确认**：确认批次半轴已全部完成检测与分拣流转（合格品与缺陷品 100% 正确归仓入库，无滞留混料）。\n4. 🧹 **工位整齐与安全断电**：现场工作台面清洁规整、量具归位、废屑铁屑箱清空，检测箱高频补光灯及辅机安全断电，完成 6S 数字化点检交接。`;
+        return `### 🏁 【6S·事后检查】班后维护与停机归整 4 大合规核验：\n1. ⚠️ **机械臂复位检查**：<span style="color:#ef4444;font-weight:700;">【未复位】</span> 全周检测机械臂停机后未回归待命原点。\n2. 🛺 **小车复位检查**：<span style="color:#16a34a;font-weight:700;">【正常】</span> AGV 分拣小车已安全调度复位至指定充电待命点。\n3. ⚙️ **半轴分拣结果确认**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 批次半轴已全部完成检测并按类别入库，无滞留混料。\n4. 🧹 **工位整齐与台面维持**：<span style="color:#16a34a;font-weight:700;">【正常】</span> 现场工作台面清洁整齐、手套用具定置归位，完成 6S 数字化点检交接。\n\n🤖 **管家提示**：检测到机械臂未复位，是否立即让机械臂复位？`;
       }
 
       // 2. 硬件与控制指令
@@ -1054,8 +1081,8 @@ export default {
       if (!this.$refs.radarChart) return;
       this.radarChartInstance = echarts.init(this.$refs.radarChart);
 
-      // 6S 当前实测与演进多轮拟合曲线 (非满分、合理梯次实测值)
-      const targetScore = [86, 78, 88, 82, 85, 91];
+      // 6S 当前实测与演进多轮拟合曲线 (非满分、合理梯次实测值，综合平均匹配 94.7分)
+      const targetScore = [96, 94, 95, 93, 97, 93];
       const baseScore = [32, 36, 28, 30, 42, 38];
       const totalRounds = 26;
 
@@ -1107,7 +1134,7 @@ export default {
           formatter: (params) => {
             let str = `<div style="font-weight:700;margin-bottom:8px;color:#0f172a;font-size:13px;border-bottom:1px solid #f1f5f9;padding-bottom:5px;display:flex;align-items:center;justify-content:space-between;">
               <span>${params.name || '6S 巡检实测'}</span>
-              <span style="font-size:11px;color:#0284c7;background:#f0f9ff;padding:1px 6px;border-radius:4px;font-weight:600;">达成率 84.5%</span>
+              <span style="font-size:11px;color:#0284c7;background:#f0f9ff;padding:1px 6px;border-radius:4px;font-weight:600;">达成率 94.7%</span>
             </div>`;
             const indicators = ['整理', '整顿', '清扫', '清洁', '素养', '安全'];
             params.value.forEach((v, idx) => {

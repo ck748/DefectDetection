@@ -141,6 +141,7 @@ public class AuboController {
     /** 移动到拍照位置 */
     @PostMapping("/photo/moveToPosition")
     public Result moveToPhotoPosition() {
+        log.info("触发机械臂移动至拍照位置点位");
         boolean ok = auboRobotService.moveToPhotoPosition();
         return ok ? Result.success("已移动到拍照位置") : Result.fail("移动失败");
     }
