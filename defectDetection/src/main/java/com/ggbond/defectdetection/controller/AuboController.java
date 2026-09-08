@@ -140,8 +140,14 @@ public class AuboController {
 
     /** 移动到拍照位置 */
     @PostMapping("/photo/moveToPosition")
-    public Result moveToPhotoPosition() {
-        log.info("触发机械臂移动至拍照位置点位");
+    public Result moveToPhotoPosition(@RequestBody(required = false) Map<String, Object> body) {
+        // 接收6个关节角度参数（仅用于Postman测试传参，实际移动使用写死的固定角度）
+        if (body != null) {
+            log.info("收到参数: j1={}, j2={}, j3={}, j4={}, j5={}, j6={}",
+                    body.get("j1"), body.get("j2"), body.get("j3"),
+                    body.get("j4"), body.get("j5"), body.get("j6"));
+        }
+        log.info("触发机械臂移动至拍照位置点位（固定角度）");
         boolean ok = auboRobotService.moveToPhotoPosition();
         return ok ? Result.success("已移动到拍照位置") : Result.fail("移动失败");
     }
