@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * Created with IntelliJ IDEA.
  *
  * @author : poi
- * @project : defectDetection
+ * @project : defectDetection        @description : DetectionDefectImage
  * @package : com.ggbond.defectdetection.pojo
  * @className : DetectionDefectImage
  * @createTime : 2026/9/6 14:08
@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
 public class DetectionDefectImage {
 
     @TableId(type = IdType.AUTO)
-    private Long id;
+    private Long id; 
 
     private String batchId;
 
