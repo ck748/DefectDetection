@@ -183,7 +183,13 @@ public class CameraFolderWatchService {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", String.valueOf(r.getId()));
                 item.put("fileName", r.getFileName());
-                item.put("imgUrl", r.getWebUrl());
+                // 动态生成标准图片URL，携带 id 与 name 确保双重精准寻址
+                String safeUrl = r.getWebUrl();
+                if (safeUrl == null || safeUrl.isEmpty() || safeUrl.contains("/detectInfo/")) {
+                    String paramName = r.getStoredName() != null ? r.getStoredName() : r.getFileName();
+                    safeUrl = "/api/cameraWatch/image?id=" + r.getId() + "&name=" + (paramName != null ? paramName : "");
+                }
+                item.put("imgUrl", safeUrl);
                 item.put("createTime", r.getUploadTime() != null ? r.getUploadTime().format(TIME_FORMATTER) : "");
                 item.put("fileSize", r.getFileSize() != null ? r.getFileSize() : "0 KB");
                 item.put("status", r.getStatus() != null ? r.getStatus() : "已同步");
@@ -262,7 +268,7 @@ public class CameraFolderWatchService {
     }
 
     private String buildWebUrl(String storedName) {
-        return "/api/detectInfo/cameraWatch/image?name=" + storedName;
+        return "/api/cameraWatch/image?name=" + storedName;
     }
 
     /**

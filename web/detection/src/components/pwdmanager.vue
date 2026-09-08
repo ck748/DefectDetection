@@ -163,12 +163,12 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="入职时间" width="170" align="center">
+          <el-table-column prop="createTime" label="入职时间" width="220" align="center">
             <template slot-scope="scope">
               <span class="time-text"><i class="el-icon-time"></i> {{ formatDateTime(scope.row.createTime) }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="remark" label="备注说明" min-width="150" show-overflow-tooltip>
+          <el-table-column prop="remark" label="备注说明" min-width="120" show-overflow-tooltip>
             <template slot-scope="scope">
               <span class="remark-text">{{ scope.row.remark || '-' }}</span>
             </template>
@@ -997,7 +997,13 @@ export default {
 
 ::v-deep .el-table {
   width: 100% !important;
-  height: 100%;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+}
+
+::v-deep .el-table__header-wrapper {
+  flex-shrink: 0;
 }
 
 ::v-deep .el-table th.el-table__cell {
@@ -1005,24 +1011,40 @@ export default {
   color: #262626 !important;
   font-weight: 600;
   font-size: 14px;
-  padding: 8px 0 !important;
+  padding: 0 !important;
+  height: 40px !important;
   border-bottom: 1px solid #f0f0f0;
 }
 
+::v-deep .el-table__body-wrapper {
+  flex: 1 !important;
+  height: calc(100% - 40px) !important;
+  overflow-y: hidden !important;
+  overflow-x: hidden !important;
+}
+
+::v-deep .el-table__body {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+::v-deep .el-table__body tr {
+  height: 10% !important;
+}
+
 ::v-deep .el-table td.el-table__cell {
-  padding: 6px 0 !important;
+  padding: 0 !important;
   font-size: 14px;
   color: #595959;
   border-bottom: 1px solid #f0f0f0;
 }
 
-::v-deep .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background-color: #fafbfc;
+::v-deep .el-table td.el-table__cell .cell {
+  line-height: 1.4;
 }
 
-::v-deep .el-table__body-wrapper {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+::v-deep .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #fafbfc;
 }
 
 .user-badge {

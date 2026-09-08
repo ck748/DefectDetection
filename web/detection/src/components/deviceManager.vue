@@ -404,218 +404,6 @@
             </div>
           </div>
         </section>
-
-        <!-- 第三列：右侧在线控制与参数面板 -->
-        <aside class="device-right-column">
-          <div class="split-col-tuner detail-panel">
-            <div class="tuner-header-bar">
-              <div class="tuner-title">在线控制与参数 ({{ currentDev.name }})</div>
-              <div class="tuner-sync-btn" @click="handleRefreshAll">
-                <i class="el-icon-refresh"></i>
-                <span>参数同步</span>
-              </div>
-            </div>
-
-            <!-- 顶部控制 Tab 栏 (推理参数 | 采集参数 | 设备参数 | 网络参数) -->
-            <div class="tuner-nav-tabs">
-              <span
-                class="tab-item"
-                :class="{ 'is-active': activeParamTab === 'inference' }"
-                @click="activeParamTab = 'inference'"
-              >推理参数</span>
-              <span
-                class="tab-item"
-                :class="{ 'is-active': activeParamTab === 'capture' }"
-                @click="activeParamTab = 'capture'"
-              >采集参数</span>
-              <span
-                class="tab-item"
-                :class="{ 'is-active': activeParamTab === 'device' }"
-                @click="activeParamTab = 'device'"
-              >设备参数</span>
-              <span
-                class="tab-item"
-                :class="{ 'is-active': activeParamTab === 'network' }"
-                @click="activeParamTab = 'network'"
-              >网络参数</span>
-            </div>
-
-            <div class="tuner-scroll-body">
-              <!-- 推理参数表单区 -->
-              <div class="param-form-section">
-                <!-- 推理引擎选择 -->
-                <div class="control-field-row">
-                  <label class="field-label">推理引擎</label>
-                  <div class="custom-pill-group">
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.engine === 'FP16' }"
-                      @click="editParams.engine = 'FP16'"
-                    >
-                      <svg v-if="editParams.engine === 'FP16'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>FP16 (推荐)</span>
-                    </div>
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.engine === 'INT8' }"
-                      @click="editParams.engine = 'INT8'"
-                    >
-                      <svg v-if="editParams.engine === 'INT8'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>INT8 (极速)</span>
-                    </div>
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.engine === 'FP32' }"
-                      @click="editParams.engine = 'FP32'"
-                    >
-                      <svg v-if="editParams.engine === 'FP32'" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>FP32</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Batch Size -->
-                <div class="control-field-row">
-                  <label class="field-label">Batch Size</label>
-                  <div class="custom-pill-group">
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.batchSize === 1 }"
-                      @click="editParams.batchSize = 1"
-                    >
-                      <svg v-if="editParams.batchSize === 1" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>1 (低延迟)</span>
-                    </div>
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.batchSize === 2 }"
-                      @click="editParams.batchSize = 2"
-                    >
-                      <svg v-if="editParams.batchSize === 2" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>2 (均衡)</span>
-                    </div>
-                    <div
-                      class="custom-pill-btn"
-                      :class="{ 'is-selected': editParams.batchSize === 4 }"
-                      @click="editParams.batchSize = 4"
-                    >
-                      <svg v-if="editParams.batchSize === 4" viewBox="0 0 16 16" width="13" height="13" class="pill-radio-dot">
-                        <circle cx="8" cy="8" r="6" stroke="#2563eb" stroke-width="1.8" fill="#ffffff" />
-                        <circle cx="8" cy="8" r="3" fill="#2563eb" />
-                      </svg>
-                      <span>4 (高吞吐)</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- TensorRT 加速精度 下拉选择 -->
-                <div class="control-field-row">
-                  <label class="field-label">TensorRT 加速精度</label>
-                  <el-select v-model="editParams.precision" size="small" style="width: 100%;">
-                    <el-option label="FP16 (推荐)" value="FP16"></el-option>
-                    <el-option label="INT8 (极速)" value="INT8"></el-option>
-                    <el-option label="FP32 (高精度)" value="FP32"></el-option>
-                  </el-select>
-                </div>
-
-                <!-- 滑块项 1: 图像预处理线程池数 -->
-                <div class="control-slider-row">
-                  <span class="slider-name">图像预处理线程池数</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.threads" :min="2" :max="32" :step="2"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.threads || 8 }}</span>
-                  </div>
-                </div>
-
-                <!-- 滑块项 2: 最大并发推理请求数 -->
-                <div class="control-slider-row">
-                  <span class="slider-name">最大并发推理请求数</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.maxConcurrent" :min="4" :max="64" :step="4"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.maxConcurrent || 16 }}</span>
-                  </div>
-                </div>
-
-                <!-- 滑块项 3: 推理超时时间 (ms) -->
-                <div class="control-slider-row">
-                  <span class="slider-name">推理超时时间 (ms)</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.timeout" :min="500" :max="5000" :step="100"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.timeout || 1500 }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 分割线 -->
-              <div class="param-section-divider"></div>
-
-              <!-- 采集参数 (工业相机) 分组 -->
-              <div class="param-form-section">
-                <div class="section-sub-heading">采集参数 (工业相机)</div>
-
-                <!-- 滑块项 4: 采集频率 (FPS) -->
-                <div class="control-slider-row">
-                  <span class="slider-name">采集频率 (FPS)</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.fps" :min="10" :max="120" :step="0.1"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.fps || 80.1 }}</span>
-                  </div>
-                </div>
-
-                <!-- 滑块项 5: 曝光时间 (us) -->
-                <div class="control-slider-row">
-                  <span class="slider-name">曝光时间 (us)</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.exposure" :min="100" :max="5000" :step="50"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.exposure || 850 }}</span>
-                  </div>
-                </div>
-
-                <!-- 滑块项 6: 增益 (dB) -->
-                <div class="control-slider-row">
-                  <span class="slider-name">增益 (dB)</span>
-                  <div class="slider-line-wrap">
-                    <el-slider v-model="editParams.gain" :min="0" :max="24" :step="1"></el-slider>
-                    <span class="slider-num font-mono">{{ editParams.gain || 12 }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 底部操作按钮：应用并下发 + 重置参数 -->
-            <div class="tuner-footer-actions">
-              <el-button
-                type="primary"
-                size="medium"
-                icon="el-icon-position"
-                :loading="saving"
-                class="btn-apply-submit"
-                @click="handleSaveParams"
-              >应用并下发</el-button>
-              <el-button
-                size="medium"
-                icon="el-icon-refresh-left"
-                class="btn-reset-param"
-                @click="handleResetParams"
-              >重置参数</el-button>
-            </div>
-          </div>
-        </aside>
       </template>
 
       <!-- 原有其它设备视图 (相机、机械臂、AGV) 保持 100% 原始逻辑与真实接口 -->
@@ -2381,8 +2169,8 @@ export default {
 }
 
 .workbench-layout.is-server-layout {
-  grid-template-columns: 340px minmax(560px, 1fr) 350px;
-  gap: 12px;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
 }
 
 .device-middle-column {
@@ -2544,8 +2332,8 @@ export default {
 
 .health-ring-circle {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
 }
 
 .ring-svg {
@@ -2566,27 +2354,27 @@ export default {
 }
 
 .ring-score {
-  font-size: 16px;
+  font-size: 26px;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
 }
 
 .ring-label {
-  font-size: 8.5px;
+  font-size: 11px;
   color: #64748b;
-  margin-top: 1px;
+  margin-top: 3px;
 }
 
 .health-meta-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .health-meta-item {
-  font-size: 10.5px;
+  font-size: 11.5px;
   display: flex;
   gap: 6px;
   white-space: nowrap;
@@ -2616,12 +2404,12 @@ export default {
   background-color: #f8fafc;
   border: 1px solid #f1f5f9;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   position: relative;
-  min-height: 68px;
+  min-height: 86px;
   box-sizing: border-box;
 }
 
@@ -3085,7 +2873,7 @@ export default {
   flex-direction: column;
   gap: 10px;
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
 }
 
 .device-card-item {
@@ -3099,8 +2887,9 @@ export default {
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .device-card-item:hover {
@@ -3205,6 +2994,43 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+}
+
+.device-detail-column > .detail-panel:first-child {
+  flex-shrink: 0;
+}
+
+.device-detail-column > .split-control-row {
+  flex: 1;
+  min-height: 0;
+}
+
+.device-detail-column > .split-control-row > .detail-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-detail-column > .split-control-row .chart-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 14px;
+}
+
+.device-detail-column > .split-control-row .echarts-dom {
+  width: 100%;
+  flex: 1;
+  min-height: 240px;
+}
+
+.device-detail-column > .split-control-row .param-form-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .detail-header-bar {
