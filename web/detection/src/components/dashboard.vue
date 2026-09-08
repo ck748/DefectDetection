@@ -310,7 +310,7 @@
               <td class="meta-label">检测耗时</td><td class="meta-value">{{ currentExpertReport.runtime || 0 }} s</td>
             </tr>
             <tr>
-              <td class="meta-label">算法版本</td><td class="meta-value">Vision-Model v2.4</td>
+              <td class="meta-label">算法版本</td><td class="meta-value">Expert Model v2.4</td>
               <td class="meta-label">采集数量</td><td class="meta-value">{{ currentExpertReport.actualImages || 0 }} / {{ currentExpertReport.expectedImages || 0 }}</td>
               <td class="meta-label">端点检测</td>
               <td class="meta-value font-bold" :class="currentExpertReport.endpointNormalCount === currentExpertReport.endpointNormalRequired ? 'text-ok' : 'text-ng'">
