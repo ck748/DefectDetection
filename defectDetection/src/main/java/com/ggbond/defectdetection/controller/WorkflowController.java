@@ -31,6 +31,7 @@ public class WorkflowController {
      * - station6: 检测区站号，默认 6
      * - station3: 分拣区站号，默认 3
      * - robotDoIndex: 机械臂 DO 编号，默认 0
+     * - stayAtStation6: 拍照后是否留在6号站（不前往3号站），默认 false
      */
     @PostMapping("/start")
     public Result start(@RequestBody(required = false) Map<String, Object> body) {
@@ -41,12 +42,18 @@ public class WorkflowController {
                     ? Integer.parseInt(String.valueOf(body.get("station3"))) : 3;
             int robotDoIndex = body != null && body.containsKey("robotDoIndex")
                     ? Integer.parseInt(String.valueOf(body.get("robotDoIndex"))) : 0;
-
-            workflowService.startWorkflow(station6, station3, robotDoIndex);
-            return Result.success("工作流已启动");
+            boolean stayAtStation6 = body != null && Boolean.parseBoolean(String.valueOf(body.get("stayAtStation6")));
+    
+            if (stayAtStation6) {
+                workflowService.startWorkflowStayAt6(station6, robotDoIndex);
+                return Result.success("工作流已启动（拍照后留6号站）");
+            } else {
+                workflowService.startWorkflow(station6, station3, robotDoIndex);
+                return Result.success("工作流已启动");
+            }
         } catch (Exception e) {
-            log.error("启动工作流失败: {}", e.getMessage(), e);
-            return Result.fail("启动失败: " + e.getMessage());
+            log.error("启动工作流失败：{}", e.getMessage(), e);
+            return Result.fail("启动失败：" + e.getMessage());
         }
     }
 

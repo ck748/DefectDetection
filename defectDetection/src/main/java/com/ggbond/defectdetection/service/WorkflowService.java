@@ -97,6 +97,66 @@ public class WorkflowService {
     }
 
     /**
+     * 启动工作流（拍照后留在6号站，不前往3号站）
+     * @param station6 检测区站号（默认 6）
+     * @param robotDoIndex 机械臂通知 AGV 的 DO 编号（默认 0）
+     */
+    public synchronized void startWorkflowStayAt6(int station6, int robotDoIndex) {
+        if (currentState.get() != WorkflowState.IDLE && currentState.get() != WorkflowState.COMPLETED && currentState.get() != WorkflowState.ERROR) {
+            log.warn("工作流正在运行中，当前状态：{}", currentState.get());
+            return;
+        }
+
+        currentWorkflow = workflowExecutor.submit(() -> {
+            try {
+                runWorkflowStayAt6(station6, robotDoIndex);
+            } catch (Exception e) {
+                log.error("工作流执行异常：{}", e.getMessage(), e);
+                currentState.set(WorkflowState.ERROR);
+            }
+        });
+    }
+
+    /**
+     * 执行工作流（拍照后留在6号站）
+     */
+    private void runWorkflowStayAt6(int station6, int robotDoIndex) throws Exception {
+        log.info("===== 工作流启动（留6号站模式）=====");
+
+        // ==================== 步骤1: AGV 前往 6 号站 ====================
+        currentState.set(WorkflowState.AGV_TO_STATION6);
+        log.info("[步骤1] AGV 前往 {} 号站", station6);
+        sendCommandRetry(0x9D, station6, 0x00);
+
+        // 轮询等待 AGV 到站
+        if (!waitForAgvArrival(station6, 60)) {
+            throw new RuntimeException("AGV 未在 60 秒内到达 " + station6 + " 号站");
+        }
+        log.info("[步骤1] AGV 已到达 {} 号站，准备启动扫描", station6);
+
+        // ==================== 步骤2: 执行 28 点位扫描 ====================
+        currentState.set(WorkflowState.SCANNING);
+        log.info("[步骤2] 开始 28 点位扫描（4 轮，左→右→左→右）");
+
+        // 执行扫描（同步阻塞，直到 28 次拍照完成）
+        String scanResult = auboRobotService.executeScanPattern(2000, 2000);
+        log.info("[步骤2] 扫描完成：{}", scanResult);
+
+        // 扫描完成后机械臂回原位
+        log.info("[步骤2] 机械臂回原位");
+        if (!auboRobotService.moveToHomePosition()) {
+            log.warn("[步骤2] 机械臂复位失败，继续后续流程");
+        }
+
+        // ==================== 步骤3: 留在6号站，不前往3号站 ====================
+        log.info("[步骤3] 拍照完成，AGV 留在 {} 号站", station6);
+
+        // 完成
+        currentState.set(WorkflowState.COMPLETED);
+        log.info("===== 工作流完成（AGV 留在6号站）=====");
+    }
+
+    /**
      * 执行工作流
      */
     private void runWorkflow(int station6, int station3, int robotDoIndex) throws Exception {
@@ -118,7 +178,8 @@ public class WorkflowService {
         log.info("[步骤2] 开始 28 点位扫描（4 轮，左→右→左→右）");
 
         // 执行扫描（同步阻塞，直到 28 次拍照完成）
-        String scanResult = auboRobotService.executeScanPattern(1500, 2000);
+        // settleMs=500（机械臂稳定等待），cameraWait=2000（相机超时/降级等待）
+        String scanResult = auboRobotService.executeScanPattern(2000, 2000);
         log.info("[步骤2] 扫描完成: {}", scanResult);
 
         // 扫描完成后机械臂回原位
@@ -205,13 +266,27 @@ public class WorkflowService {
     }
 
     /**
-     * 停止当前工作流
+     * 停止当前工作流（机械臂 + AGV 同时停止）
      */
     public synchronized void stopWorkflow() {
+        // 1. 停止机械臂扫描
+        auboRobotService.stopScan();
+        log.info("[停止] 机械臂扫描已停止");
+
+        // 2. 取消工作流任务
         if (currentWorkflow != null) {
             currentWorkflow.cancel(true);
             currentWorkflow = null;
         }
+
+        // 3. 发送 AGV 停止指令（尝试基础模式停止）
+        try {
+            agvSerialService.sendCommand(0x87, 0x04, 0x00);
+            log.info("[停止] AGV 停止指令已发送");
+        } catch (Exception e) {
+            log.warn("[停止] AGV 停止指令发送失败: {}", e.getMessage());
+        }
+
         currentState.set(WorkflowState.IDLE);
         log.info("工作流已停止");
     }

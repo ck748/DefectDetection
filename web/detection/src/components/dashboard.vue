@@ -1012,8 +1012,8 @@ export default {
       this.currentSliceIndex = 0;
       this.batchData = null;
 
-      // 从后端获取最新批次检测数据
-      axios.get('api/detection/batch/latest')
+      // 从数据库获取最新批次检测数据（含完整图片base64）
+      axios.get('api/detection/batch/latest-db')
         .then(res => {
           this.expertReportLoading = false;
           if (res.data && res.data.code === 200 && res.data.data) {
