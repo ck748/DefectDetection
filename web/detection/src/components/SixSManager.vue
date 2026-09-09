@@ -151,6 +151,26 @@
                 <div class="ai-msg-bubble" :class="msg.role">
                   <div class="markdown-render" v-html="formatMessage(msg.content)"></div>
 
+                  <!-- 收到相机抓拍推送时渲染图片卡片 -->
+                  <div v-if="msg.imageCard" class="watch-image-push-card" style="margin-top:10px;padding:8px;background:rgba(255,255,255,0.06);border-radius:8px;border:1px solid rgba(255,255,255,0.12);">
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;display:flex;justify-content:space-between;">
+                      <span><i class="el-icon-picture-outline"></i> {{ msg.imageCard.fileName }}</span>
+                      <span class="font-mono">{{ msg.imageCard.fileSize }}</span>
+                    </div>
+                    <div style="border-radius:6px;overflow:hidden;max-height:220px;background:#000;">
+                      <el-image
+                        :src="formatImageUrl(msg.imageCard.webUrl)"
+                        :preview-src-list="[formatImageUrl(msg.imageCard.webUrl)]"
+                        fit="contain"
+                        style="width:100%;height:180px;display:block;"
+                      >
+                        <div slot="error" style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:12px;">
+                          <i class="el-icon-picture-outline"></i> 无法加载图片
+                        </div>
+                      </el-image>
+                    </div>
+                  </div>
+
                   <!-- 事前检查机械臂复位专属交互问答按钮组 -->
                   <div v-if="msg.interactive === 'reset_arm' && !isTyping" class="ai-interactive-actions">
                     <div v-if="!msg.userChoice" class="action-btn-group">
@@ -796,6 +816,8 @@ export default {
       typingTimer: null,
       isTyping: false,
       radarChartInstance: null,
+      watchPollTimer: null,
+      lastKnownImageId: null,
       sixSItems: [
         { name: '整理 (Seiri)', tagType: 'primary', desc: '区分要与不要 清除非必需品', score: 98, status: '达标', icon: 'el-icon-sort', prompt: '请给出当前半轴质检工位的【整理(Seiri)】执行要点与不要物清理规范。', type: 'seiri' },
         { name: '整顿 (Seiton)', tagType: 'success', desc: '三定管理 减震卡槽定置定位', score: 99, status: '优秀', icon: 'el-icon-menu', prompt: '半轴缺陷标定区与合格品库房的【整顿(Seiton)】三定管理要求是什么？', type: 'seiton' },
@@ -854,6 +876,7 @@ export default {
       this.initRadarChart();
       this.scrollToBottom();
       window.addEventListener('resize', this.handleResize);
+      this.initWatchImageListener();
     });
   },
   beforeDestroy() {
@@ -863,6 +886,10 @@ export default {
     }
     if (this.typingTimer) {
       clearInterval(this.typingTimer);
+    }
+    if (this.watchPollTimer) {
+      clearInterval(this.watchPollTimer);
+      this.watchPollTimer = null;
     }
   },
   methods: {
@@ -1053,6 +1080,49 @@ export default {
         this.capturing = false;
         this.$message.error('请求拍照接口失败，请检查后端服务');
       }
+    },
+    formatImageUrl(url) {
+      if (!url) return '';
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      return 'http://127.0.0.1:8081' + (url.startsWith('/') ? url : '/' + url);
+    },
+    initWatchImageListener() {
+      // 1. 初始化先拉取一次最新记录，记录最后一张图片的 ID
+      axios.get('api/cameraWatch/status').then(res => {
+        if (res.data && res.data.code === 200 && res.data.data) {
+          const list = res.data.data.list;
+          if (Array.isArray(list) && list.length > 0) {
+            this.lastKnownImageId = list[0].id;
+          }
+        }
+      }).catch(() => {});
+
+      // 2. 启动轻量定时轮询，一旦检测到目录监听产生新图片，6S管家自动把照片以卡片形式发给用户
+      this.watchPollTimer = setInterval(() => {
+        axios.get('api/cameraWatch/status').then(res => {
+          if (res.data && res.data.code === 200 && res.data.data) {
+            const list = res.data.data.list;
+            if (Array.isArray(list) && list.length > 0) {
+              const newest = list[0];
+              if (this.lastKnownImageId !== null && newest.id !== this.lastKnownImageId) {
+                this.lastKnownImageId = newest.id;
+                // 6S 管家主动发送包含图片的消息
+                this.messageList.push({
+                  role: 'assistant',
+                  content: `📷 **感知到新工件抓拍图片**：\n已自动捕获并同步入库，文件名称为 \`${newest.fileName}\`，点击下方缩略图可查看大图：`,
+                  time: this.getNowTime(),
+                  imageCard: newest
+                });
+                this.$nextTick(() => this.scrollToBottom());
+              } else if (this.lastKnownImageId === null) {
+                this.lastKnownImageId = newest.id;
+              }
+            }
+          }
+        }).catch(() => {});
+      }, 1500);
     },
     generate6SAnswer(query) {
       // 1. 最高优先级：三阶段综合点检（事前/事中/事后检查）
