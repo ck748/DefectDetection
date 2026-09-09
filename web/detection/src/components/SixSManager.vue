@@ -38,6 +38,16 @@
           </el-button>
         </div>
         <el-button
+          type="success"
+          size="small"
+          icon="el-icon-camera"
+          :loading="capturing"
+          @click="handleVmCapture"
+          class="header-act-btn-capture"
+        >
+          {{ capturing ? '正在拍照中...' : '触发拍照存D盘' }}
+        </el-button>
+        <el-button
           type="primary"
           size="small"
           icon="el-icon-refresh-right"
@@ -765,6 +775,7 @@ export default {
       logoImg: require('@/assets/logo.7f766218.png'),
       defaultAvatar: require('@/assets/头像.jpg'),
       checking: false,
+      capturing: false,
       reportDialogVisible: false,
       reportFilterTab: 'all',
       reportTime: '',
@@ -1016,8 +1027,31 @@ export default {
             content: '工控通信失败：未能成功连接到机械臂控制器，请检查网络或总线设置。',
             time: this.getNowTime()
           });
+          this.$nextTick(() => this.scrollToBottom());
         }
-        this.$nextTick(() => this.scrollToBottom());
+      }
+    },
+    async handleVmCapture() {
+      if (this.capturing) return;
+      this.capturing = true;
+      try {
+        const res = await axios.post('api/vmCamera/trigger', { timeout: 5000 });
+        this.capturing = false;
+        if (res.data && res.data.code === 200) {
+          this.$message.success('拍照成功！图片已自动存入 D 盘');
+          this.messageList.push({
+            role: 'assistant',
+            content: '📸 **相机拍照完成**：已成功触发海康工业相机拍照并将图片保存至 D 盘根目录！',
+            time: this.getNowTime()
+          });
+          this.$nextTick(() => this.scrollToBottom());
+        } else {
+          const msg = (res.data && res.data.message) || '触发拍照未成功';
+          this.$message.warning(msg);
+        }
+      } catch (err) {
+        this.capturing = false;
+        this.$message.error('请求拍照接口失败，请检查后端服务');
       }
     },
     generate6SAnswer(query) {

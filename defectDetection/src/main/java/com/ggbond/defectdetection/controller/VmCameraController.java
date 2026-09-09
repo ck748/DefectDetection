@@ -48,13 +48,13 @@ public class VmCameraController {
     /** 测试触发拍照 */
     @PostMapping("/trigger")
     public Result trigger(@RequestBody(required = false) Map<String, Object> body) {
-        int timeout = 500;  // 默认 500ms
+        int timeout = 5000;  // 默认 5000ms
         if (body != null && body.containsKey("timeout")) {
             timeout = Integer.parseInt(String.valueOf(body.get("timeout")));
         }
 
         boolean ok = vmCameraTriggerService.triggerCapture(timeout);
-        return ok ? Result.success("拍照完成") : Result.fail("拍照超时或通信失败");
+        return ok ? Result.success("拍照指令触发成功，已保存至D盘") : Result.fail("拍照触发失败：请确认 VisionMaster 通信连接正常");
     }
 
     /** 连接状态 */
