@@ -50,6 +50,8 @@ public class CameraFolderWatchService {
 
     // 本地去重/已识别缓存（避免重复调用 AI）
     private final Set<String> processedFileNames = Collections.synchronizedSet(new HashSet<>());
+    // 内存缓存识别结果 (fileName -> 结果Map)
+    private final Map<String, Map<String, Object>> aiResultCache = new ConcurrentHashMap<>();
 
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
 
@@ -113,19 +115,48 @@ public class CameraFolderWatchService {
     }
 
     /**
+     * 后端安全代理调用 AI 接口进行推理（支持前端按文件名请求或后台触发）
+     */
+    public Map<String, Object> detectSingleImage(String fileName) {
+        Map<String, Object> result = new HashMap<>();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            result.put("status", "文件名为空");
+            return result;
+        }
+
+        if (aiResultCache.containsKey(fileName)) {
+            return aiResultCache.get(fileName);
+        }
+
+        File imageFile = new File(this.serverWatchDir, fileName);
+        if (!imageFile.exists()) {
+            imageFile = new File("/root/desc/cmzj-main/mijia-watcher/image", fileName);
+        }
+
+        if (!imageFile.exists()) {
+            result.put("status", "文件不存在");
+            return result;
+        }
+
+        return processAiDetection(imageFile);
+    }
+
+    /**
      * 调用 AI 视觉服务接口进行推理并将带红框结果图落地到目录
      */
-    private void processAiDetection(File imageFile) {
+    private Map<String, Object> processAiDetection(File imageFile) {
+        Map<String, Object> resultMap = new HashMap<>();
         if (imageFile == null || !imageFile.exists() || imageFile.getName().startsWith("annotated_")) {
-            return;
+            resultMap.put("status", "无需识别");
+            return resultMap;
         }
 
         try {
-            log.info("🚀 正在向 AI 视觉推理服务发送请求: url={}, file={}", aiDetectUrl, imageFile.getName());
+            log.info("🚀 后端正在向 AI 视觉推理服务发送请求: url={}, file={}", aiDetectUrl, imageFile.getName());
 
             HttpResponse response = HttpRequest.post(aiDetectUrl)
                     .form("file", imageFile)
-                    .timeout(10000)
+                    .timeout(15000)
                     .execute();
 
             if (response.isOk()) {
@@ -138,8 +169,27 @@ public class CameraFolderWatchService {
                     annotatedBase64 = resObj.getStr("image");
                 }
 
-                // 若 AI 返回了带红框的结果图，将其直接保存至同一目录下
+                Double confidence = resObj.getDouble("confidence");
+                String status = resObj.getStr("status");
+                Boolean isQualified = resObj.getBool("is_qualified");
+                if (status == null || status.isEmpty()) {
+                    if (isQualified != null) {
+                        status = isQualified ? "合格" : "不合格";
+                    } else {
+                        status = "合格";
+                    }
+                }
+                if (isQualified == null) {
+                    isQualified = "合格".equals(status);
+                }
+                if (confidence == null) {
+                    confidence = 0.95;
+                }
+
                 if (annotatedBase64 != null && !annotatedBase64.trim().isEmpty()) {
+                    if (!annotatedBase64.startsWith("data:image")) {
+                        annotatedBase64 = "data:image/jpeg;base64," + annotatedBase64;
+                    }
                     String base64Data = annotatedBase64;
                     if (base64Data.contains(",")) {
                         base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
@@ -156,12 +206,23 @@ public class CameraFolderWatchService {
                     processedFileNames.add(annotatedFileName);
                     log.info("🎯 已生成带红框的识别图: {}", annotatedFileName);
                 }
+
+                resultMap.put("annotatedBase64", annotatedBase64);
+                resultMap.put("aiStatus", status);
+                resultMap.put("confidence", confidence);
+                resultMap.put("isQualified", isQualified);
+                aiResultCache.put(imageFile.getName(), resultMap);
+                return resultMap;
             } else {
-                log.warn("AI 视觉接口响应非 200: code={}", response.getStatus());
+                log.warn("AI 视觉接口响应异常: code={}, body={}", response.getStatus(), response.body());
+                resultMap.put("aiStatus", "服务响应" + response.getStatus());
             }
         } catch (Exception e) {
             log.error("调用 AI 接口异常: {}", e.getMessage());
+            resultMap.put("aiStatus", "识别失败: " + e.getMessage());
         }
+
+        return resultMap;
     }
 
     /**
@@ -220,7 +281,7 @@ public class CameraFolderWatchService {
     }
 
     /**
-     * 核心改造：不读数据库，直接扫描物理目录中的所有图片并按最新时间倒序渲染到前端
+     * 核心：直接扫描物理目录图片并附带 AI 识别结果
      */
     public Map<String, Object> getStatusAndImages() {
         Map<String, Object> map = new HashMap<>();
@@ -233,7 +294,6 @@ public class CameraFolderWatchService {
             if (folder.exists() && folder.isDirectory()) {
                 File[] files = folder.listFiles(f -> f != null && f.isFile() && isImageFile(f.getName()));
                 if (files != null && files.length > 0) {
-                    // 按文件最后修改时间倒序排列（最新拍摄排在最前）
                     Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
 
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -242,13 +302,22 @@ public class CameraFolderWatchService {
                     for (int i = 0; i < maxCount; i++) {
                         File f = files[i];
                         Map<String, Object> item = new HashMap<>();
-                        // 用文件名作为前端唯一标识 id
                         item.put("id", f.getName());
                         item.put("fileName", f.getName());
                         item.put("imgUrl", buildWebUrl(f.getName()));
                         item.put("createTime", sdf.format(new Date(f.lastModified())));
                         item.put("fileSize", String.format("%.2f KB", f.length() / 1024.0));
                         item.put("status", f.getName().startsWith("annotated_") ? "AI已识别" : "已捕获");
+
+                        // 附带 AI 识别缓存
+                        if (aiResultCache.containsKey(f.getName())) {
+                            Map<String, Object> aiInfo = aiResultCache.get(f.getName());
+                            item.put("annotatedBase64", aiInfo.get("annotatedBase64"));
+                            item.put("aiStatus", aiInfo.get("aiStatus"));
+                            item.put("confidence", aiInfo.get("confidence"));
+                            item.put("isQualified", aiInfo.get("isQualified"));
+                        }
+
                         list.add(item);
                     }
                 }
@@ -276,12 +345,12 @@ public class CameraFolderWatchService {
                 boolean ok = targetFile.delete();
                 log.info("物理删除图片文件: {} -> {}", targetFile.getAbsolutePath(), ok);
             }
-            // 若存在对应的 annotated_ 标注图，一并删除
             File annotatedFile = new File(this.serverWatchDir, "annotated_" + fileName);
             if (annotatedFile.exists()) {
                 annotatedFile.delete();
             }
             processedFileNames.remove(fileName);
+            aiResultCache.remove(fileName);
             return Result.success("物理图片删除成功");
         } catch (Exception e) {
             log.error("删除物理图片异常:", e);
@@ -304,6 +373,7 @@ public class CameraFolderWatchService {
                 }
             }
             processedFileNames.clear();
+            aiResultCache.clear();
             return Result.success("已清空目录下的所有图片文件");
         } catch (Exception e) {
             log.error("清空物理图片异常:", e);
@@ -386,7 +456,6 @@ public class CameraFolderWatchService {
                 String name = file.getName();
                 if (isImageFile(name) && !processedFileNames.contains(name) && file.length() > 0) {
                     processedFileNames.add(name);
-                    // 自动发送给 AI 推理
                     processAiDetection(file);
                 }
             }

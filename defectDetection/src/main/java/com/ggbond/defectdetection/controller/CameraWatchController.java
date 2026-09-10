@@ -33,7 +33,6 @@ public class CameraWatchController {
 
     /**
      * 启动监听 / 应用切换服务器端存储目录
-     * 兼容 Query Param 以及 JSON Body 传参
      */
     @PostMapping("/start")
     public Result<String> startWatch(
@@ -56,11 +55,20 @@ public class CameraWatchController {
     }
 
     /**
-     * 获取当前状态及直接从物理目录扫描获取的最新图片列表
+     * 获取当前状态及直接从物理目录扫描获取的最新图片列表（附带AI识别数据）
      */
     @GetMapping("/status")
     public Result<Map<String, Object>> getStatus() {
         return Result.success("获取成功", cameraFolderWatchService.getStatusAndImages());
+    }
+
+    /**
+     * 前端直通触发单张图片的 AI 视觉推理（后端代理，解决跨域与网络直连问题）
+     */
+    @PostMapping("/detect")
+    public Result<Map<String, Object>> detectSingleImage(@RequestBody Map<String, String> body) {
+        String fileName = body != null ? body.get("fileName") : null;
+        return Result.success("识别完成", cameraFolderWatchService.detectSingleImage(fileName));
     }
 
     /**
@@ -74,7 +82,7 @@ public class CameraWatchController {
     }
 
     /**
-     * 删除单张物理图片（兼容传递文件名或ID）
+     * 删除单张物理图片
      */
     @PostMapping("/delete")
     public Result<String> deleteImage(@RequestBody(required = false) Map<String, Object> body) {
