@@ -334,199 +334,159 @@
     <!-- AI智控专家分析报告弹窗（支持打印 / 导出PDF） -->
     <el-dialog
       :visible.sync="expertReportVisible"
-      title="AI 工业表面缺陷智控专家分析报告"
-      width="80%"
-      class="expert-report-dialog"
-      top="4vh"
-      :close-on-click-modal="false"
+      title="工业检测单预览"
+      width="94%"
+      class="expert-report-dialog-wrapper"
+      custom-class="expert-report-dialog"
+      :close-on-click-modal="true"
       :lock-scroll="false"
+      :append-to-body="false"
     >
+      <div class="dialog-actions no-print" style="text-align: right; margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px;">
+        <el-button
+          type="success"
+          size="small"
+          icon="el-icon-message"
+          class="export-email-btn"
+          :loading="sendingEmail"
+          @click="sendReportToEmail"
+        >
+          发送到邮箱
+        </el-button>
+        <el-button type="primary" size="small" icon="el-icon-printer" @click="printExpertReport">
+          打印 / 导出 PDF 检测单
+        </el-button>
+        <el-button size="small" icon="el-icon-close" @click="expertReportVisible = false">
+          关闭
+        </el-button>
+      </div>
+
       <div v-if="expertReportLoading" class="expert-loading">
         <i class="el-icon-loading"></i>
-        <p>正在由 AI 视觉大模型与智控中枢生成专家分析报告...</p>
+        <p>正在生成工业标准检测单...</p>
       </div>
       <div v-else-if="currentExpertReport" class="expert-report-container" id="expert-report-printable">
-        <!-- 报告头部 -->
-        <div class="report-header">
-          <div class="header-main">
-            <div class="brand-badge">
-              <i class="el-icon-office-building"></i> 灵眸巡诊 · 工业质检报告
-            </div>
-            <h2 class="report-title">半轴表面缺陷检测与工艺处置单</h2>
-            <div class="report-meta">
-              <span>流水号：<strong>#{{ currentExpertReport.id || '326' }}</strong></span>
-              <span>工单编号：<strong>{{ currentExpertReport.workOrderId || currentExpertReport.axleCode || 'WO-20260903-01' }}</strong></span>
-              <span>检测时间：<strong>{{ currentExpertReport.time || currentExpertReport.createTime || '2026-09-03 18:35:53' }}</strong></span>
-              <span>算法引擎：<strong>Vision-Model v2.4</strong></span>
-            </div>
-          </div>
-          <div class="header-actions no-print">
-            <el-button
-              type="success"
-              size="small"
-              icon="el-icon-message"
-              class="export-email-btn"
-              :loading="sendingEmail"
-              @click="sendReportToEmail"
-            >
-              发送到邮箱
-            </el-button>
-            <el-button type="primary" size="small" icon="el-icon-printer" class="export-print-btn" @click="printExpertReport">
-              打印 / 导出PDF
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 核心指标卡片 -->
-        <div class="report-kpi-grid">
-          <div class="kpi-card danger">
-            <div class="kpi-card-header">
-              <span class="kpi-icon-wrap"><i class="el-icon-warning-outline"></i></span>
-              <span class="kpi-label">检出缺陷总数</span>
-            </div>
-            <div class="kpi-val">{{ (currentExpertReport.defections && currentExpertReport.defections.length) || currentExpertReport.defectionsSum || 2 }} <span class="unit">处</span></div>
-            <div class="kpi-sub"><i class="el-icon-check"></i> 已高亮完成切片提取</div>
-          </div>
-          <div class="kpi-card warning">
-            <div class="kpi-card-header">
-              <span class="kpi-icon-wrap"><i class="el-icon-data-line"></i></span>
-              <span class="kpi-label">最高风险等级</span>
-            </div>
-            <div class="kpi-val highlight">{{ currentExpertAdvice ? currentExpertAdvice['最严重等级'] : '警告级别' }}</div>
-            <div class="kpi-sub"><i class="el-icon-info"></i> 等级评定: {{ getMaxSeverity(currentExpertReport.defections) }}级</div>
-          </div>
-          <div class="kpi-card primary">
-            <div class="kpi-card-header">
-              <span class="kpi-icon-wrap"><i class="el-icon-pie-chart"></i></span>
-              <span class="kpi-label">缺陷面积占比估算</span>
-            </div>
-            <div class="kpi-val">{{ calcDefectAreaRatio(currentExpertReport.defections) }}</div>
-            <div class="kpi-sub"><i class="el-icon-aim"></i> 占工件检测区域</div>
-          </div>
-          <div class="kpi-card success">
-            <div class="kpi-card-header">
-              <span class="kpi-icon-wrap"><i class="el-icon-guide"></i></span>
-              <span class="kpi-label">最终处置决策</span>
-            </div>
-            <div class="kpi-val decision">{{ currentExpertAdvice ? currentExpertAdvice['最终处置建议'] : '建议返修' }}</div>
-            <div class="kpi-sub"><i class="el-icon-circle-check"></i> 现场复核合格后放行</div>
-          </div>
-        </div>
-
-        <!-- 图像与大模型深度研判 -->
-        <div class="report-split-section">
-          <!-- 左侧：缺陷定位图像 -->
-          <div class="split-left">
-            <div class="section-title">
-              <i class="el-icon-picture-outline"></i> 缺陷视觉图谱与定位切片
-            </div>
-            <div class="report-image-box">
-              <img
-                v-if="currentExpertReport.imgBase64"
-                :src="getBase64ImageUrl(currentExpertReport.imgBase64)"
-                class="report-image"
-                alt="缺陷检测图谱"
-              />
-              <div v-else class="no-img-text">未获取到原始图像</div>
-              <div class="image-watermark">灵眸巡诊·缺陷切片图谱</div>
-            </div>
+        <div class="industrial-report-paper">
+          <!-- 标题区 -->
+          <div class="industrial-header">
+            <div class="header-logo">灵眸巡诊</div>
+            <h1 class="header-title">表面缺陷检测工艺处置单</h1>
+            <div class="header-code">报告编号: {{ currentExpertReport.id || '-' }}</div>
           </div>
 
-          <!-- 右侧：Qwen 大模型智控专家研判中枢 -->
-          <div class="split-right">
-            <div class="section-title">
-              <i class="el-icon-cpu"></i> 智控专家大模型研判中枢 (Qwen-AI)
-            </div>
-            <div class="advice-block-card">
-              <div class="advice-item">
-                <div class="item-title">
-                  <span class="icon-tag tag-info">1</span>
-                  <strong>总体缺陷情况研判</strong>
-                </div>
-                <div class="item-content">
-                  {{ formatAdviceText(currentExpertAdvice ? currentExpertAdvice['总体缺陷情况'] : '该工件表面检测到明显划痕缺陷，主要集中在轴颈及过渡配合区域。') }}
+          <!-- 基础信息表格 -->
+          <table class="industrial-meta-table">
+            <tr>
+              <td class="meta-label">检测单号</td><td class="meta-value">{{ currentExpertReport.id || '-' }}</td>
+              <td class="meta-label">检测时间</td><td class="meta-value">{{ currentExpertReport.time || currentExpertReport.createTime || '-' }}</td>
+              <td class="meta-label">检测耗时</td><td class="meta-value">{{ currentExpertReport.runtime || '1.2' }} s</td>
+            </tr>
+            <tr>
+              <td class="meta-label">算法版本</td><td class="meta-value">Expert Model v2.4</td>
+              <td class="meta-label">工单编号</td><td class="meta-value">{{ currentExpertReport.workOrderId || currentExpertReport.axleCode || 'WO-20260903-01' }}</td>
+              <td class="meta-label">质检状态</td>
+              <td class="meta-value font-bold" :class="((currentExpertReport.defections && currentExpertReport.defections.length) > 0 || currentExpertReport.defectionsSum > 0) ? 'text-ng' : 'text-ok'">
+                {{ ((currentExpertReport.defections && currentExpertReport.defections.length) > 0 || currentExpertReport.defectionsSum > 0) ? 'NG (检出缺陷)' : 'PASS (合格)' }}
+              </td>
+            </tr>
+          </table>
+
+          <!-- 核心结论区 -->
+          <div class="industrial-section">
+            <div class="section-title">一、 检测结论</div>
+            <div class="industrial-kpi-row">
+              <div class="kpi-item">
+                <div class="kpi-title">缺陷总数</div>
+                <div class="kpi-value" :class="(((currentExpertReport.defections && currentExpertReport.defections.length) > 0) || currentExpertReport.defectionsSum > 0) ? 'text-ng' : 'text-ok'">
+                  {{ (currentExpertReport.defections && currentExpertReport.defections.length) || currentExpertReport.defectionsSum || 0 }} <span style="font-size:14px; font-weight:normal;">处</span>
                 </div>
               </div>
-
-              <div class="advice-item">
-                <div class="item-title">
-                  <span class="icon-tag tag-warning">2</span>
-                  <strong>综合分析依据 (空间分布/对比度/占比)</strong>
-                </div>
-                <div class="item-content">
-                  {{ formatAdviceText(currentExpertAdvice ? currentExpertAdvice['综合分析依据'] : '呈局部集中分布，颜色较浅，与背景对比不明显，缺陷累计面积占比约 2.6%。') }}
-                </div>
+              <div class="kpi-item">
+                <div class="kpi-title">风险等级</div>
+                <div class="kpi-value">{{ currentExpertAdvice && currentExpertAdvice['最严重等级'] ? currentExpertAdvice['最严重等级'] : (getMaxSeverity(currentExpertReport.defections) + '级') }}</div>
               </div>
-
-              <div class="advice-item highlight-item">
-                <div class="item-title">
-                  <span class="icon-tag tag-danger">3</span>
-                  <strong>车间工件处置指令</strong>
-                </div>
-                <div class="item-content bold-action">
-                  {{ formatAdviceText(currentExpertAdvice ? currentExpertAdvice['最终处置建议'] : '建议使用精细砂纸进行局部抛光打磨，测量深度合格后放行') }}
-                </div>
+              <div class="kpi-item">
+                <div class="kpi-title">缺陷面积占比</div>
+                <div class="kpi-value">{{ calcDefectAreaRatio(currentExpertReport.defections) }}</div>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-title">采集可信度</div>
+                <div class="kpi-value text-ok">合格 (可信)</div>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-title">最终判定</div>
+                <div class="kpi-value text-action">{{ currentExpertAdvice && currentExpertAdvice['最终处置建议'] ? currentExpertAdvice['最终处置建议'] : '建议返修' }}</div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 缺陷切片明细列表 -->
-        <div class="report-table-section">
-          <div class="section-title">
-            <i class="el-icon-document-copy"></i> 缺陷检测切片结构化明细
+          <!-- 图像与AI分析 -->
+          <div class="industrial-section split-section">
+            <div class="split-left">
+              <div class="section-title">二、 缺陷视觉图谱</div>
+              <div class="img-frame">
+                <img v-if="currentExpertReport.imgBase64" :src="getBase64ImageUrl(currentExpertReport.imgBase64)" />
+                <div v-else class="no-img">无图像数据</div>
+              </div>
+            </div>
+            <div class="split-right">
+              <div class="section-title">三、 AI 研判报告</div>
+              <table class="industrial-ai-table">
+                <tr>
+                  <th width="30%">总体缺陷情况</th>
+                  <td>{{ currentExpertAdvice && currentExpertAdvice['总体缺陷情况'] ? currentExpertAdvice['总体缺陷情况'] : '工件表面检出缺陷，主要集中在轴颈配合区域。' }}</td>
+                </tr>
+                <tr>
+                  <th>综合分析依据</th>
+                  <td>{{ currentExpertAdvice && currentExpertAdvice['综合分析依据'] ? currentExpertAdvice['综合分析依据'] : '呈局部聚集分布，缺陷累计面积占比异常。' }}</td>
+                </tr>
+                <tr>
+                  <th>车间处置指令</th>
+                  <td class="text-action font-bold">{{ currentExpertAdvice && currentExpertAdvice['最终处置建议'] ? currentExpertAdvice['最终处置建议'] : '建议质检员现场复核' }}</td>
+                </tr>
+              </table>
+            </div>
           </div>
-          <el-table
-            :data="currentExpertReport.defections || []"
-            size="small"
-            border
-            style="width: 100%"
-            class="expert-inner-table"
-          >
-            <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
-            <el-table-column prop="category" label="缺陷类型" width="130" align="center">
-              <template slot-scope="scope">
-                <el-tag size="small" type="danger" effect="plain">{{ formatDefectCategory(scope.row.category) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="score" label="置信度" width="100" align="center">
-              <template slot-scope="scope">
-                <strong>{{ (scope.row.score ? scope.row.score * 100 : 93.5).toFixed(2) }}%</strong>
-              </template>
-            </el-table-column>
-            <el-table-column label="位置坐标 (X, Y)" width="150" align="center">
-              <template slot-scope="scope">
-                <span>{{ scope.row.x ? scope.row.x.toFixed(1) : '56.0' }}, {{ scope.row.y ? scope.row.y.toFixed(1) : '108.0' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="切片尺寸 (长 × 宽)" width="160" align="center">
-              <template slot-scope="scope">
-                <span>{{ scope.row.l ? scope.row.l.toFixed(1) : '32.0' }} × {{ scope.row.h ? scope.row.h.toFixed(1) : '28.0' }} px</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="severityLevel" label="严重等级" width="100" align="center">
-              <template slot-scope="scope">
-                <el-tag size="small" :type="(scope.row.severityLevel || 3) >= 4 ? 'danger' : 'warning'">
-                  {{ scope.row.severityLevel || 3 }} 级
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="repairSuggestion" label="初步工艺建议">
-              <template slot-scope="scope">
-                <span class="report-repair-text">{{ formatRepairSuggestion(scope.row.repairSuggestion) }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
 
-        <!-- 报告底部签字栏 -->
-        <div class="report-footer">
-          <div class="footer-sign">
-            <span>质检核对员：__________________</span>
-            <span>车间工段长：__________________</span>
+          <!-- 缺陷明细表 -->
+          <div class="industrial-section">
+            <div class="section-title">四、 缺陷明细记录</div>
+            <table class="industrial-detail-table">
+              <thead>
+                <tr>
+                  <th width="60">序号</th>
+                  <th width="140">缺陷类型</th>
+                  <th width="100">置信度</th>
+                  <th width="150">位置坐标 (X, Y)</th>
+                  <th width="140">尺寸 (L × H)</th>
+                  <th width="90">等级</th>
+                  <th>初步工艺建议</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in (currentExpertReport.defections || [])" :key="index">
+                  <td align="center">{{ index + 1 }}</td>
+                  <td align="center"><span class="text-ng font-bold">{{ formatDefectCategory(row.category) }}</span></td>
+                  <td align="center"><strong>{{ (row.score ? row.score * 100 : 93.5).toFixed(2) }}%</strong></td>
+                  <td align="center">{{ row.x ? row.x.toFixed(1) : '56.0' }}, {{ row.y ? row.y.toFixed(1) : '108.0' }}</td>
+                  <td align="center">{{ row.l ? row.l.toFixed(1) : '32.0' }} × {{ row.h ? row.h.toFixed(1) : '28.0' }} px</td>
+                  <td align="center" :class="(row.severityLevel || 3) >= 4 ? 'text-ng' : ''">{{ row.severityLevel || 3 }} 级</td>
+                  <td>{{ formatRepairSuggestion(row.repairSuggestion) }}</td>
+                </tr>
+                <tr v-if="!currentExpertReport.defections || currentExpertReport.defections.length === 0">
+                  <td colspan="7" align="center" style="padding: 20px; color: #999;">暂无缺陷明细记录</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="footer-note">
-            * 本报告由灵眸巡诊深度视觉大模型自动分析生成，仅供生产线质检与工艺处置复核参考。
+
+          <!-- 签字栏 -->
+          <div class="industrial-footer">
+            <div class="sign-block">审核人签字：<span class="line" style="text-align: center;">admin</span></div>
+            <div class="sign-block">日期：<span class="line" style="text-align: center; font-size: 13px;">{{ currentExpertReport.time || currentExpertReport.createTime || '-' }}</span></div>
+          </div>
+          <div class="industrial-remark">
+            * 备注：本报告由灵眸巡诊视觉模型自动生成，仅供生产线质检与工艺处置复核参考，不可替代最终人工确认。
           </div>
         </div>
       </div>
@@ -2067,56 +2027,41 @@ export default {
   width: 100%;
 }
 
-/* AI 智控专家分析报告专业排版与工业风样式 (1:1 同步 info.vue) */
-.expert-report-dialog :deep(.el-dialog) {
-  margin-top: 3vh !important;
-  margin-bottom: 3vh !important;
+/* AI 智控专家分析报告专业排版与工业风样式 (1:1 严格对齐 dashboard.vue 工业检测单) */
+::v-deep .expert-report-dialog-wrapper.el-dialog__wrapper {
+  left: 220px !important;
+  top: 78px !important;
+  width: calc(100vw - 220px) !important;
+  height: calc(100vh - 78px) !important;
+  overflow: hidden !important;
+}
+
+::v-deep .expert-report-dialog {
+  margin: 18px auto !important;
   top: 0 !important;
   transform: none !important;
-  max-height: 94vh !important;
+  max-height: calc(100vh - 114px) !important;
   display: flex !important;
   flex-direction: column !important;
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
-.expert-report-dialog :deep(.el-dialog__header) {
+::v-deep .expert-report-dialog .el-dialog__header {
   flex-shrink: 0 !important;
-  background: #ffffff;
-  padding: 16px 24px;
-  border-bottom: 1px solid #eef0f3;
+  background: #f5f7fa;
+  border-bottom: 2px solid #333;
+  padding: 15px 20px;
 }
 
-.expert-report-dialog :deep(.el-dialog__title) {
-  color: #1e293b;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: -0.2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.expert-report-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
-  color: #64748b;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.expert-report-dialog :deep(.el-dialog__headerbtn .el-dialog__close:hover) {
-  color: #0f172a;
-  transform: rotate(90deg);
-}
-
-.expert-report-dialog :deep(.el-dialog__body) {
+::v-deep .expert-report-dialog .el-dialog__body {
   flex: 1 !important;
   overflow-y: auto !important;
-  padding: 20px 24px !important;
-  background: #fcfdfd;
-  height: 100% !important;
+  padding: 20px;
+  background: #fff;
   box-sizing: border-box !important;
 }
 
@@ -2136,376 +2081,226 @@ export default {
 .expert-report-container {
   padding: 4px 8px;
   background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #000;
 }
 
-/* 报告头部 */
-.report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 18px;
+.industrial-report-paper {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #000;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.industrial-header {
+  text-align: center;
+  position: relative;
+  border-bottom: 3px solid #000;
+  padding-bottom: 15px;
   margin-bottom: 20px;
 }
 
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(59, 130, 246, 0.12) 100%);
-  color: #1d4ed8;
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  letter-spacing: 0.3px;
+.header-logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 16px;
+  font-weight: bold;
+  border: 2px solid #000;
+  padding: 4px 10px;
+  letter-spacing: 2px;
 }
 
-.brand-badge i {
-  font-size: 13px;
-  color: #2563eb;
+.header-title {
+  font-size: 26px;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+  letter-spacing: 4px;
 }
 
-.report-title {
-  margin: 6px 0 14px 0;
-  font-size: 23px;
-  color: #0f172a;
-  font-weight: 800;
-  letter-spacing: -0.4px;
+.header-code {
+  position: absolute;
+  right: 0;
+  bottom: 15px;
+  font-size: 14px;
+  font-family: monospace;
 }
 
-.report-meta {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.report-meta span {
-  background: #f8fafc;
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.report-meta strong {
-  color: #1e293b;
-  font-weight: 600;
-}
-
-/* 4大核心指标卡片 */
-.report-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.kpi-card {
-  border-radius: 10px;
-  padding: 16px 18px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-}
-
-.kpi-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.kpi-icon-wrap {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.industrial-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
   font-size: 14px;
 }
 
-.kpi-label {
-  font-size: 12.5px;
-  color: #64748b;
-  font-weight: 600;
-  letter-spacing: 0.2px;
+.industrial-meta-table td {
+  border: 1px solid #000;
+  padding: 8px 12px;
 }
 
-.kpi-val {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 6px 0;
-  font-feature-settings: "tnum", "lnum";
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+.meta-label {
+  background: #f0f0f0;
+  font-weight: bold;
+  width: 12%;
+  text-align: center;
 }
 
-.kpi-val .unit {
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748b;
-  margin-left: 2px;
+.meta-value {
+  width: 21%;
 }
 
-.kpi-sub {
-  font-size: 11.5px;
-  color: #94a3b8;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.kpi-card.danger {
-  border-top: 3px solid #ef4444;
-}
-.kpi-card.danger .kpi-icon-wrap {
-  background: #fef2f2;
-  color: #ef4444;
-}
-.kpi-card.danger .kpi-val {
-  color: #dc2626;
-}
-
-.kpi-card.warning {
-  border-top: 3px solid #f59e0b;
-}
-.kpi-card.warning .kpi-icon-wrap {
-  background: #fffbeb;
-  color: #d97706;
-}
-.kpi-card.warning .kpi-val.highlight {
-  color: #b45309;
-  font-size: 21px;
-}
-
-.kpi-card.primary {
-  border-top: 3px solid #2563eb;
-}
-.kpi-card.primary .kpi-icon-wrap {
-  background: #eff6ff;
-  color: #2563eb;
-}
-.kpi-card.primary .kpi-val {
-  color: #1d4ed8;
-}
-
-.kpi-card.success {
-  border-top: 3px solid #059669;
-}
-.kpi-card.success .kpi-icon-wrap {
-  background: #ecfdf5;
-  color: #059669;
-}
-.kpi-card.success .kpi-val.decision {
-  font-size: 14.5px;
-  color: #991b1b;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-/* 左右分栏 */
-.report-split-section {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 20px;
-  margin-bottom: 24px;
+.industrial-section {
+  margin-bottom: 20px;
 }
 
 .section-title {
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.section-title i {
-  color: #2563eb;
   font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  border-left: 4px solid #000;
+  padding-left: 8px;
+  line-height: 1;
 }
 
-.report-image-box {
-  position: relative;
-  background: #090d16;
-  border-radius: 10px;
-  height: 260px;
+.industrial-kpi-row {
+  display: flex;
+  border: 2px solid #000;
+}
+
+.kpi-item {
+  flex: 1;
+  border-right: 1px solid #000;
+  text-align: center;
+  padding: 12px 2px;
+}
+
+.kpi-item:last-child {
+  border-right: none;
+}
+
+.kpi-title {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.kpi-value.text-action {
+  font-size: 14px;
+}
+
+.split-section {
+  display: flex;
+  gap: 20px;
+}
+
+.split-left {
+  flex: 1;
+}
+
+.split-right {
+  flex: 1.2;
+}
+
+.img-frame {
+  border: 2px solid #000;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  border: 1px solid #cbd5e1;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: #eee;
+  position: relative;
 }
 
-.report-image {
+.img-frame img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
 
-.image-watermark {
-  position: absolute;
-  bottom: 8px;
-  right: 10px;
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(4px);
-  color: #e2e8f0;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+.industrial-ai-table {
+  width: 100%;
+  border-collapse: collapse;
+  height: 240px;
 }
 
-.advice-block-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  height: 260px;
-  box-sizing: border-box;
-  overflow-y: auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+.industrial-ai-table th,
+.industrial-ai-table td {
+  border: 1px solid #000;
+  padding: 12px;
+  font-size: 14px;
 }
 
-.advice-item {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 12px;
+.industrial-ai-table th {
+  background: #f0f0f0;
+  text-align: center;
 }
 
-.advice-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.item-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: #1e293b;
-  margin-bottom: 6px;
-  font-weight: 700;
-}
-
-.icon-tag {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 11px;
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
-}
-
-.icon-tag.tag-info { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
-.icon-tag.tag-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.icon-tag.tag-danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
-
-.item-content {
+.industrial-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #000;
   font-size: 13px;
-  color: #475569;
-  line-height: 1.6;
-  padding-left: 28px;
 }
 
-.item-content.bold-action {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #991b1b;
-  background: #fef2f2;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid #fee2e2;
-  border-left: 4px solid #ef4444;
-  margin-top: 6px;
-  line-height: 1.5;
+.industrial-detail-table th,
+.industrial-detail-table td {
+  border: 1px solid #000;
+  padding: 8px;
 }
 
-/* 明细表格 */
-.report-table-section {
-  margin-bottom: 22px;
+.industrial-detail-table th {
+  background: #f0f0f0;
 }
 
-.report-table-section :deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
+.industrial-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 40px;
+  margin-top: 40px;
+  font-size: 15px;
+  font-weight: bold;
 }
 
-.report-table-section :deep(.el-table th) {
-  background-color: #f1f5f9 !important;
-  color: #475569 !important;
-  font-weight: 700 !important;
-  font-size: 12.5px !important;
-  padding: 8px 0 !important;
+.sign-block .line {
+  display: inline-block;
+  width: 120px;
+  border-bottom: 1px solid #000;
 }
 
-.report-table-section :deep(.el-table td) {
-  padding: 8px 0 !important;
-  font-size: 12.5px !important;
-  color: #334155 !important;
-}
-
-.report-repair-text {
+.industrial-remark {
+  margin-top: 20px;
   font-size: 12px;
-  color: #475569;
-  line-height: 1.4;
+  color: #666;
 }
 
-/* 底部签名区 */
-.report-footer {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.text-ng {
+  color: #d32f2f !important;
+  font-weight: bold;
 }
 
-.footer-sign {
-  display: flex;
-  gap: 48px;
-  font-size: 13px;
-  color: #475569;
-  font-weight: 500;
+.text-ok {
+  color: #2e7d32 !important;
+  font-weight: bold;
 }
 
-.footer-sign span {
-  display: flex;
-  align-items: center;
+.text-action {
+  color: #c62828 !important;
+  font-weight: bold;
+  font-size: 16px;
 }
 
-.footer-note {
-  font-size: 11.5px;
-  color: #94a3b8;
-  font-style: italic;
+.font-bold {
+  font-weight: bold;
+}
+
+.no-img {
+  color: #999;
 }
 
 /* 打印与导出 PDF 专属样式 */

@@ -297,7 +297,7 @@
         <div class="industrial-report-paper">
           <!-- 标题区 -->
           <div class="industrial-header">
-            <div class="header-logo">云擎智检</div>
+            <div class="header-logo">灵眸巡诊</div>
             <h1 class="header-title">表面缺陷检测工艺处置单</h1>
             <div class="header-code">报告编号: {{ currentExpertReport.id || '-' }}</div>
           </div>
@@ -418,7 +418,7 @@
             <div class="sign-block">日期：<span class="line" style="text-align: center; font-size: 13px;">{{ currentPrintDate || '-' }}</span></div>
           </div>
           <div class="industrial-remark">
-            * 备注：本报告由云擎智检视觉模型自动生成，仅供生产线质检与工艺处置复核参考，不可替代最终人工确认。
+            * 备注：本报告由灵眸巡诊视觉模型自动生成，仅供生产线质检与工艺处置复核参考，不可替代最终人工确认。
           </div>
         </div>
       </div>

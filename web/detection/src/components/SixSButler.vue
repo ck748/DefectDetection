@@ -290,11 +290,9 @@ export default {
         this.hasDragged = false;
         return;
       }
-      this.drawerVisible = !this.drawerVisible;
-      if (this.drawerVisible) {
-        this.$nextTick(() => {
-          this.scrollToBottom();
-        });
+      // 直接跳转到导航栏当中的灵鉴页面，不打开侧边栏
+      if (this.$route.path !== '/six-s-manager') {
+        this.$router.push('/six-s-manager');
       }
     },
     sendQuickQuestion(text) {
