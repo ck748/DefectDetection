@@ -79,10 +79,8 @@ public class DetectionController {
 
         try {
             // 尝试从 Python 接口获取最新结果 (设置5秒超时)
-            //String response = HttpUtil.get(PYTHON_RESULT_API, 5000);
-            //ModelResultVO pythonResult = JSON.parseObject(response, ModelResultVO.class);
-
-            
+            String response = HttpUtil.get(PYTHON_RESULT_API, 5000);
+            ModelResultVO pythonResult = JSON.parseObject(response, ModelResultVO.class);
 
             if (pythonResult != null && pythonResult.getBatchId() != null) {
                 log.info("从 Python 端获取到最新批次数据 [{}]，直接返回给前端", pythonResult.getBatchId());
