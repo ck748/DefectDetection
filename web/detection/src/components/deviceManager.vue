@@ -1911,11 +1911,8 @@ export default {
       }
     },
     startServerMonitorPolling() {
+      // 仅在刚进入页面时读取一次数据，不再开启定时轮询
       this.fetchServerMonitor();
-      if (this.serverMonitorTimer) clearInterval(this.serverMonitorTimer);
-      this.serverMonitorTimer = setInterval(() => {
-        this.fetchServerMonitor();
-      }, 3000);
     },
     stopServerMonitorPolling() {
       if (this.serverMonitorTimer) {

@@ -1,10 +1,16 @@
 package com.ggbond.defectdetection.service;
 
+import cn.hutool.core.codec.Base64;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.ggbond.defectdetection.common.Result;
 import com.ggbond.defectdetection.pojo.CameraWatchRecord;
 import jakarta.annotation.PreDestroy;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,10 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLConnection;
-import jakarta.servlet.http.HttpServletResponse;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +37,10 @@ public class CameraFolderWatchService {
     @Value("${file.camera-watch-dir:/root/desc/cmzj-main/mijia-watcher/image}")
     private String serverWatchDir = "/root/desc/cmzj-main/mijia-watcher/image";
 
+    // AI 视觉推理接口地址
+    @Value("${ai.detect.url:http://192.168.1.3:9001/Qualified}")
+    private String aiDetectUrl = "http://192.168.1.3:9001/Qualified";
+
     @Autowired
     private CameraWatchRecordService cameraWatchRecordService;
 
@@ -39,10 +49,6 @@ public class CameraFolderWatchService {
     private ScheduledExecutorService scanExecutorService;
     private volatile boolean isRunning = false;
 
-    // 联动绑定的本地监听 Node 子进程句柄
-    private Process localWatcherProcess;
-    private ExecutorService processLogExecutor;
-
     // 本地快速去重缓存
     private final Set<String> processedFileNames = Collections.synchronizedSet(new HashSet<>());
 
@@ -50,7 +56,7 @@ public class CameraFolderWatchService {
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
 
     /**
-     * 接收客户端（如 mijia-watcher 守护进程）上传的米家拍照图片并入库
+     * 接收客户端（如 mijia-watcher 守护进程）上传的米家拍照图片并入库，同时触发 AI 识别
      */
     public synchronized Result<CameraWatchRecord> saveUploadedImage(MultipartFile file, String customFileName) {
         if (file == null || file.isEmpty()) {
@@ -93,16 +99,98 @@ public class CameraFolderWatchService {
             record.setFileBytes(file.getSize());
             record.setUploadTime(LocalDateTime.now());
             record.setServerWatchDir(this.serverWatchDir);
-            record.setStatus("已同步上传");
+            record.setStatus("已同步待识别");
+
+            // 同步调用 AI 推理接口
+            processAiDetection(destFile, record);
 
             cameraWatchRecordService.save(record);
             processedFileNames.add(originalName);
 
-            log.info("📸 米家相机图片成功接收并存盘入库: 原始名={}, 存盘名={}, WebURL={}", originalName, storedName, webUrl);
-            return Result.success("图片上传并入库成功", record);
+            log.info("📸 米家相机图片成功接收并完成AI识别入库: 原始名={}, 存盘名={}, 状态={}", originalName, storedName, record.getStatus());
+            return Result.success("图片上传并识别入库成功", record);
         } catch (Exception e) {
-            log.error("保存上传图片失败:", e);
+            log.error("保存上传图片并识别失败:", e);
             return Result.fail("保存上传图片失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 核心方法：调用 AI 视觉服务接口进行推理并将标注结果保存
+     */
+    private void processAiDetection(File imageFile, CameraWatchRecord record) {
+        if (imageFile == null || !imageFile.exists()) {
+            return;
+        }
+
+        try {
+            log.info("🚀 正在向 AI 视觉推理服务发送请求: url={}, file={}", aiDetectUrl, imageFile.getName());
+
+            // 发送 Multipart 文件请求
+            HttpResponse response = HttpRequest.post(aiDetectUrl)
+                    .form("file", imageFile)
+                    .timeout(10000)
+                    .execute();
+
+            if (response.isOk()) {
+                String body = response.body();
+                log.info("✅ AI 推理返回结果: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
+
+                JSONObject resObj = JSONUtil.parseObj(body);
+
+                // 提取标注后的图片 Base64
+                String annotatedBase64 = resObj.getStr("image_base64");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) {
+                    annotatedBase64 = resObj.getStr("image");
+                }
+
+                // 提取置信度与状态
+                Double confidence = resObj.getDouble("confidence");
+                String status = resObj.getStr("status");
+                if (status == null || status.isEmpty()) {
+                    Boolean isQualified = resObj.getBool("is_qualified");
+                    if (isQualified != null) {
+                        status = isQualified ? "合格" : "不合格";
+                    } else {
+                        status = "识别完成";
+                    }
+                }
+
+                if (confidence != null) {
+                    status += String.format(" (%.1f%%)", confidence * 100);
+                }
+
+                record.setStatus(status);
+
+                // 若 AI 返回了带标注红框的结果图，将其解码另存为 annotated_xxx.jpg 并设为展示主图
+                if (annotatedBase64 != null && !annotatedBase64.trim().isEmpty()) {
+                    String base64Data = annotatedBase64;
+                    if (base64Data.contains(",")) {
+                        base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
+                    }
+
+                    byte[] imgBytes = Base64.decode(base64Data);
+                    String annotatedFileName = "annotated_" + record.getStoredName();
+                    File annotatedFile = new File(imageFile.getParentFile(), annotatedFileName);
+
+                    try (FileOutputStream fos = new FileOutputStream(annotatedFile)) {
+                        fos.write(imgBytes);
+                        fos.flush();
+                    }
+
+                    // 更新展示与存储路径为识别结果图
+                    record.setStoredName(annotatedFileName);
+                    record.setFilePath(annotatedFile.getAbsolutePath().replace("\\", "/"));
+                    record.setWebUrl(buildWebUrl(annotatedFileName));
+                    log.info("🎯 已生成带红框的 AI 识别结果图并更新: {}", annotatedFileName);
+                }
+            } else {
+                log.warn("AI 视觉接口响应非 200: code={}, body={}", response.getStatus(), response.body());
+                record.setStatus("识别服务异常(" + response.getStatus() + ")");
+            }
+        } catch (Exception e) {
+            log.error("调用 AI 接口异常:", e);
+            record.setStatus("已同步 (AI未连接)");
         }
     }
 
@@ -344,8 +432,8 @@ public class CameraFolderWatchService {
             File folder = new File(this.serverWatchDir);
             if (!folder.exists() || !folder.isDirectory()) return;
 
-            // 仅对有效普通文件夹进行首层轻量扫描（严禁深层递归；若在Windows本地测试填了根目录，只取顶层直接文件）
-            File[] files = folder.listFiles(f -> f != null && f.isFile());
+            // 仅对有效普通文件夹进行首层轻量扫描，避免重复扫描带有 annotated_ 前缀的识别结果图
+            File[] files = folder.listFiles(f -> f != null && f.isFile() && !f.getName().startsWith("annotated_"));
             if (files == null || files.length == 0) return;
 
             Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
@@ -368,7 +456,11 @@ public class CameraFolderWatchService {
                             record.setFileBytes(file.length());
                             record.setUploadTime(LocalDateTime.now());
                             record.setServerWatchDir(this.serverWatchDir);
-                            record.setStatus("已同步");
+                            record.setStatus("已同步待识别");
+
+                            // 触发 AI 推理
+                            processAiDetection(file, record);
+
                             cameraWatchRecordService.save(record);
                         }
                         processedFileNames.add(file.getName());
@@ -389,7 +481,7 @@ public class CameraFolderWatchService {
                     Path fileName = (Path) event.context();
                     String nameStr = fileName.toString().toLowerCase();
 
-                    if (isImageFile(nameStr)) {
+                    if (isImageFile(nameStr) && !nameStr.startsWith("annotated_")) {
                         Path fullPath = path.resolve(fileName);
                         File targetFile = fullPath.toFile();
 

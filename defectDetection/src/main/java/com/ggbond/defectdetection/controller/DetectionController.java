@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ggbond.defectdetection.common.Result;
 import com.ggbond.defectdetection.pojo.DetectionBatch;
+import com.ggbond.defectdetection.pojo.Model;
 import com.ggbond.defectdetection.pojo.vo.ModelResultVO;
 import com.ggbond.defectdetection.service.DetectionResultSaveService;
 import com.ggbond.defectdetection.service.DetectionService;
@@ -78,8 +79,10 @@ public class DetectionController {
 
         try {
             // 尝试从 Python 接口获取最新结果 (设置5秒超时)
-            String response = HttpUtil.get(PYTHON_RESULT_API, 5000);
-            ModelResultVO pythonResult = JSON.parseObject(response, ModelResultVO.class);
+            //String response = HttpUtil.get(PYTHON_RESULT_API, 5000);
+            //ModelResultVO pythonResult = JSON.parseObject(response, ModelResultVO.class);
+
+            
 
             if (pythonResult != null && pythonResult.getBatchId() != null) {
                 log.info("从 Python 端获取到最新批次数据 [{}]，直接返回给前端", pythonResult.getBatchId());
