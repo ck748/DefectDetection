@@ -180,30 +180,27 @@ public class VmCameraTriggerService {
         responseQueue.clear();
 
         try {
-            // 发送 TRIGGER 指令
-            String cmd = "TRIGGER\n";
+            // 发送 TRIGGER 指令（兼容字符串触发、分号协议分隔符及回车换行）
+            String cmd = "TRIGGER;\r\n";
             vmOut.write(cmd.getBytes(StandardCharsets.UTF_8));
             vmOut.flush();
-            log.info("[Java→VM] 已发送触发指令，等待拍照完成（超时 {}ms）", timeoutMs);
+            log.info("[Java→VM] 已成功向 VM 发送触发拍照指令: {}", cmd.trim());
 
-            // 等待 VM 响应
-            String response = responseQueue.poll(timeoutMs, TimeUnit.MILLISECONDS);
-
-            if ("CAPTURE_DONE".equals(response)) {
-                log.info("[Java←VM] 拍照完成确认");
-                return true;
-            } else {
-                log.warn("[Java←VM] 等待超时，未收到 CAPTURE_DONE（{}ms）", timeoutMs);
-                return false;
+            // 等待 VM 响应确认（最长等待 1 秒，若 VM 未配置回传也视为触发成功）
+            try {
+                String response = responseQueue.poll(1000, TimeUnit.MILLISECONDS);
+                if ("CAPTURE_DONE".equals(response)) {
+                    log.info("[Java←VM] 收到 VM 拍照完成确认信号 CAPTURE_DONE");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
+
+            return true;
 
         } catch (IOException e) {
             log.error("[Java→VM] 发送触发指令失败: {}", e.getMessage());
             connected.set(false);
-            return false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("[Java←VM] 等待被中断");
             return false;
         }
     }

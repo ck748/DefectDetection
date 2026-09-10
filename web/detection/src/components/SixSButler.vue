@@ -10,7 +10,7 @@
         :style="ballStyle"
         @mousedown="startDrag"
         @click="toggleDrawer"
-        title="6S管家 - 工业质检AI专家"
+        title="灵鉴 - 工业质检AI专家"
       >
         <!-- 核心发光球体 -->
         <div class="ball-inner">
@@ -18,13 +18,13 @@
           <img
             :src="logoImg"
             class="butler-logo-img"
-            alt="6S管家"
+            alt="灵鉴"
             draggable="false"
             @dragstart.prevent
           />
         </div>
         <!-- 徽标提示 -->
-        <div class="ball-badge">6S管家</div>
+        <div class="ball-badge">灵鉴</div>
       </div>
     </transition>
 

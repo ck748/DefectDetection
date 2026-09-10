@@ -137,7 +137,7 @@
               :class="msg.role"
             >
               <div class="ai-avatar-box" v-if="msg.role === 'assistant'">
-                <img :src="logoImg" alt="6S管家" />
+                <img :src="logoImg" alt="灵鉴" />
               </div>
               <div class="ai-avatar-box user-avatar-box" v-else>
                 <img :src="currentUserAvatar" alt="用户" />
@@ -145,7 +145,7 @@
 
               <div class="ai-msg-main">
                 <div class="ai-msg-meta font-mono">
-                  <span class="ai-sender-name">{{ msg.role === 'assistant' ? '6S 数字化管家' : currentUserName }}</span>
+                  <span class="ai-sender-name">{{ msg.role === 'assistant' ? '灵鉴' : currentUserName }}</span>
                   <span class="ai-msg-time">{{ msg.time }}</span>
                 </div>
                 <div class="ai-msg-bubble" :class="msg.role">
@@ -197,11 +197,11 @@
             <!-- 思考中动态 -->
             <div class="ai-msg-row assistant" v-if="isThinking">
               <div class="ai-avatar-box">
-                <img :src="logoImg" alt="6S管家" />
+                <img :src="logoImg" alt="灵鉴" />
               </div>
               <div class="ai-msg-main">
                 <div class="ai-msg-meta font-mono">
-                  <span class="ai-sender-name">6S 数字化管家</span>
+                  <span class="ai-sender-name">灵鉴</span>
                   <span class="ai-msg-time">THINKING</span>
                 </div>
                 <div class="ai-msg-bubble assistant thinking-bubble">
@@ -219,7 +219,7 @@
                 type="textarea"
                 :rows="2"
                 v-model="inputQuestion"
-                placeholder="向 6S 管家提问，如：半轴标定台整顿标准、工业相机镜片清洁防错、机械臂安全复位..."
+                placeholder="向灵鉴提问，如：半轴标定台整顿标准、工业相机镜片清洁防错、机械臂安全复位..."
                 resize="none"
                 class="ai-copilot-input"
                 @keydown.enter.native.exact.prevent="handleSend"
@@ -836,7 +836,7 @@ export default {
       messageList: [
         {
           role: 'assistant',
-          content: '您好！欢迎进入 **6S 数字化智能管家** 🦾。\n本工作台已接入车间工业物联网总线与 6S 精益管控体系，支持：\n1. **6S 现场执行规范智能问答**（整理、整顿、清扫、清洁、素养、安全）\n2. **工位自动化协同控制**（支持下发机械臂原点复位、AGV 分拣小车归位）\n3. **光学感知设备维护标准及自检报告输出**\n\n请点击上方快捷指令或直接输入问题咨询！',
+          content: '您好！我是灵鉴 🦾。\n本工作台已接入车间工业物联网总线与 6S 精益管控体系，支持：\n1. **6S 现场执行规范智能问答**（整理、整顿、清扫、清洁、素养、安全）\n2. **工位自动化协同控制**（支持下发机械臂原点复位、AGV 分拣小车归位）\n3. **光学感知设备维护标准及自检报告输出**\n\n请点击上方快捷指令或直接输入问题咨询！',
           time: this.getNowTime()
         }
       ],
@@ -1062,16 +1062,18 @@ export default {
       if (this.capturing) return;
       this.capturing = true;
       try {
+        // 1. 联动自动开启/确保服务器端目录监听已启动（相当于联动点击了目录监听页面的【启动目录监听】）
+        try {
+          await axios.post('api/cameraWatch/start');
+        } catch (watchErr) {
+          console.warn('启动目录监听提示:', watchErr);
+        }
+
+        // 2. 触发 VisionMaster 拍照并存盘
         const res = await axios.post('api/vmCamera/trigger', { timeout: 5000 });
         this.capturing = false;
         if (res.data && res.data.code === 200) {
-          this.$message.success('拍照成功！图片已自动存入 D 盘');
-          this.messageList.push({
-            role: 'assistant',
-            content: '📸 **相机拍照完成**：已成功触发海康工业相机拍照并将图片保存至 D 盘根目录！',
-            time: this.getNowTime()
-          });
-          this.$nextTick(() => this.scrollToBottom());
+          this.$message.success('拍照成功！图片已自动存入 D 盘，正在同步入库推送...');
         } else {
           const msg = (res.data && res.data.message) || '触发拍照未成功';
           this.$message.warning(msg);

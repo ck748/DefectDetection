@@ -75,7 +75,7 @@
               </el-menu-item>
               <el-menu-item index="/six-s-manager">
                 <i class="el-icon-s-custom"></i>
-                <span slot="title">6S管家</span>
+                <span slot="title">灵鉴</span>
               </el-menu-item>
             </el-submenu>
 
