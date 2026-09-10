@@ -306,9 +306,12 @@ export default {
     formatImageUrl(url) {
       return toFullImageUrl(url);
     },
-    // 前端直接 GET 调用 AI 视觉推理接口 http://192.168.1.3:9001/Qualified
+    // 触发 AI 视觉推理识别
     async triggerAiDetect(item) {
       if (!item || !item.imgUrl) return;
+
+      // 已在请求中或已有缓存，直接复用，防止重复高频触发
+      if (this.aiDetecting && this.aiDetectingId === item.id) return;
       if (this.aiCache[item.id]) {
         this.$set(item, 'annotatedBase64', this.aiCache[item.id].annotatedBase64);
         this.$set(item, 'aiStatus', this.aiCache[item.id].aiStatus);
@@ -318,37 +321,17 @@ export default {
       }
 
       this.aiDetecting = true;
+      this.aiDetectingId = item.id;
+
       try {
-        const fullUrl = this.formatImageUrl(item.imgUrl);
         const fileName = item.fileName || item.id || 'image.jpg';
 
-        // 优先通过后端代理 GET 请求 AI 接口（避免浏览器直连局域网 IP 产生跨域或网络阻断）
-        let resData = null;
-        try {
-          const proxyRes = await this.$request.get('/api/cameraWatch/detect', {
-            params: { fileName }
-          });
-          if (proxyRes && (proxyRes.code === 200 || proxyRes.code === 1 || proxyRes.code === '200') && proxyRes.data) {
-            resData = proxyRes.data;
-          }
-        } catch (proxyErr) {
-          console.warn('后端代理 GET 识别失败，尝试前端直接 GET 调用:', proxyErr);
-        }
+        // 统一通过后端代理请求 AI 推理接口（安全可靠，无跨域与网络阻断问题）
+        const proxyRes = await this.$request.get('/api/cameraWatch/detect', {
+          params: { fileName }
+        });
 
-        // 如果后端代理未返回有效数据，则直接前端 GET 请求 AI 接口
-        if (!resData || !resData.annotatedBase64) {
-          const directRes = await axios.get('http://192.168.1.3:9001/Qualified', {
-            params: {
-              url: fullUrl,
-              imgUrl: fullUrl,
-              fileName: fileName,
-              image_name: fileName,
-              path: `/root/desc/cmzj-main/mijia-watcher/image/${fileName}`
-            },
-            timeout: 10000
-          });
-          resData = directRes.data || {};
-        }
+        let resData = (proxyRes && (proxyRes.code === 200 || proxyRes.code === 1 || proxyRes.code === '200')) ? proxyRes.data : {};
 
         let annotatedBase64 = resData.annotatedBase64 || resData.image_base64 || resData.image;
         if (annotatedBase64 && !annotatedBase64.startsWith('data:image')) {
@@ -374,10 +357,11 @@ export default {
         this.$set(item, 'confidence', confidence);
         this.$set(item, 'isQualified', isQualified);
       } catch (e) {
-        console.error('GET 请求 AI 视觉推理失败:', e);
+        console.error('AI 视觉推理请求失败:', e);
         this.$set(item, 'aiStatus', '识别异常');
       } finally {
         this.aiDetecting = false;
+        this.aiDetectingId = null;
       }
     },
     fetchStatus() {
