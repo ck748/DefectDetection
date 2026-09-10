@@ -306,11 +306,10 @@ export default {
     formatImageUrl(url) {
       return toFullImageUrl(url);
     },
-    // 触发 AI 视觉推理识别
+    // 前端直接调用 AI 机械臂复位检测接口 (GET)
     async triggerAiDetect(item) {
       if (!item || !item.imgUrl) return;
 
-      // 已在请求中或已有缓存，直接复用，防止重复高频触发
       if (this.aiDetecting && this.aiDetectingId === item.id) return;
       if (this.aiCache[item.id]) {
         this.$set(item, 'annotatedBase64', this.aiCache[item.id].annotatedBase64);
@@ -325,24 +324,63 @@ export default {
 
       try {
         const fileName = item.fileName || item.id || 'image.jpg';
+        const imgPath = `/root/desc/cmzj-main/mijia-watcher/image/${fileName}`;
 
-        // 统一通过后端代理请求 AI 推理接口（安全可靠，无跨域与网络阻断问题）
-        const proxyRes = await this.$request.get('/api/cameraWatch/detect', {
-          params: { fileName }
-        });
+        // 前端直接 GET 请求 AI 模型接口（支持直连 IP 与前端代理路由 /ai-detect/Qualified）
+        let resData = null;
+        try {
+          const directRes = await axios.get('http://192.168.1.3:9001/Qualified', {
+            params: {
+              path: imgPath,
+              file_path: imgPath,
+              fileName: fileName,
+              image_name: fileName
+            },
+            timeout: 10000
+          });
+          resData = directRes.data || {};
+        } catch (corsErr) {
+          console.warn('直连 9001 端口失败，切换前端代理直调 AI 接口:', corsErr);
+          const proxyRes = await axios.get('/ai-detect/Qualified', {
+            params: {
+              path: imgPath,
+              file_path: imgPath,
+              fileName: fileName,
+              image_name: fileName
+            },
+            timeout: 10000
+          });
+          resData = proxyRes.data || {};
+        }
 
-        let resData = (proxyRes && (proxyRes.code === 200 || proxyRes.code === 1 || proxyRes.code === '200')) ? proxyRes.data : {};
+        // 精准解包 AI 机械臂复位模型的多层嵌套数据结构
+        const resBody = resData || {};
+        const payload = (resBody.data && typeof resBody.data === 'object') ? resBody.data : resBody;
 
-        let annotatedBase64 = resData.annotatedBase64 || resData.image_base64 || resData.image;
-        if (annotatedBase64 && !annotatedBase64.startsWith('data:image')) {
+        // 深度提取标注图 Base64 (兼容嵌套结构: data.data.image.image_base64)
+        let annotatedBase64 = '';
+        if (payload.data && payload.data.image && payload.data.image.image_base64) {
+          annotatedBase64 = payload.data.image.image_base64;
+        } else if (payload.image && payload.image.image_base64) {
+          annotatedBase64 = payload.image.image_base64;
+        } else if (payload.image_base64 && payload.image_base64.trim().length > 50) {
+          annotatedBase64 = payload.image_base64;
+        } else if (payload.img_base64 && payload.img_base64.trim().length > 50) {
+          annotatedBase64 = payload.img_base64;
+        } else if (resBody.image_base64 && resBody.image_base64.trim().length > 50) {
+          annotatedBase64 = resBody.image_base64;
+        }
+
+        if (annotatedBase64 && typeof annotatedBase64 === 'string' && !annotatedBase64.startsWith('data:image')) {
           annotatedBase64 = 'data:image/jpeg;base64,' + annotatedBase64;
         }
 
-        const isQualified = resData.isQualified !== undefined
-          ? resData.isQualified
-          : (resData.is_qualified !== undefined ? resData.is_qualified : (resData.aiStatus === '合格' || resData.status === '合格'));
-        const aiStatus = resData.aiStatus || resData.status || (isQualified ? '合格' : '不合格');
-        const confidence = resData.confidence || 0.95;
+        // 提取复位判定与置信度
+        const isQualified = payload.is_qualified !== undefined
+          ? payload.is_qualified
+          : (payload.qualified !== undefined ? payload.qualified : (payload.is_reset !== undefined ? payload.is_reset : (payload.bbox === null)));
+        const aiStatus = payload.status || (isQualified ? '已复位 (合格)' : '未复位 (不合格)');
+        const confidence = payload.confidence !== undefined && payload.confidence > 0 ? payload.confidence : 0.95;
 
         const resultData = {
           annotatedBase64,
@@ -357,7 +395,7 @@ export default {
         this.$set(item, 'confidence', confidence);
         this.$set(item, 'isQualified', isQualified);
       } catch (e) {
-        console.error('AI 视觉推理请求失败:', e);
+        console.error('前端直调 AI 视觉推理失败:', e);
         this.$set(item, 'aiStatus', '识别异常');
       } finally {
         this.aiDetecting = false;

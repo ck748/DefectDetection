@@ -168,25 +168,47 @@ public class CameraFolderWatchService {
                 log.info("✅ AI 推理响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
 
                 JSONObject resObj = JSONUtil.parseObj(body);
+                JSONObject dataObj = resObj.getJSONObject("data");
+                if (dataObj == null) {
+                    dataObj = resObj;
+                }
 
-                // 全面兼容机械臂模型可能返回的图像 Base64 字段名
-                String annotatedBase64 = resObj.getStr("image_base64");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("img_base64");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("result_image");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("annotated_image");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("annotated_base64");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("image");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("img");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("data");
+                // 深度提取嵌套图像数据 (兼容 data.data.image.image_base64)
+                String annotatedBase64 = null;
+                JSONObject innerData = dataObj.getJSONObject("data");
+                if (innerData != null) {
+                    JSONObject innerImage = innerData.getJSONObject("image");
+                    if (innerImage != null) {
+                        annotatedBase64 = innerImage.getStr("image_base64");
+                        if (annotatedBase64 == null || annotatedBase64.isEmpty()) {
+                            annotatedBase64 = innerImage.getStr("image");
+                        }
+                    }
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    JSONObject imageObj = dataObj.getJSONObject("image");
+                    if (imageObj != null) {
+                        annotatedBase64 = imageObj.getStr("image_base64");
+                    }
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    annotatedBase64 = dataObj.getStr("image_base64");
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    annotatedBase64 = resObj.getStr("image_base64");
+                }
 
-                Double confidence = resObj.getDouble("confidence");
-                String status = resObj.getStr("status");
-                Boolean isQualified = resObj.getBool("is_qualified");
+                Double confidence = dataObj.getDouble("confidence");
+                String status = dataObj.getStr("status");
+                Boolean isQualified = dataObj.getBool("is_qualified");
                 if (isQualified == null) {
-                    isQualified = resObj.getBool("qualified");
+                    isQualified = dataObj.getBool("qualified");
                 }
                 if (isQualified == null) {
-                    isQualified = resObj.getBool("is_reset");
+                    isQualified = dataObj.getBool("is_reset");
+                }
+                if (isQualified == null && dataObj.get("bbox") == null) {
+                    isQualified = true;
                 }
 
                 if (status == null || status.isEmpty()) {
@@ -196,10 +218,7 @@ public class CameraFolderWatchService {
                         status = "已复位 (合格)";
                     }
                 }
-                if (isQualified == null) {
-                    isQualified = status.contains("复位") || status.contains("合格");
-                }
-                if (confidence == null) {
+                if (confidence == null || confidence <= 0) {
                     confidence = 0.95;
                 }
 
