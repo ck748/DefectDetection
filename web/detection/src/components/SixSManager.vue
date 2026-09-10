@@ -936,7 +936,7 @@ export default {
         }
       ];
     },
-    handleSend() {
+    async handleSend() {
       const q = (this.inputQuestion || '').trim();
       if (!q || this.isThinking || this.isTyping) return;
 
@@ -949,11 +949,15 @@ export default {
 
       const isResetArm = q.includes('机械臂复位') || q.includes('复位机械臂') || q.includes('将机械臂复位');
       const isResetCart = q.includes('小车归位') || q.includes('分拣小车归位') || q.includes('小车复位') || q.includes('归位分拣小车');
+      const isPreCheck = q.includes('事前检查') || q.includes('班前点检') || q.includes('开机准入');
+      const isPostCheck = q.includes('事后检查') || q.includes('班后维护') || q.includes('停机归整');
 
       if (isResetArm) {
         this.thinkingText = '正在连接工控PLC总线，下发机械臂六轴原点复位校准指令...';
       } else if (isResetCart) {
         this.thinkingText = '正在调度AGV小车导航系统，下发分拣小车原点归位指令...';
+      } else if (isPostCheck) {
+        this.thinkingText = '正在调阅机械臂复位视觉识别检测图并执行事后点检...';
       } else {
         this.thinkingText = '正在调阅 6S 精益管理规范与当前工位传感数据...';
       }
@@ -961,12 +965,69 @@ export default {
       this.isThinking = true;
       this.$nextTick(() => this.scrollToBottom());
 
+      // 如果是事后检查，先获取已经识别后的图像发给用户
+      if (isPostCheck) {
+        try {
+          let detectedImgCard = null;
+          // 1. 尝试从已捕获目录获取最新识别结果
+          const statusRes = await this.$request.get('/api/cameraWatch/status');
+          if (statusRes && (statusRes.code === 200 || statusRes.code === 1 || statusRes.code === '200')) {
+            const list = (statusRes.data && statusRes.data.list) || [];
+            if (list.length > 0) {
+              const targetItem = list[0];
+              let annotatedUrl = targetItem.annotatedBase64;
+              // 若尚未生成标注图，即时请求 AI 检测
+              if (!annotatedUrl) {
+                try {
+                  const directRes = await axios.get('http://192.168.1.3:9001/Qualified', {
+                    params: {
+                      path: `/root/desc/cmzj-main/mijia-watcher/image/${targetItem.fileName}`,
+                      fileName: targetItem.fileName
+                    },
+                    timeout: 5000
+                  });
+                  const resBody = directRes.data || {};
+                  const payload = (resBody.data && typeof resBody.data === 'object') ? resBody.data : resBody;
+                  if (payload.data && payload.data.image && payload.data.image.image_base64) {
+                    annotatedUrl = payload.data.image.image_base64;
+                  } else if (payload.image && payload.image.image_base64) {
+                    annotatedUrl = payload.image.image_base64;
+                  } else if (payload.image_base64) {
+                    annotatedUrl = payload.image_base64;
+                  }
+                } catch (e) {}
+              }
+
+              if (annotatedUrl && !annotatedUrl.startsWith('data:image')) {
+                annotatedUrl = 'data:image/jpeg;base64,' + annotatedUrl;
+              }
+
+              detectedImgCard = {
+                fileName: targetItem.fileName || '机械臂复位识别图.jpg',
+                fileSize: targetItem.fileSize || '已标注',
+                webUrl: annotatedUrl || targetItem.imgUrl
+              };
+            }
+          }
+
+          // 2. 如果获取到了识别图，先作为一条消息发给用户
+          if (detectedImgCard) {
+            this.messageList.push({
+              role: 'assistant',
+              content: '已为您调取当前工位**机械臂复位检测识别结果图**：',
+              time: this.getNowTime(),
+              imageCard: detectedImgCard
+            });
+            this.$nextTick(() => this.scrollToBottom());
+          }
+        } catch (err) {
+          console.warn('调取机械臂检测图失败:', err);
+        }
+      }
+
       setTimeout(() => {
         const fullReply = this.generate6SAnswer(q);
         this.isThinking = false;
-
-        const isPreCheck = q.includes('事前检查') || q.includes('班前点检') || q.includes('开机准入');
-        const isPostCheck = q.includes('事后检查') || q.includes('班后维护') || q.includes('停机归整');
 
         const assistantMsg = {
           role: 'assistant',
@@ -977,7 +1038,7 @@ export default {
         };
         this.messageList.push(assistantMsg);
         this.startTypewriter(assistantMsg, fullReply);
-      }, 1000);
+      }, 800);
     },
     startTypewriter(msgObj, fullText) {
       this.isTyping = true;
