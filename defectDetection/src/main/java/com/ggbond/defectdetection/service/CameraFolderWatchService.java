@@ -152,21 +152,38 @@ public class CameraFolderWatchService {
         }
 
         try {
-            log.info("🚀 后端正在通过 GET 请求 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
+            log.info("🚀 后端正在调用 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
 
-            // 构造 GET 请求，携带图片路径及文件名参数
-            HttpResponse response = HttpRequest.get(aiDetectUrl)
-                    .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
-                    .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
-                    .form("fileName", imageFile.getName())
-                    .form("image_name", imageFile.getName())
-                    .timeout(15000)
-                    .execute();
+            // 优先使用 POST 发送图片文件及参数，若服务要求 GET 则自动容错降级
+            HttpResponse response = null;
+            try {
+                response = HttpRequest.post(aiDetectUrl)
+                        .form("file", imageFile)
+                        .form("image", imageFile)
+                        .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
+                        .form("fileName", imageFile.getName())
+                        .form("image_name", imageFile.getName())
+                        .timeout(15000)
+                        .execute();
+            } catch (Exception ex) {
+                log.warn("POST 请求 AI 接口失败，尝试 GET 请求: {}", ex.getMessage());
+            }
 
-            // 若 GET 默认未带参数请求也是有效响应，支持直接解析
-            if (response.isOk()) {
+            // 若 POST 遇到 405 或失败，切换为 GET 请求
+            if (response == null || response.getStatus() == 405) {
+                log.info("切换为 GET 方式请求 AI 推理服务...");
+                response = HttpRequest.get(aiDetectUrl)
+                        .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
+                        .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
+                        .form("fileName", imageFile.getName())
+                        .form("image_name", imageFile.getName())
+                        .timeout(15000)
+                        .execute();
+            }
+
+            if (response != null && response.isOk()) {
                 String body = response.body();
-                log.info("✅ AI 推理 GET 响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
+                log.info("✅ AI 推理响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
 
                 JSONObject resObj = JSONUtil.parseObj(body);
                 String annotatedBase64 = resObj.getStr("image_base64");

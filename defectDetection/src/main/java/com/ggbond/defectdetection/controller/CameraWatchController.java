@@ -63,11 +63,17 @@ public class CameraWatchController {
     }
 
     /**
-     * 前端直通触发单张图片的 AI 视觉推理（后端代理，解决跨域与网络直连问题）
+     * 前端触发单张图片的 AI 视觉推理代理（同时支持 GET 和 POST，解决跨域与网络直连问题）
      */
-    @PostMapping("/detect")
-    public Result<Map<String, Object>> detectSingleImage(@RequestBody Map<String, String> body) {
-        String fileName = body != null ? body.get("fileName") : null;
+    @RequestMapping(value = "/detect", method = {RequestMethod.GET, RequestMethod.POST})
+    public Result<Map<String, Object>> detectSingleImage(
+            @RequestParam(value = "fileName", required = false) String fileNameParam,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String fileName = fileNameParam;
+        if ((fileName == null || fileName.trim().isEmpty()) && body != null) {
+            fileName = body.get("fileName");
+        }
         return Result.success("识别完成", cameraFolderWatchService.detectSingleImage(fileName));
     }
 

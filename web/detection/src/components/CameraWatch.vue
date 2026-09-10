@@ -306,7 +306,7 @@ export default {
     formatImageUrl(url) {
       return toFullImageUrl(url);
     },
-    // 前端直接调用 AI 识别接口 http://192.168.1.3:9001/Qualified
+    // 前端直接 GET 调用 AI 视觉推理接口 http://192.168.1.3:9001/Qualified
     async triggerAiDetect(item) {
       if (!item || !item.imgUrl) return;
       if (this.aiCache[item.id]) {
@@ -320,27 +320,46 @@ export default {
       this.aiDetecting = true;
       try {
         const fullUrl = this.formatImageUrl(item.imgUrl);
-        // 1. 获取图片 Blob 对象
-        const imageRes = await axios.get(fullUrl, { responseType: 'blob' });
-        const blob = imageRes.data;
+        const fileName = item.fileName || item.id || 'image.jpg';
 
-        // 2. 构造 FormData 发送给 AI 接口
-        const formData = new FormData();
-        formData.append('file', blob, item.fileName || 'image.jpg');
+        // 优先通过后端代理 GET 请求 AI 接口（避免浏览器直连局域网 IP 产生跨域或网络阻断）
+        let resData = null;
+        try {
+          const proxyRes = await this.$request.get('/api/cameraWatch/detect', {
+            params: { fileName }
+          });
+          if (proxyRes && (proxyRes.code === 200 || proxyRes.code === 1 || proxyRes.code === '200') && proxyRes.data) {
+            resData = proxyRes.data;
+          }
+        } catch (proxyErr) {
+          console.warn('后端代理 GET 识别失败，尝试前端直接 GET 调用:', proxyErr);
+        }
 
-        const aiRes = await axios.post('http://192.168.1.3:9001/Qualified', formData, {
-          timeout: 10000
-        });
+        // 如果后端代理未返回有效数据，则直接前端 GET 请求 AI 接口
+        if (!resData || !resData.annotatedBase64) {
+          const directRes = await axios.get('http://192.168.1.3:9001/Qualified', {
+            params: {
+              url: fullUrl,
+              imgUrl: fullUrl,
+              fileName: fileName,
+              image_name: fileName,
+              path: `/root/desc/cmzj-main/mijia-watcher/image/${fileName}`
+            },
+            timeout: 10000
+          });
+          resData = directRes.data || {};
+        }
 
-        const data = aiRes.data || {};
-        let annotatedBase64 = data.image_base64 || data.image;
+        let annotatedBase64 = resData.annotatedBase64 || resData.image_base64 || resData.image;
         if (annotatedBase64 && !annotatedBase64.startsWith('data:image')) {
           annotatedBase64 = 'data:image/jpeg;base64,' + annotatedBase64;
         }
 
-        const isQualified = data.is_qualified !== undefined ? data.is_qualified : (data.status === '合格');
-        const aiStatus = data.status || (isQualified ? '合格' : '不合格');
-        const confidence = data.confidence || 0.95;
+        const isQualified = resData.isQualified !== undefined
+          ? resData.isQualified
+          : (resData.is_qualified !== undefined ? resData.is_qualified : (resData.aiStatus === '合格' || resData.status === '合格'));
+        const aiStatus = resData.aiStatus || resData.status || (isQualified ? '合格' : '不合格');
+        const confidence = resData.confidence || 0.95;
 
         const resultData = {
           annotatedBase64,
@@ -355,7 +374,7 @@ export default {
         this.$set(item, 'confidence', confidence);
         this.$set(item, 'isQualified', isQualified);
       } catch (e) {
-        console.error('前端请求 AI 视觉推理失败:', e);
+        console.error('GET 请求 AI 视觉推理失败:', e);
         this.$set(item, 'aiStatus', '识别异常');
       } finally {
         this.aiDetecting = false;
