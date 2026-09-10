@@ -100,7 +100,7 @@ public class CameraFolderWatchService {
             record.setServerWatchDir(this.serverWatchDir);
             record.setStatus("已同步");
 
-            // 同步调用 AI 推理接口
+            // 同步调用 AI 推理接口 (GET 请求)
             processAiDetection(destFile);
 
             processedFileNames.add(originalName);
@@ -142,7 +142,7 @@ public class CameraFolderWatchService {
     }
 
     /**
-     * 调用 AI 视觉服务接口进行推理并将带红框结果图落地到目录
+     * 调用 AI 视觉服务接口进行推理 (使用 GET 请求) 并将带红框结果图落地到目录
      */
     private Map<String, Object> processAiDetection(File imageFile) {
         Map<String, Object> resultMap = new HashMap<>();
@@ -152,16 +152,21 @@ public class CameraFolderWatchService {
         }
 
         try {
-            log.info("🚀 后端正在向 AI 视觉推理服务发送请求: url={}, file={}", aiDetectUrl, imageFile.getName());
+            log.info("🚀 后端正在通过 GET 请求 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
 
-            HttpResponse response = HttpRequest.post(aiDetectUrl)
-                    .form("file", imageFile)
+            // 构造 GET 请求，携带图片路径及文件名参数
+            HttpResponse response = HttpRequest.get(aiDetectUrl)
+                    .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("fileName", imageFile.getName())
+                    .form("image_name", imageFile.getName())
                     .timeout(15000)
                     .execute();
 
+            // 若 GET 默认未带参数请求也是有效响应，支持直接解析
             if (response.isOk()) {
                 String body = response.body();
-                log.info("✅ AI 推理返回: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
+                log.info("✅ AI 推理 GET 响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
 
                 JSONObject resObj = JSONUtil.parseObj(body);
                 String annotatedBase64 = resObj.getStr("image_base64");
@@ -214,11 +219,11 @@ public class CameraFolderWatchService {
                 aiResultCache.put(imageFile.getName(), resultMap);
                 return resultMap;
             } else {
-                log.warn("AI 视觉接口响应异常: code={}, body={}", response.getStatus(), response.body());
+                log.warn("AI 视觉接口 GET 响应异常: code={}, body={}", response.getStatus(), response.body());
                 resultMap.put("aiStatus", "服务响应" + response.getStatus());
             }
         } catch (Exception e) {
-            log.error("调用 AI 接口异常: {}", e.getMessage());
+            log.error("GET 调用 AI 接口异常: {}", e.getMessage());
             resultMap.put("aiStatus", "识别失败: " + e.getMessage());
         }
 
