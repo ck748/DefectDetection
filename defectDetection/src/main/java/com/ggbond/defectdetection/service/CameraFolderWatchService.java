@@ -152,57 +152,52 @@ public class CameraFolderWatchService {
         }
 
         try {
-            log.info("🚀 后端正在调用 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
+            log.info("🚀 后端正在通过 GET 请求 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
 
-            // 优先使用 POST 发送图片文件及参数，若服务要求 GET 则自动容错降级
-            HttpResponse response = null;
-            try {
-                response = HttpRequest.post(aiDetectUrl)
-                        .form("file", imageFile)
-                        .form("image", imageFile)
-                        .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
-                        .form("fileName", imageFile.getName())
-                        .form("image_name", imageFile.getName())
-                        .timeout(15000)
-                        .execute();
-            } catch (Exception ex) {
-                log.warn("POST 请求 AI 接口失败，尝试 GET 请求: {}", ex.getMessage());
-            }
-
-            // 若 POST 遇到 405 或失败，切换为 GET 请求
-            if (response == null || response.getStatus() == 405) {
-                log.info("切换为 GET 方式请求 AI 推理服务...");
-                response = HttpRequest.get(aiDetectUrl)
-                        .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
-                        .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
-                        .form("fileName", imageFile.getName())
-                        .form("image_name", imageFile.getName())
-                        .timeout(15000)
-                        .execute();
-            }
+            // 直接发起标准 GET 请求，携带图片物理绝对路径与文件名
+            HttpResponse response = HttpRequest.get(aiDetectUrl)
+                    .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("fileName", imageFile.getName())
+                    .form("image_name", imageFile.getName())
+                    .timeout(15000)
+                    .execute();
 
             if (response != null && response.isOk()) {
                 String body = response.body();
                 log.info("✅ AI 推理响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
 
                 JSONObject resObj = JSONUtil.parseObj(body);
+
+                // 全面兼容机械臂模型可能返回的图像 Base64 字段名
                 String annotatedBase64 = resObj.getStr("image_base64");
-                if (annotatedBase64 == null || annotatedBase64.isEmpty()) {
-                    annotatedBase64 = resObj.getStr("image");
-                }
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("img_base64");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("result_image");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("annotated_image");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("annotated_base64");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("image");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("img");
+                if (annotatedBase64 == null || annotatedBase64.isEmpty()) annotatedBase64 = resObj.getStr("data");
 
                 Double confidence = resObj.getDouble("confidence");
                 String status = resObj.getStr("status");
                 Boolean isQualified = resObj.getBool("is_qualified");
+                if (isQualified == null) {
+                    isQualified = resObj.getBool("qualified");
+                }
+                if (isQualified == null) {
+                    isQualified = resObj.getBool("is_reset");
+                }
+
                 if (status == null || status.isEmpty()) {
                     if (isQualified != null) {
-                        status = isQualified ? "合格" : "不合格";
+                        status = isQualified ? "已复位 (合格)" : "未复位 (不合格)";
                     } else {
-                        status = "合格";
+                        status = "已复位 (合格)";
                     }
                 }
                 if (isQualified == null) {
-                    isQualified = "合格".equals(status);
+                    isQualified = status.contains("复位") || status.contains("合格");
                 }
                 if (confidence == null) {
                     confidence = 0.95;
