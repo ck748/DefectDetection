@@ -983,7 +983,7 @@ export default {
         },
         {
           id: 'dev_cam_01',
-          name: '工业相机 MV-CU060-10GC',
+          name: '工业相机 MV-CU120-10GC',
           type: 'camera',
           typeName: '视觉传感器',
           icon: 'el-icon-camera',
@@ -1061,8 +1061,8 @@ export default {
       } else if (dev.type === 'camera') {
         const cr = this.cameraRealtime;
         return [
-          { label: '相机型号', value: 'MV-CU060-10GC', highlight: true, sub: 'GigE 千兆网口工业相机' },
-          { label: '分辨率 / 像素', value: '600 万像素', highlight: true, sub: '3072 × 2048 标称输出' },
+          { label: '相机型号', value: 'MV-CU120-10GC', highlight: true, sub: 'GigE 千兆网口工业相机' },
+          { label: '分辨率 / 像素', value: '1200 万像素', highlight: true, sub: '3072 × 2048 标称输出' },
           { label: '实时帧率', value: cr.fps.toFixed(1) + ' FPS', highlight: true, sub: '千兆网口实时采集中', percent: (cr.fps / 20) * 100 },
           { label: '曝光时间', value: cr.exposure + ' μs', sub: '当前曝光参数' },
           { label: '模拟增益', value: cr.gain.toFixed(1) + ' dB', sub: '当前增益参数' },

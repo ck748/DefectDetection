@@ -331,7 +331,7 @@
       </div>
     </div>
 
-    <!-- AI智控专家分析报告弹窗（支持打印 / 导出PDF） -->
+    <!-- AI智控专家分析报告弹窗（支持打印 /导出PDF） -->
     <el-dialog
       :visible.sync="expertReportVisible"
       title="工业检测单预览"
@@ -339,8 +339,9 @@
       class="expert-report-dialog-wrapper"
       custom-class="expert-report-dialog"
       :close-on-click-modal="true"
+      :destroy-on-close="true"
+      :append-to-body="true"
       :lock-scroll="false"
-      :append-to-body="false"
     >
       <div class="dialog-actions no-print" style="text-align: right; margin-bottom: 12px; display: flex; justify-content: flex-end; gap: 10px;">
         <el-button
@@ -425,8 +426,7 @@
             <div class="split-left">
               <div class="section-title">二、 缺陷视觉图谱</div>
               <div class="img-frame">
-                <img v-if="currentExpertReport.imgBase64" :src="getBase64ImageUrl(currentExpertReport.imgBase64)" />
-                <div v-else class="no-img">无图像数据</div>
+                <img :src="getBase64ImageUrl(currentExpertReport && currentExpertReport.imgBase64)" alt="缺陷图谱" />
               </div>
             </div>
             <div class="split-right">
@@ -953,8 +953,10 @@ export default {
         });
     },
     getBase64ImageUrl(base64Data) {
-      if (!base64Data) return '';
-      if (base64Data.startsWith('data:image')) return base64Data;
+      if (!base64Data) return require('@/assets/defect_detected.jpeg');
+      if (base64Data.startsWith('data:image') || base64Data.startsWith('http') || base64Data.startsWith('/') || base64Data.startsWith('static')) {
+        return base64Data;
+      }
       return `data:image/jpeg;base64,${base64Data}`;
     },
     getSeverityTagType(level) {

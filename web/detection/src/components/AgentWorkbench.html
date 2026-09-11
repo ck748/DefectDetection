@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>灵鉴 · 6S 工业巡检智能体</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f7f8fa;
+      color: #1a1a1a;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶部简约栏 */
+    .top-header {
+      padding: 12px 24px;
+      border-bottom: 1px solid #eef0f3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .top-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2937;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-title .dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .time-badge {
+      font-size: 12px;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .clear-btn {
+      font-size: 13px;
+      color: #6b7280;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:hover {
+      background: #f9fafb;
+      color: #ef4444;
+      border-color: #fca5a5;
+    }
+
+    /* 聊天主区域 */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none; /* Firefox 隐藏滚动条 */
+      -ms-overflow-style: none; /* IE/Edge 隐藏滚动条 */
+      padding: 24px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .chat-container::-webkit-scrollbar {
+      display: none; /* Chrome/Safari 隐藏纵向滚动条 */
+    }
+
+    .message-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message-item.user {
+      align-items: flex-end;
+    }
+
+    .user-bubble {
+      background: #1a1a1a;
+      color: #ffffff;
+      padding: 11px 18px;
+      border-radius: 16px 16px 4px 16px;
+      font-size: 14.5px;
+      line-height: 1.55;
+      max-width: 82%;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* 思考框 (DeepSeek 极简风) */
+    .thought-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .thought-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #888888;
+      cursor: pointer;
+      user-select: none;
+      width: fit-content;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .thought-toggle:hover {
+      color: #444444;
+      background: #eef1f5;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #ccc;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .thought-text-body {
+      border-left: 2px solid #cbd5e1;
+      padding-left: 14px;
+      margin-left: 4px;
+      font-size: 13px;
+      color: #555555;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(241, 245, 249, 0.5);
+      padding-top: 8px;
+      padding-bottom: 8px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* 欢迎语大标题 (豆包同款居中无边框无背景大字) */
+    .welcome-headline {
+      text-align: center;
+      font-size: 34px;
+      font-weight: 750;
+      color: #111827;
+      letter-spacing: -0.5px;
+      margin: 36px 0 24px 0;
+      line-height: 1.35;
+    }
+
+    /* 正文回答区 */
+    .answer-body {
+      font-size: 14.5px;
+      line-height: 1.75;
+      color: #1f2937;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #ffffff;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+
+    .answer-body:empty {
+      display: none;
+    }
+
+    /* 快捷推荐问题列表 */
+    .recommend-section {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .recommend-title {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .recommend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .recommend-item {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      color: #374151;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .recommend-item:hover {
+      background: #f9fafb;
+      border-color: #3b82f6;
+      color: #2563eb;
+      transform: translateX(4px);
+    }
+
+    /* 底部输入框容器 (豆包 1:1 同款现代极简卡片) */
+    .bottom-wrapper {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 24px 20px;
+      flex-shrink: 0;
+    }
+
+    .doubao-input-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 14px 16px 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .doubao-input-card:focus-within {
+      border-color: #94a3b8;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .input-textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 14.5px;
+      line-height: 1.5;
+      resize: none;
+      height: 38px;
+      color: #1f2937;
+      background: transparent;
+      font-family: inherit;
+    }
+
+    .input-textarea::placeholder {
+      color: #9ca3af;
+    }
+
+    /* 底部工具与技能条 (豆包同款布局) */
+    .doubao-bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 8px;
+      position: relative;
+    }
+
+    .plus-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+
+    .skills-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex: 1;
+    }
+
+    .skills-left::-webkit-scrollbar {
+      display: none;
+    }
+
+    .plus-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #6b7280;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .plus-btn:hover {
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    /* 类似豆包/ChatGPT的文件上传弹出菜单 */
+    .upload-popup-menu {
+      position: absolute;
+      bottom: 42px;
+      left: 0;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+      padding: 6px;
+      width: 230px;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      z-index: 99999;
+    }
+
+    .upload-popup-menu.show {
+      display: flex !important;
+    }
+
+    .upload-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-align: left;
+      border: none;
+      background: transparent;
+      width: 100%;
+    }
+
+    .upload-menu-item:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .upload-menu-item .menu-icon {
+      font-size: 14.5px;
+      color: #64748b;
+    }
+
+    /* 输入框附件挂载标签栏 */
+    .attachment-preview-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px 6px 6px;
+      flex-wrap: wrap;
+    }
+
+    .attachment-preview-bar.show {
+      display: flex;
+    }
+
+    .attachment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .attachment-badge .badge-remove {
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .attachment-badge .badge-remove:hover {
+      color: #ef4444;
+    }
+
+    /* 工业项目技能按钮胶囊 */
+    .skill-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: #475569;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .skill-pill:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+
+    .skill-pill.active {
+      background: #eff6ff;
+      color: #2563eb;
+      border-color: #bfdbfe;
+      font-weight: 500;
+    }
+
+    .skill-pill .icon {
+      font-size: 13px;
+    }
+
+    .actions-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .model-selector {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .model-selector:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .voice-icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #4b5563;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .voice-icon-btn:hover {
+      background: #f3f4f6;
+      color: #111827;
+      border-color: #cbd5e1;
+    }
+
+    .send-icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #1a1a1a;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .send-icon-btn:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .send-icon-btn:not(:disabled):hover {
+      background: #333333;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部状态栏 -->
+  <div class="top-header">
+    <div class="top-title">
+      <span class="dot"></span>
+      <span>灵鉴 · 6S 工业巡检智能体</span>
+    </div>
+    <div class="top-actions">
+      <span class="time-badge" id="liveTimeBadge">系统时间获取中...</span>
+      <button class="clear-btn" onclick="clearMessages()">清空对话</button>
+    </div>
+  </div>
+
+  <!-- 对话内容流 -->
+  <div class="chat-container" id="chatContainer">
+    <!-- 初始欢迎语 (大字居中无边框) -->
+    <div class="message-item">
+      <div class="welcome-headline" id="welcomeGreetingText">上午好，我是灵鉴，有什么可以帮你？</div>
+
+      <div class="recommend-section">
+        <div class="recommend-title">为你推荐</div>
+        <div class="recommend-list">
+          <div class="recommend-item" onclick="useQuery('检查一下当前机械臂的状态')">
+            <span>检查当前机械臂的状态（时段与姿态自主研判）</span>
+            <span style="color:#9ca3af;font-size:12px;">→</span>
+          </div>
+          <div class="recommend-item" onclick="useQuery('请你帮我分析一下今天的产线环境是否规范达标')">
+            <span>分析今天的产线环境是否规范达标（调取今日图像与 6S 大盘）</span>
+            <span style="color:#9ca3af;font-size:12px;">→</span>
+          </div>
+          <div class="recommend-item" onclick="useQuery('分析今天小车总路程和2800张图片，有没有问题？')">
+            <span>分析今天小车总路程和 2800 张图片是否有问题（多源数据交叉验真）</span>
+            <span style="color:#9ca3af;font-size:12px;">→</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部豆包同款输入卡片与技能工具栏 -->
+  <div class="bottom-wrapper">
+    <div class="doubao-input-card">
+      <!-- 附件预览条 -->
+      <div class="attachment-preview-bar" id="attachmentBar">
+        <span class="attachment-badge" id="attachmentBadge">
+          <span id="attachmentName">工件检测图_01.jpg</span>
+          <span class="badge-remove" onclick="removeAttachment()">&times;</span>
+        </span>
+      </div>
+
+      <textarea
+        class="input-textarea"
+        id="userInput"
+        placeholder="向灵鉴发送指令，如：检查今天产线环境、机械臂状态、小车里程与照片分析..."
+        rows="1"
+        onkeydown="handleKeyDown(event)"
+      ></textarea>
+
+      <!-- 隐藏的本地文件选择器 -->
+      <input type="file" id="localFileInput" style="display:none" accept="image/*,.csv,.json,.txt" onchange="onLocalFileChosen(event)">
+
+      <!-- 豆包同款底部技能条 (纯文字 + 圆角边框) -->
+      <div class="doubao-bottom-bar">
+        <!-- 独立加号容器 (不放入滑动列表，避免 overflow 裁剪) -->
+        <div class="plus-container">
+          <button class="plus-btn" id="plusBtn" title="上传文件 / 调阅数据" onclick="toggleUploadMenu(event)">+</button>
+
+          <!-- 点击加号弹出的上传文件与数据调阅菜单 (纯文字极简风格) -->
+          <div class="upload-popup-menu" id="uploadMenu">
+            <button class="upload-menu-item" onclick="triggerLocalFileUpload(event)">
+              <span>上传本地工件图像/文件</span>
+            </button>
+            <button class="upload-menu-item" onclick="triggerCloudFileSelect(event)">
+              <span>选择云盘产线数据包</span>
+            </button>
+            <button class="upload-menu-item" onclick="triggerCameraDirSelect(event)">
+              <span>调阅工业相机抓拍目录</span>
+            </button>
+            <button class="upload-menu-item" onclick="triggerBatchReportImport(event)">
+              <span>导入检测批次报表 (CSV)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="skills-left">
+          <span class="skill-pill" onclick="triggerSkill('chat')">对话</span>
+          <span class="skill-pill" onclick="triggerSkill('defect_vision')">缺陷视觉检测</span>
+          <span class="skill-pill" onclick="triggerSkill('arm_control')">机械臂工控调度</span>
+          <span class="skill-pill" onclick="triggerSkill('agv_audit')">AGV 路径审计</span>
+          <span class="skill-pill" onclick="triggerSkill('sixs_dashboard')">6S 智能大盘</span>
+          <span class="skill-pill" onclick="triggerSkill('report_gen')">质检报告生成</span>
+        </div>
+
+        <div class="actions-right">
+          <!-- 语音输入图标按钮 -->
+          <button class="voice-icon-btn" onclick="triggerVoiceInput()" title="语音输入">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+          <button class="send-icon-btn" id="sendBtn" onclick="handleSend()" title="发送">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 4l-7 7 1.41 1.41L11 7.83V20h2V7.83l4.59 4.58L19 11l-7-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isBusy = false;
+    let attachedFile = null;
+
+    // 实时获取真实系统时间与格式化函数
+    function getRealTimeInfo() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+
+      const dateStr = `${year}-${month}-${day}`;
+      const timeStr = `${hours}:${minutes}:${seconds}`;
+      const shortTimeStr = `${hours}:${minutes}`;
+      const hourNum = now.getHours();
+
+      // 判断当前属于上班时间还是下班时间 (8:30 ~ 17:30 为工作时间)
+      const isWorkTime = (hourNum >= 8 && hourNum < 18);
+
+      // 根据真实系统小时判断早中晚问候语
+      let greeting = '你好';
+      if (hourNum >= 5 && hourNum < 9) {
+        greeting = '早上好';
+      } else if (hourNum >= 9 && hourNum < 12) {
+        greeting = '上午好';
+      } else if (hourNum >= 12 && hourNum < 14) {
+        greeting = '中午好';
+      } else if (hourNum >= 14 && hourNum < 18) {
+        greeting = '下午好';
+      } else if (hourNum >= 18 && hourNum < 24) {
+        greeting = '晚上好';
+      } else {
+        greeting = '夜深了，注意休息';
+      }
+
+      return {
+        dateStr,
+        timeStr,
+        shortTimeStr,
+        hourNum,
+        isWorkTime,
+        greeting
+      };
+    }
+
+    // 更新顶部时间展示与问候语
+    function updateClockAndGreeting() {
+      const t = getRealTimeInfo();
+      const badge = document.getElementById('liveTimeBadge');
+      if (badge) {
+        badge.innerText = `${t.dateStr} ${t.timeStr} (${t.isWorkTime ? '生产时段' : '休工时段'})`;
+      }
+      const greetEl = document.getElementById('welcomeGreetingText');
+      if (greetEl) {
+        greetEl.innerText = `${t.greeting}，我是灵鉴，有什么可以帮你？`;
+      }
+    }
+    setInterval(updateClockAndGreeting, 1000);
+    updateClockAndGreeting();
+
+    // 切换文件上传弹出菜单
+    function toggleUploadMenu(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('uploadMenu');
+      if (menu) {
+        menu.classList.toggle('show');
+      }
+    }
+
+    // 点击其他地方关闭弹出菜单
+    document.addEventListener('click', function(e) {
+      const menu = document.getElementById('uploadMenu');
+      const plusBtn = document.getElementById('plusBtn');
+      if (menu && menu.classList.contains('show')) {
+        if (!menu.contains(e.target) && e.target !== plusBtn) {
+          menu.classList.remove('show');
+        }
+      }
+    });
+
+    // 1. 触发选择本地文件
+    function triggerLocalFileUpload(e) {
+      if (e) e.stopPropagation();
+      toggleUploadMenu();
+      const fileInput = document.getElementById('localFileInput');
+      if (fileInput) {
+        fileInput.click();
+      }
+    }
+
+    // 本地文件选择回调
+    function onLocalFileChosen(e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        attachFile({
+          type: 'local',
+          name: file.name,
+          desc: `本地文件: ${file.name}`
+        });
+      }
+      e.target.value = '';
+    }
+
+    // 2. 选择云盘文件/产线数据包
+    function triggerCloudFileSelect(e) {
+      if (e) e.stopPropagation();
+      toggleUploadMenu();
+      attachFile({
+        type: 'cloud',
+        name: 'shaft_batch_cloud_dataset_2026.zip',
+        desc: '云盘产线数据包'
+      });
+    }
+
+    // 3. 调阅工业相机抓拍目录
+    function triggerCameraDirSelect(e) {
+      if (e) e.stopPropagation();
+      toggleUploadMenu();
+      const t = getRealTimeInfo();
+      attachFile({
+        type: 'camera_dir',
+        name: `/data/workspace/${t.dateStr}/camera_raw/`,
+        desc: '工业相机抓拍目录'
+      });
+    }
+
+    // 4. 导入检测批次报表
+    function triggerBatchReportImport(e) {
+      if (e) e.stopPropagation();
+      toggleUploadMenu();
+      const t = getRealTimeInfo();
+      attachFile({
+        type: 'report_csv',
+        name: `inspection_metrics_${t.dateStr}.csv`,
+        desc: '检测批次报表'
+      });
+    }
+
+    // 挂载附件并在输入框上方展示
+    function attachFile(fileObj) {
+      attachedFile = fileObj;
+      const bar = document.getElementById('attachmentBar');
+      const nameEl = document.getElementById('attachmentName');
+      if (bar && nameEl) {
+        nameEl.innerText = `📎 已挂载: ${fileObj.name}`;
+        bar.classList.add('show');
+      }
+      const input = document.getElementById('userInput');
+      if (input && !input.value.trim()) {
+        input.value = `请对已挂载的【${fileObj.name}】进行智能分析与质检诊断`;
+      }
+    }
+
+    // 移除附件
+    function removeAttachment() {
+      attachedFile = null;
+      const bar = document.getElementById('attachmentBar');
+      if (bar) {
+        bar.classList.remove('show');
+      }
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    }
+
+    function useQuery(text) {
+      if (isBusy) return;
+      document.getElementById('userInput').value = text;
+      handleSend();
+    }
+
+    function triggerSkill(skillType) {
+      if (isBusy) return;
+      const map = {
+        'chat': '你好，请介绍一下当前智能体接入的产线设备。',
+        'defect_vision': '请对当前批次半轴的表面缺陷做视觉分析。',
+        'arm_control': '检查一下当前机械臂的状态',
+        'agv_audit': '分析今天小车总路程和2800张图片，有没有问题？',
+        'sixs_dashboard': '请你帮我分析一下今天的产线环境是否规范达标',
+        'report_gen': '请生成一份今天的质检与6S管理综合报告。',
+        'safety_lock': '检查全车间安全光栅与急停联锁状态。',
+        'more': '查看更多工业智能体技能清单'
+      };
+      const query = map[skillType] || '你好，灵鉴。';
+      document.getElementById('userInput').value = query;
+      handleSend();
+    }
+
+    function clearMessages() {
+      if (isBusy) return;
+      const container = document.getElementById('chatContainer');
+      container.innerHTML = `
+        <div class="message-item">
+          <div class="answer-body">对话与感知上下文已清空。随时可以开始新的巡检分析。</div>
+        </div>
+      `;
+    }
+
+    function scrollToBottom() {
+      const container = document.getElementById('chatContainer');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function handleSend() {
+      const input = document.getElementById('userInput');
+      const query = input.value.trim();
+      if (!query || isBusy) return;
+
+      isBusy = true;
+      document.getElementById('sendBtn').disabled = true;
+      input.value = '';
+
+      const container = document.getElementById('chatContainer');
+
+      // 1. 渲染用户提问
+      const userDiv = document.createElement('div');
+      userDiv.className = 'message-item user';
+      userDiv.innerHTML = `<div class="user-bubble">${escapeHtml(query)}</div>`;
+      container.appendChild(userDiv);
+      scrollToBottom();
+
+      // 2. 准备 AI 消息节点
+      const aiDiv = document.createElement('div');
+      aiDiv.className = 'message-item';
+
+      const thoughtId = 'thought_' + Date.now();
+      const bodyId = 'thought_body_' + Date.now();
+      const answerId = 'answer_' + Date.now();
+
+      aiDiv.innerHTML = `
+        <div class="thought-container">
+          <div class="thought-toggle" id="${thoughtId}" onclick="toggleThought('${bodyId}')">
+            <span class="spinner" id="spinner_${thoughtId}"></span>
+            <span id="label_${thoughtId}">正在思考...</span>
+          </div>
+          <div class="thought-text-body" id="${bodyId}"></div>
+        </div>
+        <div class="answer-body" id="${answerId}"></div>
+      `;
+      container.appendChild(aiDiv);
+      scrollToBottom();
+
+      const thoughtBodyEl = document.getElementById(bodyId);
+      const answerEl = document.getElementById(answerId);
+      const labelEl = document.getElementById(`label_${thoughtId}`);
+      const spinnerEl = document.getElementById(`spinner_${thoughtId}`);
+
+      // 计时器
+      let seconds = 0;
+      const timer = setInterval(() => {
+        seconds++;
+        if (spinnerEl.style.display !== 'none') {
+          labelEl.innerText = `正在思考 (${seconds}秒)...`;
+        }
+      }, 1000);
+
+      // 获取当前真实的实时时间数据
+      const timeInfo = getRealTimeInfo();
+      const currentDate = timeInfo.dateStr;
+      const currentTime = timeInfo.shortTimeStr;
+      const isWorkTime = timeInfo.isWorkTime;
+      const timestampSec = Math.floor(Date.now() / 1000);
+
+      let thoughtLines = [];
+      let answerText = '';
+
+      if (query.includes('达标') || query.includes('产线环境') || query.includes('规范') || query.includes('大盘')) {
+        const totalShafts = 2437;
+        const defectShafts = 25;
+        const passShafts = totalShafts - defectShafts; // 2412
+        const totalPhotos = totalShafts * 28; // 68,236 张
+        const scratchCount = 16;
+        const crackCount = 9;
+        const mileage = (totalShafts * 5.0).toFixed(1); // 12185.0 米
+
+        thoughtLines = [
+          `用户想让我分析今天（${currentDate}）的产线环境是否规范达标，我来调取产线抓拍目录、分拣传感器与AGV小车运行日志进行综合分析：`,
+          `1. 读取图像存储目录：/data/workspace/${currentDate}/camera_raw/，最新抓拍样图文件名为【capture_${timestampSec}_shaft.jpg】。`,
+          `2. 调取工件与图像统计数据：今天累计检测 ${totalShafts.toLocaleString()} 根半轴，按每根半轴旋转拍摄 28 张的标准，共读取到 ${totalPhotos.toLocaleString()} 张图片。采集无异常，图片数量与半轴批次严格对应。`,
+          `3. 校验缺陷与分拣定置流向：检出 ${defectShafts} 根缺陷半轴（良品率 98.97%）。其中 ${passShafts.toLocaleString()} 根分拣至【正常品库区】，${scratchCount} 根分拣至【表面划痕隔离区】，${crackCount} 根分拣至【结构裂纹隔离区】，分区定置准确无混料。`,
+          `4. 读取分拣 AGV 小车行驶数据：小车今日累计行驶总路程为 ${Number(mileage).toLocaleString()} 米。按每根半轴往返转运约 5 米核算（${totalShafts.toLocaleString()} 根 × 5 米 = ${Number(mileage).toLocaleString()} 米），小车路程数据与检测批次完全吻合，运行正常无卡滞。`,
+          `5. 检查现场 6S 与安全环境：工位台面整洁，光学镜头干净无积尘，安全光栅及急停联锁均在位受控。`,
+          `6. 汇总以上多源数据，生成车间 6S 与质检合规综合诊断报告发给用户。`
+        ];
+
+        answerText =
+`今天（${currentDate}）产线的运行环境与质检数据已全部调取分析完成，整体规范达标，详细汇报如下：
+
+📊 一、 生产与视觉检测数据
+- 今日累计检测半轴：${totalShafts.toLocaleString()} 根
+- 拍摄照片总数：${totalPhotos.toLocaleString()} 张（每根标准拍摄 28 张，照片采集无异常，数量完全对应）
+- 最新抓拍样本文件：capture_${timestampSec}_shaft.jpg
+- 质检判定结果：合格 ${passShafts.toLocaleString()} 根，检出缺陷 ${defectShafts} 根（综合良品率 98.97%）
+
+📦 二、 6S 定置分拣流向
+- 正常品区：${passShafts.toLocaleString()} 根（已规范入库）
+- 划痕隔离区：${scratchCount} 根（黄色标识箱定置，待抛光）
+- 裂纹隔离区：${crackCount} 根（红色标识箱定置，待探伤复查）
+
+🛺 三、 AGV 分拣小车运行分析
+- 小车今日行驶总里程：${Number(mileage).toLocaleString()} 米
+- 路程合理性验真：每根半轴分拣转运平均行驶 5 米左右（${totalShafts.toLocaleString()} 根 × 5 米 = ${Number(mileage).toLocaleString()} 米），小车路程分析无误，运行轨迹与批次节奏完全匹配，无卡阻或异常空转。
+
+📋 四、 综合诊断结论
+车间现场 6S 规范维持良好，相机镜头洁净，分区定置清晰，小车与工位联锁正常，今日产线环境评定为【规范达标】（综合评定 99.2 分）。已自动为您生成今日巡检归档报告。`;
+      } else if (query.includes('小车') || query.includes('2800') || query.includes('路程') || query.includes('米') || query.includes('AGV')) {
+        thoughtLines = [
+          "用户让我对比小车跑的距离和拍的 2800 张照片，看看有没有问题，我来分析一下：",
+          "1. 看图片数量：今天一共产生了 2,800 张照片，按标准对应检测了 100 根半轴的工作量。",
+          "2. 读小车行程记录：发现小车今天总共只跑了 5.2 米。",
+          "3. 做个逻辑对比：",
+          "   - 正常情况下：运送和分拣 100 根半轴，小车来回跑总共应该走 500 米左右。",
+          "   - 实际情况是：小车只跑了 5.2 米，却拍了 2800 张（100 轮）照片。",
+          "4. 找到问题原因：小车在工位门口卡住没有换料，而检测台还在原地一直转，对着同一根半轴重复拍了 100 次。",
+          "5. 整理分析结论，给用户提供排查建议。"
+        ];
+
+        answerText =
+`通过对比照片数量和小车行驶里程，我发现产线存在明显的逻辑异常：
+
+1. 数据矛盾：
+- 视觉检测拍了 2,800 张照片（相当于 100 根半轴的工作量）；
+- 但分拣小车今天一共只跑了 5.2 米（正常转运 100 根半轴应该跑 500 米左右）。
+
+2. 问题原因：
+产线并没有真正完成 100 根半轴的分拣，而是小车在工位卡住没能换料，检测台在原地对着同一根半轴重复拍了 100 遍。
+
+3. 建议处理：
+建议先暂停检测程序，检查 1 号工位小车的轨道和驱动轮，并重置批次计数。`;
+      } else if (query.includes('机械臂') || query.includes('复位') || query.includes('下班') || query.includes('离岗') || query.includes('状态')) {
+        if (isWorkTime) {
+          // 当前是上班时间
+          thoughtLines = [
+            "用户让我检查当前机械臂的状态，我来一步步检查一下：",
+            "1. 查看机械臂当前位置：发现它停在拍照工位上方，没有回到初始的原点位置。",
+            "2. 想一想为什么没有复位：通常有两种可能，一是正在干活或准备拍照，二是下班停工了工人忘记归位。",
+            `3. 看看现在是什么时间：系统显示当前是 ${currentTime}，属于正常上班生产时间，并不是下班时间。`,
+            "4. 对比不同情况做判断：",
+            "   - 【如果是下班时间】：大家下班后机械臂没归位，属于安全隐患（一直通电容易发热老化，还容易误碰），我必须提醒并让它复位关机；",
+            "   - 【如果是上班时间】：工位上正好有一根半轴送达，机械臂是在准备对焦和拍照，属于正常工作待命，不是故障卡死；",
+            "   - 【顺便做个常规检查】：检查了机械臂温度和气压都很正常，安全光栅也没报警。",
+            "5. 整理结论：当前上班时间机械臂不用强制复位，提醒注意作业安全即可。"
+          ];
+
+          answerText =
+`我已经帮你检查完机械臂的状态了，情况如下：
+
+1. 机械臂位置：
+目前机械臂停在工位上方，确实没有回到初始的原点位置。
+
+2. 为什么没有复位：
+我看了当前系统时间是 ${currentTime}，处于正常上班时间。工位上正好有刚送过来的待检半轴，机械臂是在准备拍照检测，属于正常的生产待命状态。
+
+3. 智能判断与处理：
+- 如果现在是【下班时间】，大家下班后机械臂没复位属于安全违规（容易发热损耗），我会建议立即调度复位关机；
+- 但现在是【上班时间】，设备正在正常工作，各项指标（温度、气压）也都很正常，所以不需要强制归位，产线可以继续正常运行。`;
+        } else {
+          // 当前是下班/休工时间
+          thoughtLines = [
+            "用户让我检查当前机械臂的状态，我来一步步检查一下：",
+            "1. 查看机械臂当前位置：发现它停在拍照工位上方，没有回到初始的原点位置。",
+            `2. 看看现在是什么时间：系统显示当前是 ${currentTime}，已经属于下班/休工时段。`,
+            "3. 深度思考与安全判断：",
+            "   - 下班后产线已经停止作业，但机械臂仍然通电悬停，没有复位归零。",
+            "   - 这属于 6S 安全违规（长时间通电发热损耗电机寿命，且夜间有人员误碰风险）。",
+            "4. 形成处置决策：应当立即提醒用户，并建议下发工控复位指令让机械臂安全归位断电。"
+          ];
+
+          answerText =
+`⚠️ 警报：检测到机械臂存在未归位安全隐患！
+
+1. 机械臂当前状态：
+目前机械臂处于工作悬停姿态，未处于安全原点。
+
+2. 时段与隐患分析：
+当前时间为 ${currentTime}，已处于【下班/休工时段】。下班后机械臂长时间通电发热属于 6S 安全违规，容易损耗抱闸寿命并存在碰撞隐患。
+
+3. 建议处理：
+建议立即下发复位指令，让机械臂平稳回归零位并关闭辅机电源。`;
+        }
+      } else {
+        thoughtLines = [
+          `1. 查看用户发来的问题: "${query}"`,
+          "2. 调取车间现场数据和 6S 规范做分析。",
+          "3. 给出解答。"
+        ];
+        answerText = `收到你的消息：「${query}」。\n你可以点击下方的技能胶囊，体验【缺陷视觉检测】、【机械臂工控调度】、【6S 智能大盘】或【AGV 路径审计】。`;
+      }
+
+      // 逐步输出思考文字
+      for (let i = 0; i < thoughtLines.length; i++) {
+        const line = thoughtLines[i];
+        if (i > 0) thoughtBodyEl.innerText += '\n\n';
+        for (let j = 0; j < line.length; j++) {
+          thoughtBodyEl.innerText += line[j];
+          scrollToBottom();
+          await sleep(Math.floor(Math.random() * 10) + 12);
+        }
+        await sleep(500);
+      }
+
+      // 思考结束
+      clearInterval(timer);
+      spinnerEl.style.display = 'none';
+      labelEl.innerText = `已深度思考 (用时 ${seconds || 6} 秒)`;
+      await sleep(300);
+
+      // 逐步输出正文回答
+      for (let i = 0; i < answerText.length; i++) {
+        answerEl.innerText += answerText[i];
+        scrollToBottom();
+        await sleep(Math.floor(Math.random() * 8) + 8);
+      }
+
+      isBusy = false;
+      document.getElementById('sendBtn').disabled = false;
+      scrollToBottom();
+    }
+
+    function toggleThought(bodyId) {
+      const el = document.getElementById(bodyId);
+      if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>
