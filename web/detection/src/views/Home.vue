@@ -59,23 +59,19 @@
               </el-menu-item>
             </el-submenu>
 
-            <!-- 【国赛2.0】AGV运检一体化升级系统 -->
+            <!-- 灵鉴 -->
             <el-submenu index="national-2026">
               <template slot="title">
                 <i class="el-icon-medal"></i>
-                <span slot="title">智能管家</span>
+                <span slot="title">灵鉴</span>
               </template>
               <el-menu-item index="/camera-watch">
                 <i class="el-icon-video-camera"></i>
-                <span slot="title">目录监听</span>
-              </el-menu-item>
-              <el-menu-item index="/feature-checklist">
-                <i class="el-icon-circle-check"></i>
-                <span slot="title">功能核对</span>
+                <span slot="title">产线监控</span>
               </el-menu-item>
               <el-menu-item index="/six-s-manager">
                 <i class="el-icon-s-custom"></i>
-                <span slot="title">6S管家</span>
+                <span slot="title">灵鉴</span>
               </el-menu-item>
             </el-submenu>
 
@@ -101,6 +97,10 @@
                 <i class="el-icon-setting"></i>
                 <span slot="title">系统管理</span>
               </template>
+              <el-menu-item index="/feature-checklist">
+                <i class="el-icon-circle-check"></i>
+                <span slot="title">功能核对</span>
+              </el-menu-item>
               <el-menu-item index="/log">
                 <i class="el-icon-notebook-2"></i>
                 <span slot="title">日志管理</span>

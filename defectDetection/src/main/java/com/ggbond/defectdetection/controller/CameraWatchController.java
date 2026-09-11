@@ -9,10 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.OutputStream;
-import java.net.URLConnection;
 import java.util.Map;
 
 @Slf4j
@@ -37,7 +33,6 @@ public class CameraWatchController {
 
     /**
      * 启动监听 / 应用切换服务器端存储目录
-     * 兼容 Query Param 以及 JSON Body 传参
      */
     @PostMapping("/start")
     public Result<String> startWatch(
@@ -60,7 +55,7 @@ public class CameraWatchController {
     }
 
     /**
-     * 获取当前状态及已捕获图片列表
+     * 获取当前状态及直接从物理目录扫描获取的最新图片列表（附带AI识别数据）
      */
     @GetMapping("/status")
     public Result<Map<String, Object>> getStatus() {
@@ -68,8 +63,22 @@ public class CameraWatchController {
     }
 
     /**
-     * 直接输出相机抓拍图片流（彻底解决跨域与静态目录路径映射问题）
-     * 无论保存在 /root/desc 还是 uploads 均可安全流式读取
+     * 前端触发单张图片的 AI 视觉推理代理（同时支持 GET 和 POST，解决跨域与网络直连问题）
+     */
+    @RequestMapping(value = "/detect", method = {RequestMethod.GET, RequestMethod.POST})
+    public Result<Map<String, Object>> detectSingleImage(
+            @RequestParam(value = "fileName", required = false) String fileNameParam,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String fileName = fileNameParam;
+        if ((fileName == null || fileName.trim().isEmpty()) && body != null) {
+            fileName = body.get("fileName");
+        }
+        return Result.success("识别完成", cameraFolderWatchService.detectSingleImage(fileName));
+    }
+
+    /**
+     * 直接输出相机抓拍图片流
      */
     @GetMapping("/image")
     public void getImageStream(@RequestParam(value = "id", required = false) Integer id,
@@ -79,34 +88,25 @@ public class CameraWatchController {
     }
 
     /**
-     * 删除单张图片（支持物理删除）
+     * 删除单张物理图片
      */
     @PostMapping("/delete")
     public Result<String> deleteImage(@RequestBody(required = false) Map<String, Object> body) {
         if (body == null || !body.containsKey("id")) {
-            return Result.fail("参数错误，缺失图片ID");
+            return Result.fail("参数错误，缺失图片标识");
         }
 
         Object idObj = body.get("id");
-        Integer id = null;
-        if (idObj instanceof Number) {
-            id = ((Number) idObj).intValue();
-        } else if (idObj != null) {
-            try {
-                id = Integer.parseInt(idObj.toString());
-            } catch (NumberFormatException ignored) {}
-        }
-
-        boolean deleteSourceFile = false;
+        boolean deleteSourceFile = true;
         if (body.containsKey("deleteSourceFile")) {
             deleteSourceFile = Boolean.parseBoolean(body.get("deleteSourceFile").toString());
         }
 
-        return cameraFolderWatchService.deleteImage(id, deleteSourceFile);
+        return cameraFolderWatchService.deleteImage(idObj, deleteSourceFile);
     }
 
     /**
-     * 清空捕获图片
+     * 清空物理目录图片
      */
     @PostMapping("/clear")
     public Result<String> clearList(@RequestParam(defaultValue = "false") boolean deletePhysical) {

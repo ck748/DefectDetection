@@ -1,10 +1,14 @@
 package com.ggbond.defectdetection.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import cn.hutool.core.codec.Base64;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.ggbond.defectdetection.common.Result;
 import com.ggbond.defectdetection.pojo.CameraWatchRecord;
 import jakarta.annotation.PreDestroy;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,11 +17,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLConnection;
-import jakarta.servlet.http.HttpServletResponse;
 import java.nio.file.*;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -27,11 +32,15 @@ import java.util.concurrent.*;
 @Service
 public class CameraFolderWatchService {
 
-    // 默认服务器端存储与监听目录（Web静态映射支持 /uploads/**）
+    // 默认服务器端存储与监听目录
     @Value("${file.camera-watch-dir:/root/desc/cmzj-main/mijia-watcher/image}")
     private String serverWatchDir = "/root/desc/cmzj-main/mijia-watcher/image";
 
-    @Autowired
+    // AI 视觉推理接口地址
+    @Value("${ai.detect.url:http://192.168.1.3:9001/Qualified}")
+    private String aiDetectUrl = "http://192.168.1.3:9001/Qualified";
+
+    @Autowired(required = false)
     private CameraWatchRecordService cameraWatchRecordService;
 
     private WatchService watchService;
@@ -39,18 +48,15 @@ public class CameraFolderWatchService {
     private ScheduledExecutorService scanExecutorService;
     private volatile boolean isRunning = false;
 
-    // 联动绑定的本地监听 Node 子进程句柄
-    private Process localWatcherProcess;
-    private ExecutorService processLogExecutor;
-
-    // 本地快速去重缓存
+    // 本地去重/已识别缓存（避免重复调用 AI）
     private final Set<String> processedFileNames = Collections.synchronizedSet(new HashSet<>());
+    // 内存缓存识别结果 (fileName -> 结果Map)
+    private final Map<String, Map<String, Object>> aiResultCache = new ConcurrentHashMap<>();
 
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
 
     /**
-     * 接收客户端（如 mijia-watcher 守护进程）上传的米家拍照图片并入库
+     * 接收客户端上传的米家拍照图片并存盘，自动调用 AI 识别
      */
     public synchronized Result<CameraWatchRecord> saveUploadedImage(MultipartFile file, String customFileName) {
         if (file == null || file.isEmpty()) {
@@ -81,29 +87,178 @@ public class CameraFolderWatchService {
             File destFile = new File(targetDir, storedName);
             file.transferTo(destFile.getAbsoluteFile());
 
-            String webUrl = buildWebUrl(storedName);
             String formattedSize = String.format("%.2f KB", file.getSize() / 1024.0);
 
             CameraWatchRecord record = new CameraWatchRecord();
             record.setFileName(originalName);
             record.setStoredName(storedName);
             record.setFilePath(destFile.getAbsolutePath().replace("\\", "/"));
-            record.setWebUrl(webUrl);
+            record.setWebUrl(buildWebUrl(storedName));
             record.setFileSize(formattedSize);
             record.setFileBytes(file.getSize());
             record.setUploadTime(LocalDateTime.now());
             record.setServerWatchDir(this.serverWatchDir);
-            record.setStatus("已同步上传");
+            record.setStatus("已同步");
 
-            cameraWatchRecordService.save(record);
+            // 同步调用 AI 推理接口 (GET 请求)
+            processAiDetection(destFile);
+
             processedFileNames.add(originalName);
+            processedFileNames.add(storedName);
 
-            log.info("📸 米家相机图片成功接收并存盘入库: 原始名={}, 存盘名={}, WebURL={}", originalName, storedName, webUrl);
-            return Result.success("图片上传并入库成功", record);
+            log.info("📸 米家相机图片成功存盘并触发AI识别: 原始名={}, 存盘名={}", originalName, storedName);
+            return Result.success("图片存盘成功", record);
         } catch (Exception e) {
             log.error("保存上传图片失败:", e);
             return Result.fail("保存上传图片失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 后端安全代理调用 AI 接口进行推理（支持前端按文件名请求或后台触发）
+     */
+    public Map<String, Object> detectSingleImage(String fileName) {
+        Map<String, Object> result = new HashMap<>();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            result.put("status", "文件名为空");
+            return result;
+        }
+
+        if (aiResultCache.containsKey(fileName)) {
+            return aiResultCache.get(fileName);
+        }
+
+        File imageFile = new File(this.serverWatchDir, fileName);
+        if (!imageFile.exists()) {
+            imageFile = new File("/root/desc/cmzj-main/mijia-watcher/image", fileName);
+        }
+
+        if (!imageFile.exists()) {
+            result.put("status", "文件不存在");
+            return result;
+        }
+
+        return processAiDetection(imageFile);
+    }
+
+    /**
+     * 调用 AI 视觉服务接口进行推理 (使用 GET 请求) 并将带红框结果图落地到目录
+     */
+    private Map<String, Object> processAiDetection(File imageFile) {
+        Map<String, Object> resultMap = new HashMap<>();
+        if (imageFile == null || !imageFile.exists() || imageFile.getName().startsWith("annotated_")) {
+            resultMap.put("status", "无需识别");
+            return resultMap;
+        }
+
+        try {
+            log.info("🚀 后端正在通过 GET 请求 AI 视觉推理服务: url={}, file={}", aiDetectUrl, imageFile.getName());
+
+            // 直接发起标准 GET 请求，携带图片物理绝对路径与文件名
+            HttpResponse response = HttpRequest.get(aiDetectUrl)
+                    .form("path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("file_path", imageFile.getAbsolutePath().replace("\\", "/"))
+                    .form("fileName", imageFile.getName())
+                    .form("image_name", imageFile.getName())
+                    .timeout(15000)
+                    .execute();
+
+            if (response != null && response.isOk()) {
+                String body = response.body();
+                log.info("✅ AI 推理响应: {}", body.length() > 200 ? body.substring(0, 200) + "..." : body);
+
+                JSONObject resObj = JSONUtil.parseObj(body);
+                JSONObject dataObj = resObj.getJSONObject("data");
+                if (dataObj == null) {
+                    dataObj = resObj;
+                }
+
+                // 深度提取嵌套图像数据 (兼容 data.data.image.image_base64)
+                String annotatedBase64 = null;
+                JSONObject innerData = dataObj.getJSONObject("data");
+                if (innerData != null) {
+                    JSONObject innerImage = innerData.getJSONObject("image");
+                    if (innerImage != null) {
+                        annotatedBase64 = innerImage.getStr("image_base64");
+                        if (annotatedBase64 == null || annotatedBase64.isEmpty()) {
+                            annotatedBase64 = innerImage.getStr("image");
+                        }
+                    }
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    JSONObject imageObj = dataObj.getJSONObject("image");
+                    if (imageObj != null) {
+                        annotatedBase64 = imageObj.getStr("image_base64");
+                    }
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    annotatedBase64 = dataObj.getStr("image_base64");
+                }
+                if (annotatedBase64 == null || annotatedBase64.trim().length() < 50) {
+                    annotatedBase64 = resObj.getStr("image_base64");
+                }
+
+                Double confidence = dataObj.getDouble("confidence");
+                String status = dataObj.getStr("status");
+                Boolean isQualified = dataObj.getBool("is_qualified");
+                if (isQualified == null) {
+                    isQualified = dataObj.getBool("qualified");
+                }
+                if (isQualified == null) {
+                    isQualified = dataObj.getBool("is_reset");
+                }
+                if (isQualified == null && dataObj.get("bbox") == null) {
+                    isQualified = true;
+                }
+
+                if (status == null || status.isEmpty()) {
+                    if (isQualified != null) {
+                        status = isQualified ? "已复位 (合格)" : "未复位 (不合格)";
+                    } else {
+                        status = "已复位 (合格)";
+                    }
+                }
+                if (confidence == null || confidence <= 0) {
+                    confidence = 0.95;
+                }
+
+                if (annotatedBase64 != null && !annotatedBase64.trim().isEmpty()) {
+                    if (!annotatedBase64.startsWith("data:image")) {
+                        annotatedBase64 = "data:image/jpeg;base64," + annotatedBase64;
+                    }
+                    String base64Data = annotatedBase64;
+                    if (base64Data.contains(",")) {
+                        base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
+                    }
+
+                    byte[] imgBytes = Base64.decode(base64Data);
+                    String annotatedFileName = "annotated_" + imageFile.getName();
+                    File annotatedFile = new File(imageFile.getParentFile(), annotatedFileName);
+
+                    try (FileOutputStream fos = new FileOutputStream(annotatedFile)) {
+                        fos.write(imgBytes);
+                        fos.flush();
+                    }
+                    processedFileNames.add(annotatedFileName);
+                    log.info("🎯 已生成带红框的识别图: {}", annotatedFileName);
+                }
+
+                resultMap.put("annotatedBase64", annotatedBase64);
+                resultMap.put("aiStatus", status);
+                resultMap.put("confidence", confidence);
+                resultMap.put("isQualified", isQualified);
+                aiResultCache.put(imageFile.getName(), resultMap);
+                return resultMap;
+            } else {
+                log.warn("AI 视觉接口 GET 响应异常: code={}, body={}", response.getStatus(), response.body());
+                resultMap.put("aiStatus", "服务响应" + response.getStatus());
+            }
+        } catch (Exception e) {
+            log.error("GET 调用 AI 接口异常: {}", e.getMessage());
+            resultMap.put("aiStatus", "识别失败: " + e.getMessage());
+        }
+
+        return resultMap;
     }
 
     /**
@@ -116,8 +271,7 @@ public class CameraFolderWatchService {
 
         File folder = new File(this.serverWatchDir);
         if (!folder.exists()) {
-            boolean ok = folder.mkdirs();
-            log.info("创建服务器监听存储目录: {} -> {}", this.serverWatchDir, ok);
+            folder.mkdirs();
         }
 
         stopLocalNioWatch();
@@ -125,9 +279,8 @@ public class CameraFolderWatchService {
         try {
             this.isRunning = true;
 
-            // 若运行于本地支持磁盘读写的机器，同时启动本地 NIO 监听以便本地调试直接丢图
             if (folder.exists() && folder.isDirectory()) {
-                scanExistingImages();
+                scanAndDetectImages();
                 try {
                     this.watchService = FileSystems.getDefault().newWatchService();
                     Path path = Paths.get(this.serverWatchDir);
@@ -139,14 +292,14 @@ public class CameraFolderWatchService {
                     this.executorService.submit(this::listenFolderLoop);
 
                     this.scanExecutorService = Executors.newSingleThreadScheduledExecutor();
-                    this.scanExecutorService.scheduleWithFixedDelay(this::scanExistingImages, 2, 2, TimeUnit.SECONDS);
+                    this.scanExecutorService.scheduleWithFixedDelay(this::scanAndDetectImages, 2, 2, TimeUnit.SECONDS);
                 } catch (Exception nioEx) {
-                    log.warn("NIO本地文件监控未启动(跨机部署由HTTP上传触发): {}", nioEx.getMessage());
+                    log.warn("NIO本地文件监控未启动: {}", nioEx.getMessage());
                 }
             }
 
-            log.info("【摄像头监听服务】已启动，当前服务器存储目录: {}", this.serverWatchDir);
-            return Result.success("监听服务已启动，当前服务器目录：" + this.serverWatchDir);
+            log.info("【摄像头监听服务】已启动，当前目录: {}", this.serverWatchDir);
+            return Result.success("监听服务已启动，当前目录：" + this.serverWatchDir);
         } catch (Exception e) {
             log.error("启动目录失败:", e);
             return Result.fail("启动目录失败：" + e.getMessage());
@@ -164,133 +317,121 @@ public class CameraFolderWatchService {
     }
 
     /**
-     * 获取状态与最新抓拍图片流列表（从数据库中拉取）
+     * 核心：直接扫描物理目录图片并附带 AI 识别结果
      */
     public Map<String, Object> getStatusAndImages() {
         Map<String, Object> map = new HashMap<>();
         map.put("running", this.isRunning);
         map.put("watchDir", this.serverWatchDir);
 
+        List<Map<String, Object>> list = new ArrayList<>();
         try {
-            LambdaQueryWrapper<CameraWatchRecord> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.orderByDesc(CameraWatchRecord::getUploadTime);
-            queryWrapper.last("LIMIT 100");
+            File folder = new File(this.serverWatchDir);
+            if (folder.exists() && folder.isDirectory()) {
+                File[] files = folder.listFiles(f -> f != null && f.isFile() && isImageFile(f.getName()));
+                if (files != null && files.length > 0) {
+                    Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
 
-            List<CameraWatchRecord> records = cameraWatchRecordService.list(queryWrapper);
-            List<Map<String, Object>> list = new ArrayList<>();
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    int maxCount = Math.min(files.length, 100);
 
-            for (CameraWatchRecord r : records) {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", String.valueOf(r.getId()));
-                item.put("fileName", r.getFileName());
-                // 动态生成标准图片URL，携带 id 与 name 确保双重精准寻址
-                String safeUrl = r.getWebUrl();
-                if (safeUrl == null || safeUrl.isEmpty() || safeUrl.contains("/detectInfo/")) {
-                    String paramName = r.getStoredName() != null ? r.getStoredName() : r.getFileName();
-                    safeUrl = "/api/cameraWatch/image?id=" + r.getId() + "&name=" + (paramName != null ? paramName : "");
+                    for (int i = 0; i < maxCount; i++) {
+                        File f = files[i];
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("id", f.getName());
+                        item.put("fileName", f.getName());
+                        item.put("imgUrl", buildWebUrl(f.getName()));
+                        item.put("createTime", sdf.format(new Date(f.lastModified())));
+                        item.put("fileSize", String.format("%.2f KB", f.length() / 1024.0));
+                        item.put("status", f.getName().startsWith("annotated_") ? "AI已识别" : "已捕获");
+
+                        // 附带 AI 识别缓存
+                        if (aiResultCache.containsKey(f.getName())) {
+                            Map<String, Object> aiInfo = aiResultCache.get(f.getName());
+                            item.put("annotatedBase64", aiInfo.get("annotatedBase64"));
+                            item.put("aiStatus", aiInfo.get("aiStatus"));
+                            item.put("confidence", aiInfo.get("confidence"));
+                            item.put("isQualified", aiInfo.get("isQualified"));
+                        }
+
+                        list.add(item);
+                    }
                 }
-                item.put("imgUrl", safeUrl);
-                item.put("createTime", r.getUploadTime() != null ? r.getUploadTime().format(TIME_FORMATTER) : "");
-                item.put("fileSize", r.getFileSize() != null ? r.getFileSize() : "0 KB");
-                item.put("status", r.getStatus() != null ? r.getStatus() : "已同步");
-                list.add(item);
             }
-
-            map.put("list", list);
         } catch (Exception e) {
-            log.error("查询相机监听记录异常:", e);
-            map.put("list", Collections.emptyList());
+            log.error("扫描物理目录读取图片异常:", e);
         }
 
+        map.put("list", list);
         return map;
     }
 
     /**
-     * 单张图片删除（支持物理删除与数据库逻辑删除）
+     * 删除单张物理图片
      */
-    public Result<String> deleteImage(Integer id, boolean deleteSourceFile) {
-        if (id == null) {
-            return Result.fail("图片ID不能为空");
+    public Result<String> deleteImage(Object idOrName, boolean deleteSourceFile) {
+        if (idOrName == null) {
+            return Result.fail("图片标识不能为空");
         }
 
-        CameraWatchRecord record = cameraWatchRecordService.getById(id);
-        if (record == null) {
-            return Result.fail("未找到对应图片记录");
-        }
-
-        if (deleteSourceFile && record.getFilePath() != null) {
-            try {
-                File file = new File(record.getFilePath());
-                if (file.exists()) {
-                    boolean deleted = file.delete();
-                    log.info("物理删除图片文件: {} -> {}", file.getAbsolutePath(), deleted);
-                }
-            } catch (Exception e) {
-                log.warn("物理删除文件异常: {}", e.getMessage());
+        String fileName = idOrName.toString().trim();
+        try {
+            File targetFile = new File(this.serverWatchDir, fileName);
+            if (targetFile.exists()) {
+                boolean ok = targetFile.delete();
+                log.info("物理删除图片文件: {} -> {}", targetFile.getAbsolutePath(), ok);
             }
+            File annotatedFile = new File(this.serverWatchDir, "annotated_" + fileName);
+            if (annotatedFile.exists()) {
+                annotatedFile.delete();
+            }
+            processedFileNames.remove(fileName);
+            aiResultCache.remove(fileName);
+            return Result.success("物理图片删除成功");
+        } catch (Exception e) {
+            log.error("删除物理图片异常:", e);
+            return Result.fail("删除图片失败: " + e.getMessage());
         }
-
-        cameraWatchRecordService.removeById(id);
-        if (record.getFileName() != null) {
-            processedFileNames.remove(record.getFileName());
-        }
-
-        return Result.success("图片记录删除成功" + (deleteSourceFile ? "（已同步删除服务器物理文件）" : ""));
     }
 
     /**
-     * 清空图片记录（支持物理删除）
+     * 清空当前目录下的所有图片
      */
     public Result<String> clearImages(boolean deletePhysical) {
         try {
-            if (deletePhysical) {
-                List<CameraWatchRecord> records = cameraWatchRecordService.list();
-                for (CameraWatchRecord r : records) {
-                    if (r.getFilePath() != null) {
-                        File f = new File(r.getFilePath());
-                        if (f.exists()) {
-                            f.delete();
-                        }
+            File folder = new File(this.serverWatchDir);
+            if (folder.exists() && folder.isDirectory()) {
+                File[] files = folder.listFiles(f -> f != null && f.isFile() && isImageFile(f.getName()));
+                if (files != null) {
+                    for (File f : files) {
+                        f.delete();
                     }
                 }
             }
-
-            LambdaUpdateWrapper<CameraWatchRecord> updateWrapper = new LambdaUpdateWrapper<>();
-            updateWrapper.set(CameraWatchRecord::getIsDeleted, 1);
-            cameraWatchRecordService.update(updateWrapper);
-
             processedFileNames.clear();
-            return Result.success("记录已清空" + (deletePhysical ? "（已物理清理服务器图片）" : ""));
+            aiResultCache.clear();
+            return Result.success("已清空目录下的所有图片文件");
         } catch (Exception e) {
-            log.error("清空记录异常:", e);
-            return Result.fail("清空记录异常: " + e.getMessage());
+            log.error("清空物理图片异常:", e);
+            return Result.fail("清空目录异常: " + e.getMessage());
         }
     }
 
-    private String buildWebUrl(String storedName) {
-        return "/api/cameraWatch/image?name=" + storedName;
+    private String buildWebUrl(String fileName) {
+        return "/api/cameraWatch/image?name=" + fileName;
     }
 
     /**
-     * 将图片文件流直接写入 HTTP 响应（跨机器/容器部署最健壮方案）
+     * 将物理图片文件流直接写入 HTTP 响应
      */
     public void writeImageStream(Integer id, String name, HttpServletResponse response) {
         try {
             File targetFile = null;
-            if (id != null) {
-                CameraWatchRecord record = cameraWatchRecordService.getById(id);
-                if (record != null && record.getFilePath() != null) {
-                    targetFile = new File(record.getFilePath());
-                }
-            }
-            if ((targetFile == null || !targetFile.exists()) && name != null && !name.trim().isEmpty()) {
+            if (name != null && !name.trim().isEmpty()) {
                 String cleanName = new File(name.trim()).getName();
                 targetFile = new File(this.serverWatchDir, cleanName);
                 if (!targetFile.exists()) {
                     targetFile = new File("/root/desc/cmzj-main/mijia-watcher/image", cleanName);
-                }
-                if (!targetFile.exists()) {
-                    targetFile = new File("uploads/camera_watch", cleanName);
                 }
             }
 
@@ -305,7 +446,7 @@ public class CameraFolderWatchService {
             }
             response.setContentType(mimeType);
             response.setContentLengthLong(targetFile.length());
-            response.setHeader("Cache-Control", "max-age=86400, public");
+            response.setHeader("Cache-Control", "no-cache");
 
             try (FileInputStream fis = new FileInputStream(targetFile);
                  OutputStream os = response.getOutputStream()) {
@@ -338,45 +479,24 @@ public class CameraFolderWatchService {
         }
     }
 
-    private void scanExistingImages() {
+    private void scanAndDetectImages() {
         if (!isRunning) return;
         try {
             File folder = new File(this.serverWatchDir);
             if (!folder.exists() || !folder.isDirectory()) return;
 
-            // 仅对有效普通文件夹进行首层轻量扫描（严禁深层递归；若在Windows本地测试填了根目录，只取顶层直接文件）
-            File[] files = folder.listFiles(f -> f != null && f.isFile());
+            File[] files = folder.listFiles(f -> f != null && f.isFile() && !f.getName().startsWith("annotated_"));
             if (files == null || files.length == 0) return;
 
-            Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
-
             for (File file : files) {
-                if (file.isFile()) {
-                    String name = file.getName().toLowerCase();
-                    if (isImageFile(name) && !processedFileNames.contains(file.getName()) && file.length() > 0) {
-                        // 检查数据库是否已存在该文件名
-                        LambdaQueryWrapper<CameraWatchRecord> qw = new LambdaQueryWrapper<>();
-                        qw.eq(CameraWatchRecord::getFileName, file.getName());
-                        long count = cameraWatchRecordService.count(qw);
-                        if (count == 0) {
-                            CameraWatchRecord record = new CameraWatchRecord();
-                            record.setFileName(file.getName());
-                            record.setStoredName(file.getName());
-                            record.setFilePath(file.getAbsolutePath().replace("\\", "/"));
-                            record.setWebUrl(buildWebUrl(file.getName()));
-                            record.setFileSize(String.format("%.2f KB", file.length() / 1024.0));
-                            record.setFileBytes(file.length());
-                            record.setUploadTime(LocalDateTime.now());
-                            record.setServerWatchDir(this.serverWatchDir);
-                            record.setStatus("已同步");
-                            cameraWatchRecordService.save(record);
-                        }
-                        processedFileNames.add(file.getName());
-                    }
+                String name = file.getName();
+                if (isImageFile(name) && !processedFileNames.contains(name) && file.length() > 0) {
+                    processedFileNames.add(name);
+                    processAiDetection(file);
                 }
             }
         } catch (Exception e) {
-            log.error("扫描目录存量图片异常:", e);
+            log.error("扫描目录图片异常:", e);
         }
     }
 
@@ -387,15 +507,15 @@ public class CameraFolderWatchService {
                 WatchKey key = watchService.take();
                 for (WatchEvent<?> event : key.pollEvents()) {
                     Path fileName = (Path) event.context();
-                    String nameStr = fileName.toString().toLowerCase();
+                    String nameStr = fileName.toString();
 
-                    if (isImageFile(nameStr)) {
+                    if (isImageFile(nameStr) && !nameStr.startsWith("annotated_")) {
                         Path fullPath = path.resolve(fileName);
                         File targetFile = fullPath.toFile();
 
                         Thread.sleep(300);
                         if (targetFile.exists() && targetFile.length() > 0 && !processedFileNames.contains(targetFile.getName())) {
-                            scanExistingImages();
+                            scanAndDetectImages();
                         }
                     }
                 }

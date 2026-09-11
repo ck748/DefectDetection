@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ggbond.defectdetection.common.Result;
 import com.ggbond.defectdetection.pojo.DetectionBatch;
+import com.ggbond.defectdetection.pojo.Model;
 import com.ggbond.defectdetection.pojo.vo.ModelResultVO;
 import com.ggbond.defectdetection.service.DetectionResultSaveService;
 import com.ggbond.defectdetection.service.DetectionService;

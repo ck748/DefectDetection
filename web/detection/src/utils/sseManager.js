@@ -8,7 +8,7 @@ class DataManager {
     this.pollingTimer = null;
     this.listeners = new Map();
     this.isRunning = false;
-    this.pollingInterval = 500; // 3秒轮询一次（从50毫秒修改为3000毫秒）
+    this.pollingInterval = 3000; // 修改为3秒轮询一次
   }
 
   /**
