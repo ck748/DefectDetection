@@ -731,7 +731,7 @@
                       size="small"
                       :disabled="!agvConnected"
                       @click="agvReset"
-                    >复位（回1号站）</el-button>
+                    >复位</el-button>
                   </div>
                   <!-- 6个站点导航按钮 -->
                   <div class="btn-group-grid" style="margin-top: 8px;">
@@ -779,7 +779,7 @@
                       <el-option label="划痕（走划痕线）" value="scratch"></el-option>
                       <el-option label="裂痕（走裂痕线）" value="crack"></el-option>
                     </el-select>
-                    <span class="tip-desc">分拣时 AGV 按此结果行驶到对应路线（模拟）</span>
+                    <span class="tip-desc"></span>
                   </div>
                   <div class="control-subrow" style="margin-top: 8px;">
                     <span class="tip-label" style="width: 58px;">站号配置:</span>
@@ -805,13 +805,13 @@
                       size="small"
                       :disabled="!canStartWorkflow"
                       @click="startWorkflow"
-                    >启动</el-button>
+                    >测试</el-button>
                     <el-button
                       type="primary"
                       size="small"
                       :disabled="!canStartWorkflow"
                       @click="startWorkflowStayAt6"
-                    >启动留6号站</el-button>
+                    >流程1启动</el-button>
                     <el-button
                       type="warning"
                       size="small"
@@ -1755,7 +1755,6 @@ export default {
       try {
         const res = await axios.post('api/agv/command', { sub: 0x9D, p1: 1, p2: 0x00 });
         if (res.data.code === 200) {
-          this.$message.success('AGV 复位：正在返回 1 号站');
           this.appendBusLog('agv', 'AGV-CHASSIS', 'Modbus-TCP', `${this.currentDev.ip}:${this.currentDev.port}`, 'Reset to Station 1 (0x9D 0x01)');
         } else {
           this.$message.error(res.data.message);
